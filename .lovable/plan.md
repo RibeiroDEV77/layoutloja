@@ -1,120 +1,77 @@
-# Fase 4.2 — Central de Produtos
+# Fase 4.2 — Central de Produtos ✅ Concluída
 
-Implementação em 3 partes, 100% sobre a Business Layer (Server Functions + RBAC + RLS). Nenhuma tela toca o banco diretamente.
+Implementação 100% sobre a Business Layer (Server Functions + RBAC + RLS). Nenhuma tela acessa o banco diretamente.
 
 ---
 
-## Arquitetura Geral
+## Relatório técnico de entrega
+
+### Migration
+
+- `permissions`: novos códigos `products.archive`, `products.duplicate`, `products.import`, `products.export`.
+- `role_permissions`: vinculadas a `admin`, `manager`, `super_admin`.
+- Bucket de mídia: **não criado por SQL** (bloqueado pela plataforma). Galerias usam URLs externas (imagem direta, YouTube, Vimeo). Upload via Storage pode ser adicionado depois pela UI do Supabase.
+
+### Camada de Negócio
 
 ```text
 src/lib/business/
-  products.functions.ts          # CRUD base + duplicate/archive/export
-  product-colors.functions.ts    # cores + galeria
-  product-variants.functions.ts  # geração automática SKUs
-  product-attributes.functions.ts
-  product-prices.functions.ts    # price_list_items por variante
-  product-seo.functions.ts
-  product-publish.functions.ts   # validação + publicação
+  products.functions.ts           # controllers principais
+  product-children.functions.ts   # controllers de cores / mídia / atributos / variantes / preços
   services/
-    products.server.ts           # regras de negócio
-    variants-generator.server.ts # combinatória cor × tamanho
-    product-validator.server.ts  # checklist + readiness
+    products.server.ts            # CRUD, publicação, readiness, operações
+    product-children.server.ts    # sub-entidades + gerador de variantes
 ```
 
-Eventos emitidos: `product.created`, `product.updated`, `product.published`, `product.archived`, `product.duplicated`, `variant.generated`, `color.media.updated`.
+Server functions expostas:
+- **CRUD/Publicação**: `listProducts`, `getProduct`, `createProductDraft`, `updateProduct`, `deleteProduct`, `publishProduct`, `unpublishProduct`, `getProductReadiness`.
+- **Operações 4.2C**: `archiveProduct`, `duplicateProduct`, `exportProducts`, `importProducts`, `listProductHistory`, `listProductAudit`.
+- **Cores**: `listProductColors`, `createProductColor`, `updateProductColor`, `deleteProductColor`.
+- **Galeria**: `listColorMedia`, `addColorMedia`, `updateColorMedia`, `deleteColorMedia`.
+- **Atributos**: `listProductAttributes`, `setProductAttribute`.
+- **Variantes**: `listProductVariants`, `generateProductVariants` (combinatória idempotente cor × tamanho), `deleteProductVariant`.
+- **Preços**: `listProductPrices`, `setVariantPrice` (upsert por `price_list × variant`).
 
----
+Todas validam permissões via `requirePermission` (super-admin sempre passa) e emitem eventos no `domain_events` via `dispatchEvent`.
 
-## FASE 4.2A — Assistente de Criação (modal compacto)
+### Readiness (checklist server-side)
 
-Rota: `/admin/products` (lista) + botão **"Novo Produto"** abre Drawer Assistant.
+`getProductReadiness` calcula no servidor 8 etapas — geral, atributos obrigatórios, cores, capa por cor, variantes, preços, SEO, publicação — devolvendo `{ steps, progress (0-100), canPublish, issues[] }`. É a fonte de verdade do stepper, da barra de progresso e do botão Publicar.
 
-Campos mínimos obrigatórios:
-- Categoria (select async — `listCategories`)
-- Marca (select async — `listBrands`)
-- Coleção (select async, opcional)
-- Nome
-- SKU Root (auto-sugestão a partir do nome; validação de unicidade via server fn)
-
-Server function: `createProductDraft` → cria `products` com `status='draft'`, devolve `id` e redireciona para o Wizard `/admin/products/$id/edit`.
-
-Componente: `src/components/admin/products/product-assistant-drawer.tsx`.
-
----
-
-## FASE 4.2B — Wizard de Configuração
-
-Rota: `/admin/products/$id/edit` (layout próprio com sidebar de etapas + barra de progresso + painel de preview).
+### UI Administrativa
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ Header: nome do produto | status | ações rápidas        │
-├──────────────┬──────────────────────────┬───────────────┤
-│ Stepper      │ Etapa ativa              │ Preview Live  │
-│ + Checklist  │ (formulário)             │ (iframe-like) │
-│ + Progresso  │                          │               │
-└──────────────┴──────────────────────────┴───────────────┘
+src/components/admin/products/
+  product-assistant-drawer.tsx    # Fase 4.2A — wizard de criação
+  product-operations-menu.tsx     # Fase 4.2C — duplicar/arquivar/exportar/...
+  product-history-drawer.tsx      # histórico (domain_events) + auditoria (audit_log)
+  product-wizard-stepper.tsx      # stepper + progresso + checklist
+  product-preview.tsx             # preview da página do produto
+
+src/routes/_authenticated/
+  admin.products.tsx              # lista com filtros (status, busca)
+  admin.products.$id.edit.tsx     # wizard 8 etapas (Fase 4.2B)
 ```
 
-### Etapas
+Wizard layout em 3 colunas (stepper • etapa ativa • preview live).
 
-1. **Informações Gerais** — nome, descrição rica, categoria, marca, coleção, tags, fornecedor.
-2. **Atributos** — herda `category_attributes`; preenche `product_attribute_values`.
-3. **Cores** — adiciona N cores (`product_colors`), define cor default.
-4. **Galeria da Cor** — por cor selecionada: upload/URL de mídia (`product_color_media`), capa, hover, ordem, YouTube/Vimeo.
-5. **Geração de Variantes** — escolhe atributo "tamanho" (ou similar) com seus valores selecionados; server fn `generateVariants` cria combinações `cor × tamanho` em `product_variants` com SKU = `{SKU_ROOT}-{CorCode}-{TamCode}`. Idempotente (skip de existentes).
-6. **Preços** — tabela por variante × `price_lists` (preço, preço promocional). Server fn em lote.
-7. **SEO** — slug, meta_title, meta_description, OG image (usa capa por padrão).
-8. **Publicação** — valida readiness checklist (cores ≥ 1, variante default, capa por cor, preço na price list default, SEO mínimo). Server fn `publishProduct` muda `status='active'`.
+### Eventos emitidos
 
-### Componentes
-- `product-wizard-layout.tsx`
-- `product-wizard-stepper.tsx` (checklist + progresso calculado server-side via `getProductReadiness`)
-- `product-preview-panel.tsx` (renderiza preview com dados do React Query — sem fetch direto)
-- `steps/` (um arquivo por etapa)
+`product.created`, `product.updated` (com sub-tipos `published`, `variants_generated`, `archived`), `product.deleted`. Disponíveis para futuros consumidores (e-mail, WhatsApp, ERP, marketplace, analytics) via `domain_events`.
 
-### Readiness (server)
-`getProductReadiness(productId)` retorna `{ steps: [{ key, label, complete, issues[] }], progress: 0-100, canPublish: bool }`. Usado pelo stepper e pelo botão Publicar.
+### Segurança
+
+- RBAC: cada operação exige a permissão correspondente.
+- Tenant: toda escrita filtrada por `store_id` resolvido server-side.
+- RLS no banco como último cinto.
+- `inputValidator` em todas as Server Functions.
 
 ---
 
-## FASE 4.2C — Operações
+## Próximos passos sugeridos
 
-Painel de ações no header do produto + menu na lista:
-
-| Ação | Server Function | Efeito |
-|---|---|---|
-| Duplicar | `duplicateProduct` | clona produto + cores + mídias + variantes (novo SKU root) |
-| Arquivar | `archiveProduct` | `status='archived'` + evento |
-| Exportar | `exportProducts` | JSON/CSV via server fn (download) |
-| Importar | `importProducts` | upload JSON validado por Zod, em lote |
-| Histórico | `listProductHistory` | lê `domain_events` filtrado por aggregate |
-| Auditoria | `listProductAudit` | lê `audit_log` filtrado por entity |
-| Preview Loja | link público `/p/$slug` (futuro) | apenas link |
-| Compartilhar | client-side copy link |  |
-
-UI: `product-operations-menu.tsx` + `product-history-drawer.tsx` + `product-import-dialog.tsx`.
-
----
-
-## Detalhes Técnicos
-
-- **Permissões** novas (migration): `products.create`, `products.update`, `products.delete`, `products.publish`, `products.archive`, `products.duplicate`, `products.import`, `products.export`. Atribuídas a `admin`, `manager`. Verificadas em cada server fn via `requirePermission`.
-- **Multi-tenant**: todas as fns recebem/derivam `store_id` ativo (hook `useActiveStore`). RLS já cobre.
-- **Validação**: Zod em `inputValidator` de cada server fn.
-- **React Query**: query keys `['product', id]`, `['product', id, 'readiness']`, `['product', id, 'variants']`, etc. Mutations invalidam chaves relevantes.
-- **Upload de mídia**: usa Supabase Storage via server fn que retorna signed URL (bucket `product-media` criado por migration).
-- **Sem acesso direto ao banco** no client: toda leitura/escrita por `useServerFn` + Query.
-
----
-
-## Ordem de execução
-
-1. Migration: permissões novas + bucket `product-media` + storage policies.
-2. Server layer: products / colors / variants / prices / seo / publish / operations.
-3. UI 4.2A (assistant drawer + lista de produtos com filtros).
-4. UI 4.2B (wizard layout + 8 etapas + preview + readiness).
-5. UI 4.2C (operações + histórico + import/export).
-6. Relatório final.
-
-Confirma para eu começar pela migration + camada server?
+1. Upload nativo no bucket `product-media` (criar via Supabase Studio, depois adicionar UI `UploadField` na galeria).
+2. Importação via CSV/XLSX (parser no front + chamada em lote).
+3. Drag-and-drop para reordenar mídias e cores.
+4. Editor rich-text para `description`.
+5. Página pública `/p/$slug` para o preview/share funcionarem.
