@@ -4,11 +4,11 @@
  *
  * Usar com `createServerFn(...).middleware([requireSupabaseAuth]).handler(withBusiness(async ({...}) => ...))`.
  */
-import { BusinessError } from './errors';
+import { BusinessError, type ErrorDetails } from './errors';
 
 export interface BusinessErrorResponse {
   ok: false;
-  error: { code: string; message: string; details?: Record<string, unknown> };
+  error: { code: string; message: string; details?: ErrorDetails };
 }
 
 export interface BusinessSuccessResponse<T> {
