@@ -40,7 +40,7 @@ export async function createSupplier(
     email: input.email?.trim() || null,
     phone: input.phone?.trim() || null,
     website: input.website?.trim() || null,
-    address: input.address ?? {},
+    address: (input.address ?? {}) as never,
     payment_terms: input.payment_terms ?? null,
     lead_time_days: input.lead_time_days ?? null,
     notes: input.notes ?? null,
