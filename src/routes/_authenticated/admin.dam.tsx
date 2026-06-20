@@ -5,7 +5,7 @@
  * (produtos, categorias, marcas, coleções, banners, institucional, marketing)
  * consomem assets daqui via `<AssetPicker />` ou `<AssetLinksManager />`.
  */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
