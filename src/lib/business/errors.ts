@@ -24,7 +24,7 @@ export class BusinessError extends Error {
   constructor(
     code: BusinessErrorCode,
     message: string,
-    opts?: { httpStatus?: number; details?: Record<string, unknown> },
+    opts?: { httpStatus?: number; details?: ErrorDetails },
   ) {
     super(message);
     this.name = 'BusinessError';
@@ -53,16 +53,17 @@ function defaultHttpStatus(code: BusinessErrorCode): number {
 export const Errors = {
   unauthenticated: (msg = 'Não autenticado') =>
     new BusinessError('UNAUTHENTICATED', msg),
-  forbidden: (msg = 'Acesso negado', details?: Record<string, unknown>) =>
+  forbidden: (msg = 'Acesso negado', details?: ErrorDetails) =>
     new BusinessError('FORBIDDEN', msg, { details }),
   notFound: (entity: string, id?: string) =>
-    new BusinessError('NOT_FOUND', `${entity} não encontrado`, { details: { entity, id } }),
-  validation: (msg: string, details?: Record<string, unknown>) =>
+    new BusinessError('NOT_FOUND', `${entity} não encontrado`, { details: { entity, id: id ?? null } }),
+  validation: (msg: string, details?: ErrorDetails) =>
     new BusinessError('VALIDATION', msg, { details }),
-  conflict: (msg: string, details?: Record<string, unknown>) =>
+  conflict: (msg: string, details?: ErrorDetails) =>
     new BusinessError('CONFLICT', msg, { details }),
-  rule: (msg: string, details?: Record<string, unknown>) =>
+  rule: (msg: string, details?: ErrorDetails) =>
     new BusinessError('BUSINESS_RULE', msg, { details }),
-  internal: (msg = 'Erro interno', details?: Record<string, unknown>) =>
+  internal: (msg = 'Erro interno', details?: ErrorDetails) =>
     new BusinessError('INTERNAL', msg, { details }),
 };
+
