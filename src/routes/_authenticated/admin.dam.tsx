@@ -25,7 +25,7 @@ import { useActiveStore } from "@/hooks/use-active-store";
 import { AssetThumb, type AssetLike } from "@/components/dam/asset-thumb";
 import { AssetUploader } from "@/components/dam/asset-uploader";
 import {
-  listAssets, getAssetUsage, updateAssetMeta, archiveAsset, restoreAsset, deleteAsset,
+  listAssets, getAsset, getAssetUsage, updateAssetMeta, archiveAsset, restoreAsset, deleteAsset,
 } from "@/lib/business/dam.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/dam")({
