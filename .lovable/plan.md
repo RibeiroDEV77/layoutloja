@@ -621,3 +621,90 @@ Aguardando "**APROVADO**" para iniciar a **Fase 1 — Fundação**:
 - RLS base + seed de roles/permissions padrão + 1 store inicial "Layout"
 
 Nada será criado antes da sua aprovação explícita.
+
+---
+
+# ADDENDUM — Melhorias Aprovadas (pré-Fase 1)
+
+Incorporadas sem alterar a arquitetura já aprovada. Implementadas nas fases correspondentes.
+
+## A1. Funcionários (HR) — separado da autenticação
+
+Identidade base continua em `profiles` (1:1 `auth.users`). A entidade de negócio "colaborador" fica isolada:
+
+- **departments** — `store_id, name, code (unique store), parent_id (self FK), manager_employee_id, is_active`.
+- **job_positions** — `store_id, department_id, title, code, level (junior/pleno/senior/coord/gerente), description, is_active`.
+- **employees** — `store_id, profile_id (nullable, vínculo com login), department_id, job_position_id, employee_code (matrícula, unique store), full_name, cpf, rg, birth_date, phone, whatsapp, email, hire_date, termination_date, employment_type (clt/pj/estagio/temporario), status (active/on_leave/terminated), photo_url, address jsonb, emergency_contact jsonb, salary_band_ref`.
+- **employee_documents** — `employee_id, kind (contrato/rg/cpf/comprovante/asos/...), storage_path, url, mime, issued_at, expires_at`.
+- **employee_role_assignments** — `employee_id, role_id, store_id, granted_by_employee_id, granted_at, revoked_at`. Quando um employee tem `profile_id` vinculado, esta tabela é a fonte de verdade que materializa registros em `user_roles` via trigger (mantém RBAC do app consistente com gestão de RH).
+- **employee_history** — `employee_id, event_type (hire/promotion/department_change/salary_change/leave/return/termination), from_value jsonb, to_value jsonb, effective_date, registered_by`.
+
+Regras:
+- `employees.profile_id` é opcional → permite cadastrar colaborador sem login (ex.: equipe de produção sem acesso ao sistema).
+- Acessar o sistema = ter `profile_id` + `employee_role_assignments` ativas que populam `user_roles`.
+- Permissão `hr.manage` (novo) controla esse módulo. RLS escopado por `store_id`.
+
+## A2. Fluxo formal de Compras
+
+Já havia esqueleto de `suppliers` + `product_suppliers` + `purchase_orders` no item §2.15 anterior. Formalização completa:
+
+```
+Fornecedor (suppliers)
+  ↓
+Pedido de Compra (purchase_orders + purchase_order_items)
+  ↓
+Recebimento (goods_receipts + goods_receipt_items)   ← suporta recebimento parcial
+  ↓
+Entrada no Estoque  → inventory_movements(type='in', reference_type='goods_receipt')
+  ↓
+Atualização de custo (avg_cost ponderado) → trigger em inventory_movements
+  ↓
+Histórico em cost_history (com referência ao recebimento)
+```
+
+Tabelas:
+
+- **suppliers** — conforme item 1 da revisão anterior.
+- **product_suppliers** / **variant_suppliers** — vínculo N:N com `supplier_sku, cost, currency, min_order_qty, lead_time_days, is_primary, last_purchased_at`.
+- **purchase_orders** — `store_id, supplier_id, po_number (sequencial por loja), status (draft/sent/confirmed/partial/received/canceled), currency, subtotal, freight_cost, tax_total, grand_total, expected_at, sent_at, confirmed_at, received_at, created_by_employee_id, notes`.
+- **purchase_order_items** — `purchase_order_id, variant_id, qty_ordered, qty_received, unit_cost, discount, tax, total`.
+- **goods_receipts** — `purchase_order_id, store_id, location_id (FK inventory_locations), received_by_employee_id, received_at, invoice_number, invoice_key, notes, status (draft/posted/canceled)`.
+- **goods_receipt_items** — `goods_receipt_id, purchase_order_item_id, variant_id, qty, unit_cost, condition (ok/damaged/divergent)`.
+- **supplier_invoices** — `supplier_id, goods_receipt_id, number, series, access_key, xml_url, pdf_url, status, issued_at, total`.
+
+Integração:
+- Ao "postar" um `goods_receipt` (status=posted):
+  - Trigger gera N `inventory_movements(type='in', qty, unit_cost, reference_type='goods_receipt', reference_id)`.
+  - Mesmo trigger recalcula `product_variants.avg_cost` (custo médio ponderado: `((on_hand * avg_cost) + (qty_in * unit_cost)) / (on_hand + qty_in)`) e atualiza `cost_price` (último).
+  - Registra em `cost_history`.
+  - Atualiza `purchase_order_items.qty_received` e move `purchase_orders.status` para `partial` ou `received`.
+
+Permissões novas: `purchases.read`, `purchases.create`, `purchases.receive`, `suppliers.manage`.
+
+## A3. Dashboard personalizável por perfil
+
+Dashboard deixa de ser layout fixo e vira composição de widgets por papel/usuário:
+
+- **dashboard_widgets** — catálogo de widgets disponíveis: `code (unique), name, description, component_key, default_size (sm/md/lg/xl), data_source (mv_name ou server_fn), default_permissions text[] (códigos que liberam o widget)`. Seed inicial: `sales_today, sales_mtd, avg_ticket, new_customers, approved_companies, top_products, low_stock, out_of_stock, pending_orders, abandoned_carts, payments_pending, shipments_in_transit, returns_open, reviews_pending, marketing_coupons_active`.
+- **dashboard_layouts** — `store_id, owner_type (role/user), owner_id (role_id ou user_id), name, is_default, layout jsonb (grid posicional: [{widget_code,x,y,w,h,config}])`. Permite layout padrão **por papel** + override **por usuário**.
+- **dashboard_role_defaults** (view ou seed em dashboard_layouts com owner_type='role') — define o dashboard padrão de cada papel:
+  - **admin**: KPIs gerais + alertas operacionais + top produtos + faturamento.
+  - **financeiro**: pagamentos pendentes, faturamento, ticket médio, devoluções/estornos, custos/margem.
+  - **estoquista**: estoque baixo, sem estoque, recebimentos pendentes, ajustes recentes.
+  - **marketing**: cupons ativos, carrinhos abandonados, avaliações pendentes, novos clientes, top produtos.
+  - **expedicao**: pedidos a separar, etiquetas pendentes, envios em trânsito, atrasos de entrega.
+  - **gerente**: visão consolidada (subset do admin + atalhos de aprovação).
+
+Resolução em runtime:
+1. Buscar layout `owner_type='user', owner_id=auth.uid()` (se existir = personalização do usuário).
+2. Caso não exista, união dos layouts `owner_type='role'` para todos os roles do usuário.
+3. Filtrar widgets cujos `default_permissions` o usuário NÃO possua via `has_permission`.
+
+Permissão nova: `dashboard.customize` (libera o usuário a editar seu próprio layout).
+
+## Resumo do impacto
+
+- **+18 tabelas** (departments, job_positions, employees, employee_documents, employee_role_assignments, employee_history, suppliers, product_suppliers, variant_suppliers, purchase_orders, purchase_order_items, goods_receipts, goods_receipt_items, supplier_invoices, dashboard_widgets, dashboard_layouts) sobre o que já estava no documento.
+- **+5 permissões** novas (`hr.manage`, `purchases.read`, `purchases.create`, `purchases.receive`, `suppliers.manage`, `dashboard.customize`).
+- Zero impacto na Fase 1 — todas as adições entram em fases posteriores (HR e Compras na Fase 6/7; Dashboard composicional na Fase 6 do Admin).
+
