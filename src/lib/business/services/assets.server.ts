@@ -262,10 +262,18 @@ export interface UpdateMetaParams {
 export async function updateAssetMeta(supabase: SbClient, userId: string, p: UpdateMetaParams) {
   const asset = await getAsset(supabase, userId, p.id);
   await requirePermission(supabase, userId, 'dam.update', asset.store_id);
-  const patch: Record<string, unknown> = {};
-  for (const k of ['title', 'alt_text', 'description', 'caption', 'original_filename', 'folder_id', 'context'] as const) {
-    if (p[k] !== undefined) patch[k] = p[k];
-  }
+  const patch: Partial<{
+    title: string | null; alt_text: string | null; description: string | null;
+    caption: string | null; original_filename: string | null; folder_id: string | null;
+    context: AssetContext;
+  }> = {};
+  if (p.title !== undefined) patch.title = p.title;
+  if (p.alt_text !== undefined) patch.alt_text = p.alt_text;
+  if (p.description !== undefined) patch.description = p.description;
+  if (p.caption !== undefined) patch.caption = p.caption;
+  if (p.original_filename !== undefined) patch.original_filename = p.original_filename;
+  if (p.folder_id !== undefined) patch.folder_id = p.folder_id;
+  if (p.context !== undefined) patch.context = p.context;
   const { data, error } = await supabase.from('assets').update(patch).eq('id', p.id).select('*').single();
   if (error) throw Errors.internal('Falha ao atualizar metadados', { error: error.message });
   return data;
