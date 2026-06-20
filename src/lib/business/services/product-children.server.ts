@@ -229,13 +229,13 @@ export async function generateVariants(
   if (!colors?.length) throw Errors.rule('Adicione ao menos uma cor antes de gerar variantes');
 
   const sizeIds = input.size_attribute_value_ids ?? [];
-  let sizeRows: Array<{ id: string; code: string | null; value: string }> = [];
+  let sizeRows: Array<{ id: string; code: string | null; label: string }> = [];
   if (sizeIds.length) {
     const { data } = await supabase
-      .from('attribute_values').select('id, code, value').in('id', sizeIds);
+      .from('attribute_values').select('id, code, label').in('id', sizeIds);
     sizeRows = (data ?? []) as typeof sizeRows;
   } else {
-    sizeRows = [{ id: '', code: 'UN', value: 'Único' }];
+    sizeRows = [{ id: '', code: 'UN', label: 'Único' }];
   }
 
   const { data: existing } = await supabase
@@ -253,7 +253,7 @@ export async function generateVariants(
     for (const s of sizeRows) {
       const key = `${color.id}|${s.id}`;
       if (existingKey.has(key)) { skipped++; continue; }
-      const sizeCode = sanitizeCode(s.code ?? s.value);
+      const sizeCode = sanitizeCode(s.code ?? s.label);
       const sku = `${prod.sku_root}-${colorCode}-${sizeCode}`;
       const { data, error } = await supabase.from('product_variants').insert({
         product_id: productId,
