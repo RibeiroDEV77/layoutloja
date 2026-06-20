@@ -24,6 +24,7 @@
 | 2.6 — Consolidação | Auditoria + Congelamento | ✅ |
 | 2.7 — Domain Events | `domain_events`, `domain_event_subscriptions`, `emit_domain_event()` | ✅ |
 | 3 — Operação Comercial | Fornecedores, Compras, Recebimento, Estoque, Inventários, Transferências, Custos | ✅ Schema |
+| 3.5 — Business Layer | Server Functions + Services + Repositories + Event Dispatcher | ✅ |
 
 ---
 
