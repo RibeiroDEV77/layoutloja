@@ -346,7 +346,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
     enabled: !!product.category_id && !!storeId,
     queryFn: async () => {
       const [cat, prod, attrsAll] = await Promise.all([
-        fnCatAttrs({ data: { store_id: storeId!, filters: { category_id: product.category_id! }, pageSize: 100 } }),
+        fnCatAttrs({ data: { category_id: product.category_id! } }),
         fnList({ data: { product_id: product.id } }),
         fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
       ]);
@@ -356,7 +356,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
 
       const catAttrs = cat.data.rows as Array<{ attribute_id: string; is_required: boolean }>;
       const attrsMap = new Map(
-        (attrsAll.data.rows as Array<{ id: string; name: string; type: string }>).map((a) => [a.id, a]),
+        (attrsAll.data.rows as Array<{ id: string; name: string; input_type: string }>).map((a) => [a.id, a]),
       );
       const productValues = new Map(
         (prod.data as AttrValRow[]).map((p) => [p.attribute_id, p]),
@@ -364,7 +364,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
 
       const valuesMap = new Map<string, Array<{ id: string; label: string }>>();
       for (const ca of catAttrs) {
-        const r = await fnVals({ data: { parent_id: ca.attribute_id, pageSize: 100 } });
+        const r = await fnVals({ data: { attribute_id: ca.attribute_id, pageSize: 100 } });
         if (r.ok) valuesMap.set(ca.attribute_id, r.data.rows as Array<{ id: string; label: string }>);
       }
 
@@ -372,7 +372,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
         attribute_id: ca.attribute_id,
         required: ca.is_required,
         name: attrsMap.get(ca.attribute_id)?.name ?? "—",
-        type: attrsMap.get(ca.attribute_id)?.type ?? "text",
+        type: attrsMap.get(ca.attribute_id)?.input_type ?? "text",
         values: valuesMap.get(ca.attribute_id) ?? [],
         current: productValues.get(ca.attribute_id) ?? null,
       }));
@@ -668,18 +668,18 @@ function VariantsStep({ productId, categoryId, onSaved }: { productId: string; c
     enabled: !!categoryId && !!storeId,
     queryFn: async () => {
       const [ca, attrs] = await Promise.all([
-        fnCatAttrs({ data: { store_id: storeId!, filters: { category_id: categoryId! }, pageSize: 100 } }),
+        fnCatAttrs({ data: { category_id: categoryId! } }),
         fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
       ]);
       if (!ca.ok || !attrs.ok) return null;
-      const attrList = attrs.data.rows as Array<{ id: string; name: string; code?: string }>;
+      const attrList = attrs.data.rows as Array<{ id: string; name: string; code?: string; is_size?: boolean }>;
       const catList = ca.data.rows as Array<{ attribute_id: string }>;
       const candidate = attrList.find((a) =>
         catList.some((c) => c.attribute_id === a.id) &&
-        /tamanho|size/i.test(a.name),
+        (a.is_size || /tamanho|size/i.test(a.name)),
       );
       if (!candidate) return { attribute: null, values: [] as Array<{ id: string; label: string; code: string | null }> };
-      const v = await fnVals({ data: { parent_id: candidate.id, pageSize: 100 } });
+      const v = await fnVals({ data: { attribute_id: candidate.id, pageSize: 100 } });
       return {
         attribute: candidate,
         values: v.ok ? (v.data.rows as Array<{ id: string; label: string; code: string | null }>) : [],
