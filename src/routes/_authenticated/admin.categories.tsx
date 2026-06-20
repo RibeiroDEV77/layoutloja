@@ -71,8 +71,8 @@ function CategoriesPage() {
           accessor: (r) => <StatusBadge label={r.is_active ? "Ativa" : "Inativa"} tone={r.is_active ? "success" : "muted"} dot /> },
       ]}
       itemLabel={(r) => r.name}
-      emptyForm={() => ({ name: "", slug: "", parent_id: "__none__", description: "", image_url: "", sort_order: 0, is_active: true })}
-      toForm={(r) => ({ ...r, parent_id: r.parent_id ?? "__none__" })}
+      emptyForm={() => ({ name: "", slug: "", parent_id: null, description: "", image_url: "", sort_order: 0, is_active: true })}
+      toForm={(r) => ({ ...r })}
       renderForm={(form, setForm) => {
         const name = (form.name as string) ?? "";
         const slug = (form.slug as string) ?? "";
