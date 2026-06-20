@@ -51,7 +51,7 @@ export function ProductHistoryDrawer({
             </div>
           ) : !query.data?.length ? (
             <p className="text-sm text-muted-foreground text-center py-12">Sem registros.</p>
-          ) : mode === "history" ? (
+          ) : (
             (query.data as Array<Record<string, unknown>>).map((raw) => {
               const e = raw as { id: string; event_type?: string; action?: string; created_at: string; payload?: unknown; diff?: unknown };
               const label = mode === "history" ? e.event_type : e.action;
