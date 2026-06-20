@@ -90,7 +90,7 @@ function CategoriesPage() {
             <SelectField
               label="Categoria pai"
               value={(form.parent_id as string) ?? "__none__"}
-              onChange={(v) => setForm({ parent_id: v })}
+              onChange={(v) => setForm({ parent_id: v === "__none__" ? null : v })}
               options={parentOptions}
             />
             <FormField label="Descrição">
