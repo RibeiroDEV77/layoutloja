@@ -1,350 +1,623 @@
 
-# Arquitetura Técnica — Layout Indústria do Vestuário
+# Documento Técnico Completo — Arquitetura Layout
 
-E-commerce premium (varejo + atacado), multi-tenant-ready, integrações futuras (Mercado Pago, Correios, NF-e). Documento **somente de arquitetura** — nenhuma tabela, código ou tela será criada até aprovação.
+> Apenas arquitetura. Nada será criado até sua aprovação explícita.
 
----
-
-## 1. Princípios Arquiteturais
-
-- **Multi-tenant desde o dia 1, mono-tenant na prática.** Toda tabela de domínio carrega `store_id` (FK para `stores`). Inicialmente existirá 1 registro em `stores`; nenhuma migração estrutural será necessária para adicionar novas lojas.
-- **EAV controlado para atributos de produto.** Atributos dinâmicos por categoria, sem colunas fixas em `products`.
-- **Separação rígida de papéis.** `auth.users` (Supabase Auth) ⇆ `profiles` (dados públicos) ⇆ `user_roles` (RBAC, tabela separada — nunca role no profile) ⇆ `customers` / `companies` (entidades de negócio).
-- **Pedidos unificados, segmentados por canal.** Uma única tabela `orders` com `channel ∈ {retail, wholesale}` evita duplicação de lógica (pagamento, expedição, NF, cupons).
-- **Integrações como adaptadores.** `payment_providers`, `shipping_carriers`, `fiscal_providers` — tabelas de configuração + colunas `provider_*` nas transações. Trocar/adicionar provedor não altera schema central.
-- **Auditoria e logs nativos.** `audit_log` genérico (entity, entity_id, action, diff, actor) + `system_logs` para eventos técnicos.
-- **Soft delete + timestamps** em todas as tabelas de domínio (`created_at`, `updated_at`, `deleted_at`).
-- **Storage Supabase** com buckets segmentados por loja (`store-{id}/products/{color_id}/...`).
+Convenções globais (valem para TODAS as tabelas, não serão repetidas):
+- PK `id uuid default gen_random_uuid()`
+- `store_id uuid not null references stores(id)` em toda tabela de domínio (multi-tenant-ready)
+- `created_at`, `updated_at timestamptz default now()` + trigger de update
+- `deleted_at timestamptz null` (soft delete)
+- Índice em `store_id` e em toda FK
+- RLS habilitado; políticas escopadas por `store_id` + papel
 
 ---
 
-## 2. Lista Completa de Tabelas
+## 1. Estrutura do Banco de Dados
 
-### 2.1 Núcleo / Multi-tenant
-- `stores` — lojas (multi-tenant root)
-- `store_settings` — configs por loja (chave/valor: SEO defaults, moeda, fuso, e-mails)
+### 1.1 Núcleo / Multi-tenant
 
-### 2.2 Identidade & Acesso
-- `profiles` — 1:1 com `auth.users`
-- `roles` — papéis (admin, gerente, estoquista, financeiro, expedição, cliente_varejo, cliente_atacado, …)
-- `permissions` — permissões atômicas (`products.create`, `orders.refund`, …)
-- `role_permissions` — N:N
-- `user_roles` — usuário ↔ papel ↔ loja (escopo por loja)
-- `user_sessions` — controle de sessões ativas
-- `audit_log` — auditoria de alterações
-- `system_logs` — logs técnicos
+**stores** — raiz multi-tenant.
+Campos: `name, slug (unique), legal_name, cnpj, status, default_currency, timezone, logo_url, settings jsonb`.
+PK: id. Índices: `slug unique`, `status`.
 
-### 2.3 Catálogo
-- `categories` — árvore (self-reference `parent_id`), substitui "subcategorias"
-- `brands`
-- `collections` (ex.: "Verão 2026")
-- `product_collections` — N:N
-- `products` — dados gerais (nome, slug, descrição, marca, categoria principal, status, tipo)
-- `product_categories` — N:N (produto em múltiplas categorias)
-- `attributes` — Cor, Tamanho, Numeração, Material, Manga, Gola, Cano, Modelagem, Comprimento, Tecido…
-- `attribute_values` — valores possíveis por atributo (Azul, P/M/G, 38/39/40…)
-- `category_attributes` — quais atributos cada categoria expõe (+ flag `is_required`, `is_variant_axis`)
-- `product_attributes` — atributos não-variantes (descritivos) do produto
+**store_settings** — configs chave/valor por loja (SEO defaults, e-mails, feature flags).
+Campos: `store_id, key, value jsonb`.
+PK: id. FK: `store_id`. Índice: `unique(store_id, key)`.
 
-### 2.4 Variações (fluxo Produto → Cor → Galeria → Tamanho → Estoque/SKU/Preço)
-- `product_colors` — instância da cor para o produto (FK produto + FK attribute_value tipo "cor")
-- `product_color_images` — galeria por cor (ordem, principal, alt, url, mime, size)
-- `product_variants` — variante final (FK product_color + FK attribute_value tamanho/numeração) — guarda **SKU**, **barcode**, **preço base**, **preço promocional**, **peso**, **dimensões**
-- `variant_attribute_values` — quando uma variante envolver mais de 2 eixos (extensibilidade)
-- `inventory` — estoque por variante por localização
-- `inventory_locations` — depósito/loja física
-- `inventory_movements` — entradas, saídas, ajustes, reservas (auditoria de estoque)
+### 1.2 Identidade & Acesso (RBAC)
 
-### 2.5 Preços (varejo + atacado + grupos futuros)
-- `customer_groups` — Varejo, Atacado, Revendedor, Distribuidor, VIP…
-- `price_lists` — listas de preço (vinculadas a grupo + loja)
-- `price_list_items` — preço por variante por lista (+ min_qty para atacado escalonado)
+**profiles** — 1:1 com `auth.users` (NÃO usa FK direta — apenas `user_id uuid`).
+Campos: `user_id (unique), full_name, avatar_url, phone, locale`.
+PK: id. Índice: `unique(user_id)`.
 
-### 2.6 Clientes & Empresas
-- `customers` — pessoa física (FK profile, CPF, telefone, data_nasc, customer_group_id)
-- `customer_addresses`
-- `companies` — pessoa jurídica (razão social, fantasia, CNPJ, IE, segmento, status, customer_group_id)
-- `company_addresses`
-- `company_users` — N:N (usuários vinculados a uma empresa, com papel: comprador, gestor)
-- `company_registration_requests` — fila de solicitações (status: pending/approved/rejected, motivo, revisor, datas)
+**roles** — papéis: `super_admin, admin, gerente, estoquista, financeiro, expedicao, marketing, cliente_varejo, cliente_atacado, representante`.
+Campos: `code (unique), name, description, is_system`.
+PK: id. Índice: `unique(code)`.
 
-### 2.7 Pedidos
-- `carts` + `cart_items`
-- `orders` — `channel ∈ {retail, wholesale}`, `customer_id` OU `company_id`, snapshot de totais
-- `order_items` — snapshot de variante (sku, nome, preço unit., qty, totais)
-- `order_status_history` — histórico de status
-- `order_notes` — notas internas/cliente
+**permissions** — permissões atômicas (`products.create`, `orders.refund`, `companies.approve`…).
+Campos: `code (unique), module, description`.
+PK: id. Índice: `unique(code)`, `module`.
 
-### 2.8 Pagamentos
-- `payment_providers` — Mercado Pago (e futuros) — credenciais cifradas
-- `payments` — 1:N com order (permite split/retry), provider, status, valor, método, txid externo, raw payload
-- `payment_events` — webhooks recebidos (idempotência + auditoria)
-- `refunds`
+**role_permissions** — N:N roles↔permissions.
+PK: id. FKs: `role_id, permission_id`. Índice: `unique(role_id, permission_id)`.
 
-### 2.9 Expedição
-- `shipping_carriers` — Correios, transportadoras futuras
-- `shipping_methods` — Retirada, PAC, SEDEX, Frete próprio
-- `shipments` — 1:N com order (envio parcial), método, status, código de rastreio, etiqueta URL
-- `shipment_events` — eventos de tracking
-- `shipment_items` — quais order_items vão em cada envio
+**user_roles** — usuário ↔ papel ↔ loja (escopo).
+Campos: `user_id, role_id, store_id`.
+PK: id. Índice: `unique(user_id, role_id, store_id)`, `user_id`, `role_id`.
 
-### 2.10 Fiscal
-- `fiscal_providers` — emissor NF-e externo
-- `invoices` — NF-e por order, número, série, chave, status, XML/PDF URL, payload provider
+**user_sessions** — sessões ativas (auditoria, logout remoto).
+Campos: `user_id, ip, user_agent, last_seen_at, revoked_at`.
+PK: id. Índice: `user_id`, `revoked_at`.
 
-### 2.11 Marketing
-- `coupons` — código, tipo (%, fixo, frete), escopo (canal, grupo, categoria, produto), validade, limites
-- `coupon_redemptions`
-- `banners` — slot, loja, imagem desktop/mobile, link, agendamento, ordem
+**audit_log** — auditoria genérica.
+Campos: `store_id, actor_user_id, entity_type, entity_id, action, diff jsonb, ip, user_agent`.
+PK: id. Índice: `(entity_type, entity_id)`, `actor_user_id`, `created_at`.
 
-### 2.12 SEO
-- `seo_metadata` — polimórfico (entity_type, entity_id): title, description, og_image, canonical, robots
-- `url_redirects` — 301/302 para preservar SEO em renomeações
+**system_logs** — eventos técnicos.
+Campos: `store_id, level, source, message, context jsonb`.
+PK: id. Índice: `level, created_at`.
 
-### 2.13 Relatórios
-- Views materializadas (não tabelas): `mv_sales_daily`, `mv_top_products`, `mv_stock_low`, `mv_customer_ltv`
+### 1.3 Catálogo
+
+**categories** — árvore (parent_id self-ref). Substitui "subcategorias".
+Campos: `store_id, parent_id (self FK), name, slug, description, image_url, position, is_active`.
+PK: id. Índice: `unique(store_id, slug)`, `parent_id`, `position`.
+
+**brands**
+Campos: `store_id, name, slug, logo_url, description, is_active`.
+PK: id. Índice: `unique(store_id, slug)`.
+
+**collections** — ex.: "Verão 2026".
+Campos: `store_id, name, slug, description, banner_url, starts_at, ends_at, is_active`.
+PK: id. Índice: `unique(store_id, slug)`.
+
+**product_collections** — N:N.
+PK: id. FKs: `product_id, collection_id`. Índice: `unique(product_id, collection_id)`.
+
+**products** — dados gerais (sem atributos fixos).
+Campos: `store_id, brand_id, primary_category_id, name, slug, short_description, description (rich), status (draft/active/archived), product_type, tax_class, base_weight_g, base_dimensions jsonb, published_at`.
+PK: id. Índice: `unique(store_id, slug)`, `status`, `brand_id`, `primary_category_id`.
+
+**product_categories** — N:N.
+PK: id. FKs: `product_id, category_id`. Índice: `unique(product_id, category_id)`.
+
+**attributes** — Cor, Tamanho, Numeração, Material, Manga, Gola, Cano, Modelagem, Comprimento, Tecido…
+Campos: `store_id, code (unique), name, input_type (select/color/text/number), is_variant_axis_default`.
+PK: id. Índice: `unique(store_id, code)`.
+
+**attribute_values** — valores possíveis (Azul #1f3a8a, P, 38…).
+Campos: `attribute_id, value, label, hex (cor), position`.
+PK: id. Índice: `attribute_id`, `unique(attribute_id, value)`.
+
+**category_attributes** — quais atributos cada categoria expõe.
+Campos: `category_id, attribute_id, is_required, is_variant_axis, position`.
+PK: id. Índice: `unique(category_id, attribute_id)`.
+
+**product_attributes** — atributos descritivos (não-variantes) do produto.
+Campos: `product_id, attribute_id, attribute_value_id (ou raw value)`.
+PK: id. Índice: `unique(product_id, attribute_id, attribute_value_id)`.
+
+### 1.4 Variações
+
+**product_colors** — instância de COR para o produto (raiz da galeria + tamanhos).
+Campos: `product_id, attribute_value_id (cor), name_override, hex_override, position, is_default, is_active`.
+PK: id. Índice: `unique(product_id, attribute_value_id)`, `product_id`.
+
+**product_color_images** — galeria POR cor.
+Campos: `product_color_id, storage_path, url, alt, mime, width, height, size_bytes, position, is_primary`.
+PK: id. Índice: `product_color_id`, `unique(product_color_id, position)`, parcial `unique(product_color_id) where is_primary`.
+
+**product_variants** — variante final (SKU vendável).
+Campos: `product_color_id, size_attribute_value_id (tamanho/numeração), sku (unique), barcode, base_price, sale_price, sale_starts_at, sale_ends_at, weight_g, dimensions jsonb, is_active`.
+PK: id. Índice: `unique(sku)`, `product_color_id`, `unique(product_color_id, size_attribute_value_id)`.
+
+**variant_attribute_values** — eixos extras (>2 eixos), extensibilidade.
+PK: id. FKs: `variant_id, attribute_value_id`. Índice: `unique(variant_id, attribute_value_id)`.
+
+**inventory_locations** — depósitos / lojas físicas.
+Campos: `store_id, name, code, type (warehouse/store/dropship), address jsonb, is_active`.
+PK: id. Índice: `unique(store_id, code)`.
+
+**inventory** — estoque por variante por localização.
+Campos: `variant_id, location_id, on_hand, reserved, safety_stock`.
+PK: id. Índice: `unique(variant_id, location_id)`.
+
+**inventory_movements** — entradas/saídas/ajustes/reservas.
+Campos: `variant_id, location_id, type (in/out/adjust/reserve/release), qty, reason, reference_type, reference_id, actor_user_id`.
+PK: id. Índice: `variant_id, created_at`, `(reference_type, reference_id)`.
+
+### 1.5 Preços
+
+**customer_groups** — Varejo, Atacado, Revendedor, Distribuidor, VIP.
+Campos: `store_id, code (unique), name, channel (retail/wholesale/both), is_default`.
+PK: id. Índice: `unique(store_id, code)`.
+
+**price_lists** — listas de preço.
+Campos: `store_id, customer_group_id, name, currency, starts_at, ends_at, is_active`.
+PK: id. Índice: `store_id, customer_group_id`.
+
+**price_list_items** — preço por variante + min_qty (atacado escalonado).
+Campos: `price_list_id, variant_id, price, min_qty, max_qty`.
+PK: id. Índice: `unique(price_list_id, variant_id, min_qty)`.
+
+### 1.6 Clientes & Empresas
+
+**customers** — PF.
+Campos: `store_id, profile_id, customer_group_id, cpf, birth_date, phone, gender, marketing_opt_in, status`.
+PK: id. Índice: `unique(store_id, cpf)`, `profile_id`.
+
+**customer_addresses** — endereços do cliente.
+Campos: `customer_id, label, recipient, zip, street, number, complement, district, city, state, country, is_default_shipping, is_default_billing`.
+
+**companies** — PJ.
+Campos: `store_id, customer_group_id, legal_name, trade_name, cnpj, state_registration, municipal_registration, segment, status (pending/approved/rejected/suspended), responsible_name, phone, email, website, approved_at, approved_by`.
+PK: id. Índice: `unique(store_id, cnpj)`, `status`.
+
+**company_addresses** — análogo a customer_addresses.
+
+**company_users** — N:N usuários ↔ empresa.
+Campos: `company_id, profile_id, role_in_company (buyer/manager/owner), is_active`.
+PK: id. Índice: `unique(company_id, profile_id)`.
+
+**company_registration_requests** — fila de solicitação.
+Campos: `store_id, payload jsonb (snapshot do form), status (pending/approved/rejected), reviewer_user_id, review_notes, reviewed_at, resulting_company_id`.
+PK: id. Índice: `store_id, status`.
+
+### 1.7 Pedidos
+
+**carts** + **cart_items**
+Carts: `store_id, customer_id|company_id|session_id, currency, coupon_id, expires_at`.
+Cart_items: `cart_id, variant_id, qty, unit_price_snapshot`.
+
+**orders**
+Campos: `store_id, order_number (sequencial por loja), channel (retail/wholesale), customer_id, company_id, status, currency, subtotal, discount_total, shipping_total, tax_total, grand_total, notes, placed_at`.
+PK: id. Índice: `unique(store_id, order_number)`, `status`, `channel`, `customer_id`, `company_id`, `placed_at`.
+
+**order_items** — snapshot.
+Campos: `order_id, variant_id, sku_snapshot, name_snapshot, qty, unit_price, discount, tax, total`.
+
+**order_status_history**
+Campos: `order_id, from_status, to_status, actor_user_id, notes`.
+
+**order_notes** — internas/cliente.
+Campos: `order_id, author_user_id, visibility (internal/customer), body`.
+
+### 1.8 Pagamentos
+
+**payment_providers** — Mercado Pago e futuros.
+Campos: `store_id, code (mercadopago/...), name, credentials_secret_ref (referência a Secret, NUNCA o segredo em si), config jsonb, is_active, sandbox`.
+
+**payments** — 1:N por order.
+Campos: `order_id, provider_id, method (pix/credit_card/boleto/...), status (initiated/pending/approved/rejected/refunded/charged_back), amount, installments, external_id, raw_response jsonb, paid_at`.
+Índice: `order_id`, `unique(provider_id, external_id)`.
+
+**payment_events** — webhooks (idempotência).
+Campos: `provider_id, external_event_id, payment_id, event_type, payload jsonb, processed_at`.
+Índice: `unique(provider_id, external_event_id)`.
+
+**refunds**
+Campos: `payment_id, amount, reason, status, external_id, raw_response jsonb`.
+
+### 1.9 Expedição
+
+**shipping_carriers** — Correios, transportadoras.
+Campos: `store_id, code, name, credentials_secret_ref, config jsonb, is_active`.
+
+**shipping_methods** — Retirada/PAC/SEDEX/Próprio.
+Campos: `store_id, carrier_id, code, name, type (pickup/freight), default_eta_days, is_active`.
+
+**shipments** — envio (suporta envio parcial).
+Campos: `order_id, method_id, status (pending/label_generated/packed/shipped/delivered/returned), tracking_code, label_url, freight_cost, packed_at, shipped_at, delivered_at`.
+Índice: `order_id`, `tracking_code`.
+
+**shipment_items** — quais order_items vão em cada shipment.
+Campos: `shipment_id, order_item_id, qty`.
+
+**shipment_events** — tracking timeline.
+Campos: `shipment_id, external_event_id, status, description, occurred_at, raw jsonb`.
+Índice: `unique(shipment_id, external_event_id)`.
+
+### 1.10 Fiscal
+
+**fiscal_providers**
+Campos: `store_id, code, name, credentials_secret_ref, config jsonb, environment (homolog/prod), is_active`.
+
+**invoices** — NF-e.
+Campos: `order_id, provider_id, number, series, access_key, status (queued/processing/authorized/rejected/canceled), xml_url, pdf_url, issued_at, raw_response jsonb`.
+Índice: `order_id`, `unique(provider_id, access_key)`.
+
+### 1.11 Marketing
+
+**coupons**
+Campos: `store_id, code (unique store), type (percent/fixed/free_shipping), value, scope jsonb (channels, groups, categories, products), min_order_value, usage_limit, usage_limit_per_customer, starts_at, ends_at, is_active`.
+
+**coupon_redemptions**
+Campos: `coupon_id, order_id, customer_id|company_id, amount_discounted`.
+Índice: `unique(coupon_id, order_id)`.
+
+**banners**
+Campos: `store_id, slot (home_hero/category_top/...), title, image_desktop_url, image_mobile_url, link_url, starts_at, ends_at, position, is_active`.
+
+### 1.12 SEO
+
+**seo_metadata** — polimórfico.
+Campos: `store_id, entity_type, entity_id, title, description, og_image_url, canonical, robots, jsonld jsonb`.
+Índice: `unique(entity_type, entity_id)`.
+
+**url_redirects**
+Campos: `store_id, from_path, to_path, status_code (301/302)`.
+Índice: `unique(store_id, from_path)`.
+
+### 1.13 Relatórios
+Views materializadas: `mv_sales_daily`, `mv_top_products`, `mv_stock_low`, `mv_customer_ltv` (refresh agendado).
 
 ---
 
-## 3. Relacionamentos-Chave
+## 2. Relacionamentos
 
 ```text
-stores 1─N (quase tudo)
+stores 1─N quase tudo
 
-auth.users 1─1 profiles
-profiles 1─N user_roles N─1 roles N─N permissions
-roles N─1 stores (escopo)
+auth.users 1─1 profiles 1─N user_roles N─1 roles N─N permissions
+                       └─N customers / company_users
 
-categories ──self (parent_id)
+categories ── self (parent_id) [árvore: categoria → subcategoria → subsub…]
 categories N─N attributes  (category_attributes)
-products N─1 categories, brands
-products N─N collections, categories
+brands     1─N products
+collections N─N products  (product_collections)
+categories N─N products   (product_categories) + products.primary_category_id
+
 products 1─N product_colors 1─N product_color_images
-product_colors 1─N product_variants N─1 attribute_values (tamanho)
+                            1─N product_variants
+product_variants N─1 attribute_values (tamanho)
 product_variants 1─N inventory N─1 inventory_locations
+product_variants 1─N inventory_movements
 product_variants 1─N price_list_items N─1 price_lists N─1 customer_groups
 
-customers N─1 customer_groups, profiles
-companies N─1 customer_groups
-companies 1─N company_users N─1 profiles
-company_registration_requests 1─1 companies (após aprovação)
+customers / companies 1─N addresses
+companies 1─N company_users  (profile ↔ company)
+company_registration_requests 1─0..1 companies (após aprovar)
 
-orders N─1 customers | companies   (XOR via channel)
+carts 1─N cart_items N─1 product_variants
+orders N─1 customers | companies   (XOR validado por trigger; channel define)
 orders 1─N order_items N─1 product_variants
 orders 1─N payments N─1 payment_providers
+payments 1─N payment_events
+payments 1─N refunds
 orders 1─N shipments N─1 shipping_methods N─1 shipping_carriers
+shipments 1─N shipment_items N─1 order_items
+shipments 1─N shipment_events
 orders 1─N invoices N─1 fiscal_providers
+orders 1─N order_status_history / order_notes
 orders N─N coupons (coupon_redemptions)
 
-seo_metadata ──polimórfico→ (products | categories | collections | brands | pages)
-audit_log    ──polimórfico→ qualquer entidade
+seo_metadata ──polimórfico→ products | categories | collections | brands | pages
+url_redirects ── por store
+audit_log / system_logs / user_sessions ── transversais
+```
+
+Fluxo principal:
+```
+Produto → Cor → (Galeria) + Tamanhos → Variante (SKU/Preço/Estoque) → CartItem → OrderItem → Shipment/Payment/Invoice
 ```
 
 ---
 
-## 4. Modelo Lógico (DER simplificado)
+## 3. DER (Modelo Lógico — textual)
 
 ```text
-                ┌─────────┐
-                │ stores  │
-                └────┬────┘
-       ┌─────────────┼──────────────┬──────────────┐
-       ▼             ▼              ▼              ▼
-  ┌─────────┐  ┌──────────┐   ┌──────────┐   ┌──────────┐
-  │profiles │  │categories│   │ products │   │  orders  │
-  └────┬────┘  └────┬─────┘   └────┬─────┘   └────┬─────┘
-       │            │ N─N           │ 1─N         │ 1─N
-       │            ▼               ▼             ▼
-       │      category_attributes  product_colors order_items
-       │            │ N─1           │ 1─N         │ N─1
-       │            ▼               ▼             ▼
-       │      attributes ──1─N─ attribute_values product_variants
-       │                                          │
-       ▼                                          ▼
-  user_roles─roles─role_permissions─permissions  inventory
-       │                                          │
-       ▼                                          ▼
- customers / companies ──── carts ──── orders ──── payments
-                                          │           │
-                                          ├──── shipments ──── shipment_events
-                                          └──── invoices
+stores ──┬── store_settings
+         ├── inventory_locations
+         ├── categories ──self
+         │     └── category_attributes ── attributes ── attribute_values
+         ├── brands
+         ├── collections
+         ├── products ──┬── product_categories ── categories
+         │              ├── product_collections ── collections
+         │              ├── product_attributes ── attribute_values
+         │              └── product_colors ──┬── product_color_images
+         │                                   └── product_variants ──┬── variant_attribute_values
+         │                                                          ├── inventory ── inventory_locations
+         │                                                          ├── inventory_movements
+         │                                                          └── price_list_items
+         ├── customer_groups ── price_lists ── price_list_items
+         ├── customers ── customer_addresses
+         ├── companies ──┬── company_addresses
+         │               ├── company_users ── profiles
+         │               └── company_registration_requests
+         ├── carts ── cart_items ── product_variants
+         ├── orders ──┬── order_items ── product_variants
+         │            ├── order_status_history
+         │            ├── order_notes
+         │            ├── payments ──┬── payment_events
+         │            │              └── refunds
+         │            ├── shipments ──┬── shipment_items ── order_items
+         │            │               └── shipment_events
+         │            └── invoices ── fiscal_providers
+         ├── payment_providers
+         ├── shipping_carriers ── shipping_methods
+         ├── fiscal_providers
+         ├── coupons ── coupon_redemptions ── orders
+         ├── banners
+         ├── seo_metadata (polimórfico)
+         ├── url_redirects
+         ├── audit_log
+         └── system_logs
 
-  Marketing: coupons ── coupon_redemptions ── orders
-             banners (por store)
-  SEO:       seo_metadata (polimórfico)
-  Auditoria: audit_log / system_logs / user_sessions
+auth.users ── profiles ── user_roles ── roles ── role_permissions ── permissions
 ```
 
 ---
 
-## 5. Organização do Painel Administrativo
+## 4. Sistema de Produtos
 
-Agrupado por domínio (em vez de lista plana):
+- **products** guarda apenas o "tronco" (nome, marca, descrição, status, categoria principal). **Nenhum atributo de moda é coluna fixa**.
+- **categories** é uma árvore self-referencing (`parent_id`). "Subcategoria" = categoria com pai. Profundidade ilimitada (Camisas → Country → Manga Longa).
+- **brands** e **collections** são entidades independentes; produto N:N com coleções.
+- **attributes** define o tipo de característica (Cor, Tamanho, Numeração, Manga, Material…). **attribute_values** define os valores possíveis.
+- **category_attributes** liga categoria → atributo. Cada flag:
+  - `is_required`: obrigatório no cadastro.
+  - `is_variant_axis`: este atributo gera variação (Cor e Tamanho geralmente; Material é descritivo).
+- **product_attributes**: atributos descritivos do produto (ex.: Material = Algodão), não gera variação.
+- **product_colors + product_variants**: atributos que geram variação são materializados aqui.
+- **inventory**: por variante por localização.
 
-```text
-Dashboard
+Garantia de não-retrabalho: adicionar um novo atributo (ex.: "Punho") = inserir 1 linha em `attributes` + N em `attribute_values` + ligar em `category_attributes`. **Zero migration**, zero alteração de schema.
 
-Catálogo
-  ├─ Produtos
-  ├─ Categorias            (árvore — substitui Subcategorias)
-  ├─ Marcas
-  ├─ Coleções
-  ├─ Atributos             (+ Valores)
-  └─ Variações             (visão consolidada)
+---
 
-Estoque
-  ├─ Posição atual
-  ├─ Movimentações
-  └─ Locais de estoque
+## 5. Sistema de Variações
 
-Vendas
-  ├─ Pedidos Varejo
-  ├─ Pedidos Atacado
-  ├─ Pagamentos
-  ├─ Expedição (envios + rastreio)
-  └─ Notas Fiscais
+Hierarquia exata pedida:
 
-Clientes
-  ├─ Clientes (Varejo)
-  ├─ Empresas (Atacado)
-  ├─ Solicitações de Cadastro
-  └─ Grupos de Clientes
+```
+products
+  └─ product_colors                 (1 linha por COR do produto)
+        ├─ product_color_images     (galeria EXCLUSIVA da cor)
+        └─ product_variants         (1 linha por TAMANHO daquela cor)
+              ├─ sku, barcode       (independente por tamanho)
+              ├─ base_price/sale_price (preço por tamanho — opcional)
+              └─ inventory          (estoque por variante × location)
+```
 
-Marketing
-  ├─ Cupons
-  ├─ Banners
-  └─ Listas de Preço
+Confirmações:
+- Cada **cor** = 1 `product_colors` com sua **galeria própria** (`product_color_images`).
+- Cada **tamanho** de cada cor = 1 `product_variants` com **SKU próprio**, **preço próprio** e **estoque próprio**.
+- Cores podem ter conjuntos DIFERENTES de tamanhos (Azul tem P/M/G; Verde só tem M/G).
+- `variant_attribute_values` cobre eixos extras (ex.: Modelagem) sem mudar schema.
 
-Relatórios
-  ├─ Vendas, Produtos, Clientes, Estoque
-
-Configurações
-  ├─ Loja (multi-store)
-  ├─ Integrações (Pagamento, Frete, Fiscal)
-  ├─ SEO global
-  └─ E-mails / Notificações
-
-Sistema
-  ├─ Usuários & Permissões
-  ├─ Perfis (Roles)
-  ├─ Logs do Sistema
-  └─ Auditoria
+Exemplo concreto — Camisa Country:
+```
+Camisa Country (product)
+├─ Azul (product_color)
+│   ├─ imgs: principal.jpg, lateral.jpg, costas.jpg
+│   └─ variantes: P (SKU-001), M (SKU-002), G (SKU-003)
+└─ Verde (product_color)
+    ├─ imgs: principal.jpg, detalhe.jpg
+    └─ variantes: M (SKU-010), G (SKU-011)
 ```
 
 ---
 
-## 6. Fluxo Completo do Sistema
+## 6. Sistema de Imagens
 
-```text
-Visitante → Vitrine (varejo) ───┐
-Empresa  → Solicita cadastro → Admin aprova → Login → Vitrine (atacado preços exclusivos)
-                                  │
-Cliente logado → Carrinho → Checkout → Pagamento (MP) → Pedido criado
-       → Reserva estoque → Aprovação pagamento (webhook) → Confirma pedido
-       → Geração NF-e (provider) → Expedição (etiqueta Correios) → Rastreio
-       → Entregue → Pós-venda (avaliações, devolução)
-Admin acompanha cada etapa via painel; toda mudança gera audit_log.
+**Vinculação**: imagens pertencem a `product_colors`, NUNCA a `products` ou `product_variants`.
+
+**Storage** (Supabase Storage):
+- Bucket privado por padrão; URLs públicas para vitrine via política de leitura.
+- Caminho: `store-{store_id}/products/{product_id}/colors/{color_id}/{uuid}.{ext}`.
+- Bucket separado privado: `store-{store_id}/invoices/` (XML/PDF NF-e, signed URLs).
+
+**Fluxo de upload (cliente → server function)**:
+1. Cliente seleciona arquivos.
+2. Validação no cliente: extensão (jpg/png/webp), tamanho máx (ex.: 8 MB), dimensão mín.
+3. Compressão/resize no cliente (gera webp + variantes responsivas se aplicável).
+4. Preview local (object URL).
+5. Server function gera **signed upload URL** + valida permissão (`products.update`).
+6. Upload direto para Storage.
+7. Server function confirma: lê metadados (mime, size, dimensões), insere em `product_color_images` (status `pending`).
+8. Validação final (HEAD no Storage para garantir presença) → status `ok`.
+9. Em falha em qualquer passo → rollback (deleta do Storage + remove registro).
+
+**Foto principal**: coluna `is_primary` em `product_color_images`; índice **único parcial** `where is_primary = true` por `product_color_id` garante apenas 1.
+
+**Ordenação**: coluna `position` (int). Drag-and-drop no admin emite update em lote. Índice `unique(product_color_id, position)` evita conflitos.
+
+**Validações resumidas**: formato, tamanho, dimensões, vírus opcional (futuro), presença no Storage, URL acessível, gravação no banco — todos antes de marcar `ok`.
+
+---
+
+## 7. Sistema de Estoque
+
+Confirmado: **estoque é por VARIANTE (cor × tamanho) × LOCALIZAÇÃO**, nunca por produto.
+
+`inventory(variant_id, location_id, on_hand, reserved, safety_stock)`:
+- `on_hand` = físico.
+- `reserved` = reservado em carrinho/checkout (com TTL).
+- Disponível para venda = `on_hand - reserved - safety_stock`.
+
+`inventory_movements` registra TODA alteração (entrada NF, venda, devolução, ajuste manual, reserva, liberação) com `reference_type/reference_id` apontando para a origem (order, shipment, manual). Isso dá auditoria completa e permite reconstruir saldo.
+
+Exemplo:
 ```
-
-## 7. Fluxo Cliente Varejo
-
-```text
-Navega → Adiciona ao carrinho → Login/Cadastro rápido (CPF)
-→ Seleciona endereço → Calcula frete (Correios) → Aplica cupom
-→ Paga (Mercado Pago: Pix/Cartão/Boleto) → Pedido channel=retail
-→ Acompanha em "Meus Pedidos"
+Camisa Azul P  (variant 001) @ Depósito Central → on_hand 20, reserved 2
+Camisa Azul M  (variant 002) @ Depósito Central → on_hand 0,  reserved 0  → SEM ESTOQUE
+Camisa Verde G (variant 011) @ Depósito Central → on_hand 5,  reserved 1
 ```
+Independentes, como solicitado.
 
-## 8. Fluxo Cliente Atacado
+---
 
-```text
-Empresa preenche solicitação (Razão, CNPJ, IE, etc.)
-→ Status pending → Admin revisa → Aprova/Reprova (+ motivo)
-→ Usuário responsável recebe e-mail → Define senha
-→ Login → Vê catálogo com price_list do grupo "Atacado"
-→ Mínimos por SKU/pedido validados → Checkout
-→ Pedido channel=wholesale → Condições de pagamento específicas
-→ Faturamento e NF-e com dados da empresa
+## 8. Sistema de Clientes
+
+- **profiles** = identidade base (1:1 auth.users).
+- **customer_groups** = agrupamento comercial (Varejo, Atacado, Revendedor, Distribuidor, VIP, Representante). Adicionar novo grupo = INSERT, nunca migration.
+- **customers** (PF) e **companies** (PJ) são entidades de NEGÓCIO distintas, ambas com `customer_group_id`.
+- **company_users** liga vários `profiles` a uma `company` (comprador, gestor, dono).
+- **Representante**: implementado como `customer_group = representante` + permissão extra `orders.create_on_behalf` (vende em nome de empresas). Nada novo de schema.
+- **Permissões**: vêm de `roles` + `permissions`, escopadas por `store_id`. Cliente recebe role `cliente_varejo` ou `cliente_atacado` ao logar.
+
+---
+
+## 9. Sistema de Atacado
+
 ```
-
-## 9. Fluxo de Pedidos (estados)
-
-```text
-draft → pending_payment → paid → in_separation → invoiced
-     → shipped → delivered → completed
-                              ↘ returned / refunded
-     → canceled (a partir de pending_payment ou paid)
-```
-Cada transição grava `order_status_history` + `audit_log`.
-
-## 10. Fluxo de Pagamentos
-
-```text
-Checkout cria payment (status=initiated, provider=mercadopago)
-→ Redirect/SDK → Provider processa
-→ Webhook /api/public/payments/mercadopago → valida assinatura
-→ payment_events (idempotente por external_id)
-→ Atualiza payment.status (approved/rejected/refunded)
-→ Se approved → order.status=paid + dispara expedição
-Refund: cria refunds + chamada provider + ajusta inventory_movements
-```
-
-## 11. Fluxo de Expedição
-
-```text
-order.status=paid → cria shipment(s) (split se múltiplos locais)
-→ Seleciona shipping_method (Retirada | Correios PAC/SEDEX | Próprio)
-→ Se Correios: chama API → recebe etiqueta + tracking_code
-→ shipment.status=label_generated → packed → shipped
-→ Webhook/cron consulta tracking → grava shipment_events
-→ delivered → atualiza order
-Retirada na loja: pula etiqueta, gera código de retirada.
-```
-
-## 12. Fluxo de Notas Fiscais
-
-```text
-order.status=paid (ou shipped, conforme regra fiscal)
-→ Monta payload (itens, impostos, destinatário PF/PJ)
-→ Envia ao fiscal_provider
-→ invoice.status=processing → authorized (chave + XML + PDF)
-→ Anexa ao pedido, disponibiliza download
-→ Em caso de cancelamento de pedido: solicita cancelamento NF
+Empresa preenche solicitação pública  (cria company_registration_requests, status=pending)
+  ↓
+Admin recebe na fila "Solicitações de Cadastro"
+  ↓
+Admin valida (CNPJ, IE, segmento) → Aprovar ou Rejeitar
+  ↓ Aprovar:
+      - Cria companies (status=approved, customer_group=atacado)
+      - Cria/convida profile do responsável → e-mail para definir senha
+      - Vincula via company_users (role_in_company=owner)
+      - Atribui user_role = cliente_atacado
+  ↓ Rejeitar:
+      - Salva motivo, dispara e-mail
+  ↓
+Empresa faz login
+  ↓
+App detecta company_users ativo → ativa "modo atacado":
+      - Aplica price_list do customer_group "Atacado"
+      - Mostra preço/min_qty escalonado de price_list_items
+      - Exige CNPJ no checkout (já vem da company)
+  ↓
+Checkout → orders.channel='wholesale', company_id preenchido
+  ↓
+NF-e emitida para a PJ; condições de pagamento próprias (ex.: boleto 30/60/90)
 ```
 
 ---
 
-## 12. Sugestões Arquiteturais Extras (escalabilidade)
+## 10. Sistema de Pedidos
 
-1. **Multi-tenant via `store_id` + RLS** — políticas Supabase filtram por `store_id` do usuário; um único codebase serve N lojas.
-2. **RBAC com escopo de loja** — `user_roles(user_id, role_id, store_id)` permite o mesmo usuário ter papéis diferentes por loja.
-3. **EAV com category_attributes** — evita migrations para cada novo atributo de moda (gola, cano, etc.).
-4. **Pedidos unificados (`channel`)** — reaproveita pagamentos, expedição, NF, cupons; relatórios segmentam por `channel`.
-5. **Price lists por customer_group** — adicionar "Revendedor/VIP" no futuro = inserir linhas, não alterar schema.
-6. **Adapters para integrações** — `payment_providers`, `shipping_carriers`, `fiscal_providers` permitem trocar/empilhar provedores.
-7. **Webhooks idempotentes** — tabela `payment_events`/`shipment_events` com unique `(provider, external_id)`.
-8. **Snapshots em order_items** — preço, nome e SKU congelados no pedido (catálogo pode mudar sem afetar histórico).
-9. **Inventory reservations** — estoque reservado no checkout (TTL) evita oversell.
-10. **Storage segmentado** — `store-{id}/products/{color_id}/...` + URLs assinadas para arquivos privados (NF XML).
-11. **SEO polimórfico + redirects 301** — renomear produto/categoria não quebra Google.
-12. **Auditoria genérica** — `audit_log(entity_type, entity_id, action, diff_jsonb, actor_id, store_id)`.
-13. **Views materializadas para relatórios** — separa carga analítica do transacional.
-14. **Edge functions (server functions TanStack)** apenas para: webhooks, integrações externas, geração de etiqueta, sitemap. Resto via PostgREST + RLS.
-15. **Feature flags em `store_settings`** — habilitar Atacado/NF-e/Cupom por loja.
+Tabelas envolvidas: `orders, order_items, order_status_history, order_notes, payments, payment_events, refunds, shipments, shipment_items, shipment_events, invoices, coupon_redemptions`.
+
+**Snapshot** em `order_items` (preço, nome, SKU congelados) — catálogo pode mudar sem afetar o histórico.
+
+**Estados de `orders.status`**:
+```
+draft → pending_payment → paid → in_separation → invoiced → shipped → delivered → completed
+                                                                  ↘ returned / refunded
+                                                                  ↘ canceled
+```
+Toda transição grava `order_status_history` + `audit_log`.
+
+**Segmentação**: `channel ∈ {retail, wholesale}` separa relatórios e regras, mas o pipeline (pagto/expedição/NF) é compartilhado.
+
+**XOR cliente/empresa**: trigger garante exatamente um de `customer_id`/`company_id` conforme `channel`.
+
+---
+
+## 11. Sistema de Pagamentos (preparado para Mercado Pago)
+
+- `payment_providers` lista provedores (Mercado Pago inicialmente). **Credenciais ficam em Supabase Secrets**; a tabela guarda apenas `credentials_secret_ref` (nome do secret) — nunca o segredo.
+- `payments` permite múltiplas tentativas/splits por order (1:N).
+- `payment_events` armazena cada webhook recebido com `unique(provider_id, external_event_id)` → **idempotência garantida**.
+- `refunds` controla estornos parciais/totais.
+- Endpoint webhook futuro: `app/routes/api/public/webhooks/mercadopago.ts` — valida assinatura, grava em `payment_events`, atualiza `payments`, dispara transição de `orders.status`.
+- Adicionar PagSeguro/Stripe = inserir provider + novo webhook. Schema intacto.
+
+---
+
+## 12. Sistema de Expedição (preparado para Correios)
+
+- `shipping_carriers` (Correios, transportadoras futuras) com credenciais via Secret.
+- `shipping_methods` por carrier: `Retirada na Loja` (type=pickup, sem etiqueta), `PAC`, `SEDEX`, `Frete Próprio`.
+- `shipments` por order (suporta envio parcial → `shipment_items`):
+  - `tracking_code`, `label_url`, `freight_cost`, datas (packed/shipped/delivered).
+- `shipment_events` para timeline de tracking (idempotente por `external_event_id`).
+- Retirada na Loja: pula etiqueta, gera `pickup_code`, status segue mesmo fluxo terminando em `delivered` no ato da retirada.
+- Frete no checkout: server function chama API Correios, retorna prazos/valores; valor escolhido vira `shipping_total` e `shipments.freight_cost`.
+- Trocar de Correios para Loggi/Melhor Envio = novo carrier + adapter. Schema intacto.
+
+---
+
+## 13. Sistema de Notas Fiscais (preparado para emissor externo)
+
+- `fiscal_providers` lista emissores (ex.: Focus NFe, eNotas, NFE.io) com credenciais via Secret + `environment (homolog/prod)`.
+- `invoices` (1:N por order — permite reemissão/cancelamento): `number, series, access_key, status, xml_url, pdf_url, raw_response`.
+- XML/PDF em bucket **privado** (`store-{id}/invoices/`) com signed URLs.
+- Fluxo futuro: trigger ao mudar order para `paid`/`shipped` enfileira chamada ao provider; webhook do provider atualiza `invoices.status` para `authorized`.
+- Cancelamento de pedido aciona endpoint de cancelamento de NF no provider.
+- Trocar de provider = novo registro em `fiscal_providers`. Schema intacto.
+
+---
+
+## 14. Segurança
+
+**RBAC**:
+- `roles` + `permissions` + `role_permissions` + `user_roles(user_id, role_id, store_id)`.
+- Função `has_permission(uid, perm_code, store_id)` SECURITY DEFINER consulta `user_roles → role_permissions → permissions`.
+- Usada tanto no app quanto em políticas RLS.
+
+**RLS** (habilitado em TODAS as tabelas de domínio):
+- Padrão por `store_id`: usuário só vê linhas das lojas em que possui `user_roles`.
+- Dados pessoais (`customers`, `customer_addresses`, `carts`, `orders` do cliente): política `auth.uid() = profile_id` ou via `customer_id` do usuário.
+- Dados de empresa: usuário só vê `companies` em que está em `company_users`.
+- Admin/staff: políticas `using (has_permission(auth.uid(), 'X.read', store_id))`.
+- Catálogo público (products ativos, categories, brands, banners, seo): policy `TO anon SELECT USING (status='active' AND deleted_at IS NULL)`.
+
+**Perfis**: definidos em `roles` com `code` estável; permissões editáveis sem mexer em código.
+
+**Auditoria**:
+- `audit_log` populado por triggers em tabelas críticas (products, variants, inventory, orders, payments, companies, user_roles).
+- `actor_user_id` capturado via `auth.uid()`.
+
+**Logs**:
+- `system_logs` para eventos técnicos (falha webhook, erro provider).
+- `user_sessions` para sessões/logout remoto.
+
+**Segredos**: somente em Supabase Secrets (`MERCADOPAGO_*`, `CORREIOS_*`, `NFE_*`). Tabelas guardam apenas referência ao nome.
+
+---
+
+## 15. Escalabilidade — Análise e Melhorias
+
+Pontos já blindados:
+1. **Multi-tenant via `store_id`** desde o início → adicionar 2ª loja = INSERT.
+2. **EAV controlado (attributes/category_attributes)** → novo atributo de moda sem migration.
+3. **Galeria por cor** (modelagem correta de moda).
+4. **Estoque por variante × localização** → multi-CD futuro sem mudança.
+5. **Snapshots em order_items** → histórico íntegro.
+6. **Adapters de integração** (providers/carriers) → trocar/adicionar gateway sem mexer em pedidos.
+7. **Idempotência de webhooks** por `unique(provider, external_id)`.
+8. **SEO polimórfico + url_redirects** → renomear não quebra Google.
+9. **Soft delete + audit_log** → recuperação e compliance.
+10. **Secrets fora do banco** → segurança e portabilidade.
+
+Melhorias incluídas após revisão crítica do seu briefing original:
+- **`primary_category_id` em products** + N:N `product_categories` (você pediu só categoria/subcategoria; sem isso, produtos em múltiplas categorias seriam impossíveis).
+- **`category_attributes.is_variant_axis`** (separa atributo descritivo de atributo de variação — sem isso, você seria forçado a tratar Material como eixo).
+- **`variant_attribute_values`** (você pediu Cor→Tamanho; isso garante que um terceiro eixo no futuro — ex.: Modelagem — não exija refatorar `product_variants`).
+- **`inventory_locations` + `inventory_movements`** desde o dia 1 (mesmo com 1 depósito) — adicionar 2º CD/dropship depois é trivial.
+- **`price_lists` + `price_list_items` com `min_qty`** (atacado escalonado real, não apenas "preço único de atacado").
+- **`company_users` N:N** (uma empresa pode ter vários compradores — caso comum no atacado).
+- **`company_registration_requests` separada de `companies`** (auditoria do processo de aprovação).
+- **`shipment_items` parciais** (pedidos grandes do atacado quase sempre são enviados em lotes).
+- **`payment_events` / `shipment_events` separadas** (webhook é evento, não estado — separar facilita reprocessamento).
+- **`seo_metadata` polimórfico + `url_redirects`** (você não pediu redirects; sem eles, qualquer rename quebra SEO existente).
+- **`url_redirects` por loja** (multi-tenant também no SEO).
+- **`audit_log` genérico via trigger** (em vez de tabelas de histórico por entidade).
+
+Pontos de atenção operacional (não-schema):
+- Definir **política de reserva de estoque** (TTL do `reserved`) antes de implementar checkout.
+- Definir **sequência de `order_number` por loja** (sequência postgres por store) antes do primeiro pedido.
+- Definir **regime tributário** antes de modelar `tax_class` em produtos (Simples vs Lucro Real muda payload NF).
+- Imagens: definir **tamanhos responsivos** padrão (ex.: 1600/800/400) antes do primeiro upload.
+
+Nenhum ponto identificado exige rever a arquitetura para evitar retrabalho. Está pronto para Fase 1 quando você aprovar.
 
 ---
 
 ## Próximo Passo
 
-Após sua aprovação desta arquitetura, a ordem de execução proposta é:
+Aguardando "**APROVADO**" para iniciar a **Fase 1 — Fundação**:
+- `stores`, `store_settings`
+- `profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`
+- `audit_log`, `system_logs`, `user_sessions`
+- Função `has_permission(uid, perm, store_id)`
+- RLS base + seed de roles/permissions padrão + 1 store inicial "Layout"
 
-1. **Fundação** — `stores`, `profiles`, `roles/permissions/user_roles`, `audit_log`, RLS base.
-2. **Catálogo** — categorias, marcas, atributos, produtos, cores, variações, estoque, imagens.
-3. **Clientes & Empresas** — incluindo fluxo de solicitação/aprovação.
-4. **Preços & Grupos** — price lists.
-5. **Pedidos, Carrinho, Checkout** — sem provedores reais ainda.
-6. **Painel Administrativo** — telas na ordem acima.
-7. **Loja Virtual** — varejo, depois atacado.
-8. **Integrações** — Mercado Pago → Correios → NF-e.
-
-Nenhuma migration, código ou tela será criada até seu "aprovado".
+Nada será criado antes da sua aprovação explícita.
