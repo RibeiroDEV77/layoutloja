@@ -52,33 +52,24 @@ export function ProductHistoryDrawer({
           ) : !query.data?.length ? (
             <p className="text-sm text-muted-foreground text-center py-12">Sem registros.</p>
           ) : mode === "history" ? (
-            query.data.map((e: { id: string; event_type: string; created_at: string; payload?: unknown }) => (
-              <div key={e.id} className="rounded-md border p-3 text-sm">
-                <div className="flex justify-between items-start gap-2">
-                  <code className="font-mono text-xs text-primary">{e.event_type}</code>
-                  <span className="text-xs text-muted-foreground">{fmt(e.created_at)}</span>
+            (query.data as Array<Record<string, unknown>>).map((raw) => {
+              const e = raw as { id: string; event_type?: string; action?: string; created_at: string; payload?: unknown; diff?: unknown };
+              const label = mode === "history" ? e.event_type : e.action;
+              const body = mode === "history" ? e.payload : e.diff;
+              return (
+                <div key={e.id} className="rounded-md border p-3 text-sm">
+                  <div className="flex justify-between items-start gap-2">
+                    <code className="font-mono text-xs text-primary">{label}</code>
+                    <span className="text-xs text-muted-foreground">{fmt(e.created_at)}</span>
+                  </div>
+                  {body != null && Object.keys(body as object).length > 0 && (
+                    <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all max-h-40 overflow-auto">
+                      {JSON.stringify(body, null, 2)}
+                    </pre>
+                  )}
                 </div>
-                {e.payload != null && Object.keys(e.payload as object).length > 0 && (
-                  <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all">
-                    {JSON.stringify(e.payload, null, 2)}
-                  </pre>
-                )}
-              </div>
-            ))
-          ) : (
-            query.data.map((e: { id: string; action: string; created_at: string; diff?: unknown }) => (
-              <div key={e.id} className="rounded-md border p-3 text-sm">
-                <div className="flex justify-between items-start gap-2">
-                  <span className="font-medium uppercase text-xs">{e.action}</span>
-                  <span className="text-xs text-muted-foreground">{fmt(e.created_at)}</span>
-                </div>
-                {e.diff != null && (
-                  <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all max-h-40 overflow-auto">
-                    {JSON.stringify(e.diff, null, 2)}
-                  </pre>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </SheetContent>
