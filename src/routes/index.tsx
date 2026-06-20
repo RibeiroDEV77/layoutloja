@@ -1,29 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Layout — ERP de Moda" },
+      { name: "description", content: "Plataforma multi-tenant para varejo e atacado de moda." },
     ],
   }),
-  component: Index,
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-background to-muted">
+      <div className="max-w-2xl text-center space-y-6">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Layout</h1>
+        <p className="text-lg text-muted-foreground">
+          Plataforma de gestão multi-tenant — catálogo, estoque, vendas, expedição e fiscal em um só lugar.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Button asChild size="lg"><Link to="/auth">Acessar painel</Link></Button>
+        </div>
+      </div>
+    </main>
   );
 }

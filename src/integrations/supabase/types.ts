@@ -1353,7 +1353,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_first_super_admin: { Args: never; Returns: Json }
       color_store_id: { Args: { _color_id: string }; Returns: string }
+      current_user_context: { Args: never; Returns: Json }
       has_permission: {
         Args: { _permission_code: string; _store_id?: string; _user_id: string }
         Returns: boolean
@@ -1364,6 +1366,7 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       product_store_id: { Args: { _product_id: string }; Returns: string }
+      super_admin_exists: { Args: never; Returns: boolean }
       user_store_ids: { Args: { _user_id: string }; Returns: string[] }
       variant_store_id: { Args: { _variant_id: string }; Returns: string }
     }
