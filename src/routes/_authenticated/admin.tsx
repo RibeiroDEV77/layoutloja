@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BreadcrumbProvider } from "@/components/admin/breadcrumb-context";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { FullPageLoading } from "@/components/admin/loading";
+import { ActiveStoreProvider } from "@/hooks/use-active-store";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin" }] }),
