@@ -38,7 +38,8 @@ type ListInput = {
 
 type ListOutput<T> = { rows: T[]; total: number; page: number; pageSize: number };
 
-type ServerFnLike<TIn, TOut> = (args: { data: TIn }) => Promise<BizResult<TOut>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyServerFn = (args: { data: any }) => Promise<BizResult<any>>;
 
 export interface MasterCrudPageProps<T extends Row> {
   title: string;
@@ -47,10 +48,10 @@ export interface MasterCrudPageProps<T extends Row> {
   resourceName: string;          // singular pt-BR, lowercase
   queryKey: string;              // unique per entity
 
-  list: ServerFnLike<ListInput, ListOutput<T>>;
-  create: ServerFnLike<Record<string, unknown> & { store_id: string }, T>;
-  update: ServerFnLike<{ id: string; patch: Record<string, unknown> }, T>;
-  remove: ServerFnLike<{ id: string }, { ok: true; id: string }>;
+  list: AnyServerFn;
+  create: AnyServerFn;
+  update: AnyServerFn;
+  remove: AnyServerFn;
 
   columns: Column<T>[];
   searchPlaceholder?: string;
