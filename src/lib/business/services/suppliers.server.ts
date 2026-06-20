@@ -71,7 +71,7 @@ export async function updateSupplier(
   if (!current) throw Errors.notFound('Fornecedor', id);
   await requirePermission(supabase, userId, 'suppliers.manage', current.store_id);
 
-  const row = await Repo.update(supabase, id, patch);
+  const row = await Repo.update(supabase, id, patch as never);
 
   await dispatchEvent(supabase, {
     event_type: DomainEvent.SupplierUpdated,
