@@ -45,7 +45,7 @@ async function ensureRead(supabase: SbClient, userId: string, cfg: MasterConfig,
   throw Errors.forbidden(`Permissão necessária: ${perm}`, { permission: perm, store_id: storeId });
 }
 
-export async function listGeneric<T = Record<string, unknown>>(
+export async function listGeneric<T = Record<string, any>>(
   supabase: SbClient,
   userId: string,
   cfg: MasterConfig,
@@ -85,11 +85,11 @@ export async function listGeneric<T = Record<string, unknown>>(
   return { rows: (data ?? []) as T[], total: count ?? 0, page, pageSize: size };
 }
 
-export async function createGeneric<T = Record<string, unknown>>(
+export async function createGeneric<T = Record<string, any>>(
   supabase: SbClient,
   userId: string,
   cfg: MasterConfig,
-  payload: Record<string, unknown> & { store_id?: string },
+  payload: Record<string, any> & { store_id?: string },
 ): Promise<T> {
   const storeId = payload.store_id;
   if (!storeId) throw Errors.validation('store_id obrigatório');
@@ -109,12 +109,12 @@ export async function createGeneric<T = Record<string, unknown>>(
   return data as T;
 }
 
-export async function updateGeneric<T = Record<string, unknown>>(
+export async function updateGeneric<T = Record<string, any>>(
   supabase: SbClient,
   userId: string,
   cfg: MasterConfig,
   id: string,
-  patch: Record<string, unknown>,
+  patch: Record<string, any>,
 ): Promise<T> {
   const { data: current, error: ce } = await supabase
     .from(cfg.table as never)
