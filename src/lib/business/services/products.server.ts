@@ -482,8 +482,8 @@ export async function listProductAudit(
   await ensureRead(supabase, userId, storeId);
   const { data, error } = await supabase
     .from('audit_log')
-    .select('id, action, entity, actor_user_id, old_data, new_data, created_at')
-    .eq('entity', 'products')
+    .select('id, action, entity_type, actor_user_id, diff, created_at')
+    .eq('entity_type', 'products')
     .eq('entity_id', productId)
     .order('created_at', { ascending: false })
     .limit(100);
