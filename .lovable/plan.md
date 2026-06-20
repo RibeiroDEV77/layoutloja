@@ -146,3 +146,25 @@ Enquanto o bucket `dam` não existir:
 - Importação em massa via ZIP/CSV.
 
 Aprovando esta arquitetura, sigo direto para a migração SQL (passo 1) e depois para serviços + UI.
+---
+
+## FASE 4.3 — DAM (entregue)
+
+**Migração:** `assets`, `asset_folders`, `asset_tags(_map)`, `asset_versions`, `asset_links`, `asset_upload_jobs` + enums `asset_context/kind/status/driver/job_status`. Permissões `dam.read|upload|update|archive|delete|link` concedidas a `super_admin` e `admin`. Triggers: dedupe por sha256 (índice único), bloqueio de delete quando vinculado, consistência storage_driver↔campos, auditoria via `audit_row_change`.
+
+**Serviço:** `src/lib/business/services/assets.server.ts` — listar/obter/uso, registrar (YouTube/Vimeo/URL detectados automaticamente), criar/cancelar/falhar upload jobs, atualizar metadados, arquivar/restaurar/excluir (bloqueia se vinculado), vincular/desvincular/reordenar links, pastas.
+
+**Driver de Storage:** `src/lib/dam/storage/index.ts` com interface única (`prepareUpload`, `resolveUrl`, `remove`). Implementação atual `external` (URLs colados). Quando o bucket `dam` for habilitado, basta plugar `SupabaseStorageDriver` — contrato preservado.
+
+**Controllers:** `src/lib/business/dam.functions.ts` — ÚNICO ponto de entrada do cliente.
+
+**UI:**
+- `/admin/dam` — biblioteca completa (filtros por contexto/status, busca, drawer de detalhes com utilização, arquivar/restaurar/excluir).
+- `<AssetPicker context multiple onSelect>` — modal de seleção (aba Biblioteca + Enviar).
+- `<AssetUploader />` — formulário de registro (URL/YouTube/Vimeo).
+- `<AssetLinksManager ownerType ownerId role context />` — vínculos de entidade.
+- `<AssetThumb asset />` — preview compacto.
+
+**Regra arquitetural:** nenhum módulo (produtos, categorias, marcas, coleções, banners, institucional, marketing) deve gravar em Storage ou em colunas `*_url` próprias. Para anexar mídia, usar `<AssetPicker>` para gravar `asset_links`. O campo legado `product_color_media` continua existindo até a migração de dados.
+
+**Fora do escopo:** upload binário nativo (bloqueado pela ausência do bucket), conversão WebP/thumbs server-side (depende do bucket), migração de dados legados, importação ZIP/CSV.
