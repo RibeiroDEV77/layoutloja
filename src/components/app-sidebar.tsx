@@ -77,6 +77,12 @@ const groups: { label: string; items: Item[] }[] = [
     ],
   },
   {
+    label: "Mídias",
+    items: [
+      { title: "Biblioteca (DAM)", url: "/admin/dam", icon: ImageIcon, permission: "dam.read" },
+    ],
+  },
+  {
     label: "Marketing",
     items: [{ title: "Campanhas", url: "/admin/marketing", icon: Megaphone, permission: "marketing.manage" }],
   },
