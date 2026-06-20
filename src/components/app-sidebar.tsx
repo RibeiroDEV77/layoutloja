@@ -17,6 +17,7 @@ import {
   FileText,
   UserCog,
   ClipboardList,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -73,6 +74,12 @@ const groups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Expedição", url: "/admin/shipping", icon: Truck, permission: "shipping.manage" },
       { title: "Notas Fiscais", url: "/admin/invoices", icon: Receipt, permission: "finance.manage" },
+    ],
+  },
+  {
+    label: "Mídias",
+    items: [
+      { title: "Biblioteca (DAM)", url: "/admin/dam", icon: ImageIcon, permission: "dam.read" },
     ],
   },
   {

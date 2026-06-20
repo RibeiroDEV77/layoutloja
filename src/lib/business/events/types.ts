@@ -46,6 +46,12 @@ export const DomainEvent = {
 
   // Logística
   ShipmentCreated: 'shipment.created',
+
+  // DAM
+  AssetRegistered: 'asset.registered',
+  AssetArchived: 'asset.archived',
+  AssetDeleted: 'asset.deleted',
+  AssetLinked: 'asset.linked',
 } as const;
 
 export type DomainEventType = (typeof DomainEvent)[keyof typeof DomainEvent];
@@ -64,7 +70,8 @@ export type AggregateType =
   | 'company'
   | 'payment'
   | 'invoice'
-  | 'shipment';
+  | 'shipment'
+  | 'asset';
 
 export interface DomainEventPayload {
   event_type: DomainEventType;

@@ -14,6 +14,378 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_folders: {
+        Row: {
+          context: Database["public"]["Enums"]["asset_context"]
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "asset_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_folders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_links: {
+        Row: {
+          asset_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          owner_id: string
+          owner_type: string
+          role: string
+          sort_order: number
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id: string
+          owner_type: string
+          role?: string
+          sort_order?: number
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id?: string
+          owner_type?: string
+          role?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_links_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_tag_map: {
+        Row: {
+          asset_id: string
+          tag_id: string
+        }
+        Insert: {
+          asset_id: string
+          tag_id: string
+        }
+        Update: {
+          asset_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_tag_map_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_tag_map_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "asset_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_tags_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_upload_jobs: {
+        Row: {
+          asset_id: string | null
+          attempts: number
+          bytes_uploaded: number
+          context: Database["public"]["Enums"]["asset_context"]
+          created_at: string
+          error: string | null
+          filename: string
+          id: string
+          mime: string | null
+          size_bytes: number | null
+          status: Database["public"]["Enums"]["asset_job_status"]
+          store_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          attempts?: number
+          bytes_uploaded?: number
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          error?: string | null
+          filename: string
+          id?: string
+          mime?: string | null
+          size_bytes?: number | null
+          status?: Database["public"]["Enums"]["asset_job_status"]
+          store_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          attempts?: number
+          bytes_uploaded?: number
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          error?: string | null
+          filename?: string
+          id?: string
+          mime?: string | null
+          size_bytes?: number | null
+          status?: Database["public"]["Enums"]["asset_job_status"]
+          store_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_upload_jobs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_upload_jobs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_versions: {
+        Row: {
+          asset_id: string
+          created_at: string
+          created_by: string | null
+          external_url: string | null
+          id: string
+          mime: string | null
+          sha256: string | null
+          size_bytes: number | null
+          storage_driver: Database["public"]["Enums"]["asset_driver"]
+          storage_path: string | null
+          version_no: number
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          created_by?: string | null
+          external_url?: string | null
+          id?: string
+          mime?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_driver: Database["public"]["Enums"]["asset_driver"]
+          storage_path?: string | null
+          version_no: number
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          created_by?: string | null
+          external_url?: string | null
+          id?: string
+          mime?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_driver?: Database["public"]["Enums"]["asset_driver"]
+          storage_path?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_versions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets: {
+        Row: {
+          alt_text: string | null
+          archived_at: string | null
+          bucket: string | null
+          caption: string | null
+          context: Database["public"]["Enums"]["asset_context"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          external_id: string | null
+          external_url: string | null
+          folder_id: string | null
+          height: number | null
+          id: string
+          kind: Database["public"]["Enums"]["asset_kind"]
+          medium_path: string | null
+          mime: string | null
+          original_filename: string | null
+          sha256: string | null
+          size_bytes: number | null
+          status: Database["public"]["Enums"]["asset_status"]
+          storage_driver: Database["public"]["Enums"]["asset_driver"]
+          storage_path: string | null
+          store_id: string
+          thumb_path: string | null
+          title: string | null
+          updated_at: string
+          webp_path: string | null
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          archived_at?: string | null
+          bucket?: string | null
+          caption?: string | null
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          external_id?: string | null
+          external_url?: string | null
+          folder_id?: string | null
+          height?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["asset_kind"]
+          medium_path?: string | null
+          mime?: string | null
+          original_filename?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          storage_driver: Database["public"]["Enums"]["asset_driver"]
+          storage_path?: string | null
+          store_id: string
+          thumb_path?: string | null
+          title?: string | null
+          updated_at?: string
+          webp_path?: string | null
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          archived_at?: string | null
+          bucket?: string | null
+          caption?: string | null
+          context?: Database["public"]["Enums"]["asset_context"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          external_id?: string | null
+          external_url?: string | null
+          folder_id?: string | null
+          height?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["asset_kind"]
+          medium_path?: string | null
+          mime?: string | null
+          original_filename?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          storage_driver?: Database["public"]["Enums"]["asset_driver"]
+          storage_path?: string | null
+          store_id?: string
+          thumb_path?: string | null
+          title?: string | null
+          updated_at?: string
+          webp_path?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_folder_fk"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "asset_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attribute_values: {
         Row: {
           attribute_id: string
@@ -2341,6 +2713,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      asset_store_id: { Args: { _asset_id: string }; Returns: string }
+      assets_usage_count: { Args: { _asset_id: string }; Returns: number }
       claim_first_super_admin: { Args: never; Returns: Json }
       color_store_id: { Args: { _color_id: string }; Returns: string }
       current_user_context: { Args: never; Returns: Json }
@@ -2376,6 +2750,32 @@ export type Database = {
       warehouse_store_id: { Args: { _warehouse_id: string }; Returns: string }
     }
     Enums: {
+      asset_context:
+        | "product"
+        | "category"
+        | "brand"
+        | "collection"
+        | "banner"
+        | "institutional"
+        | "marketing"
+        | "other"
+      asset_driver: "supabase" | "external" | "youtube" | "vimeo"
+      asset_job_status:
+        | "pending"
+        | "uploading"
+        | "processing"
+        | "done"
+        | "failed"
+        | "canceled"
+      asset_kind:
+        | "image"
+        | "video"
+        | "youtube"
+        | "vimeo"
+        | "pdf"
+        | "svg"
+        | "other"
+      asset_status: "active" | "archived"
       attribute_input_type: "select" | "text" | "number" | "boolean"
       collection_type: "manual" | "smart"
       customer_group_kind:
@@ -2516,6 +2916,27 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      asset_context: [
+        "product",
+        "category",
+        "brand",
+        "collection",
+        "banner",
+        "institutional",
+        "marketing",
+        "other",
+      ],
+      asset_driver: ["supabase", "external", "youtube", "vimeo"],
+      asset_job_status: [
+        "pending",
+        "uploading",
+        "processing",
+        "done",
+        "failed",
+        "canceled",
+      ],
+      asset_kind: ["image", "video", "youtube", "vimeo", "pdf", "svg", "other"],
+      asset_status: ["active", "archived"],
       attribute_input_type: ["select", "text", "number", "boolean"],
       collection_type: ["manual", "smart"],
       customer_group_kind: [
