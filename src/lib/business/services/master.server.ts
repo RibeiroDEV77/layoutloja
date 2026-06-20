@@ -67,20 +67,17 @@ export async function listGeneric<T = Record<string, unknown>>(
   if (p.q && p.q.trim() && cfg.searchCols.length) {
     const safe = p.q.replace(/[%,]/g, '');
     const expr = cfg.searchCols.map((c) => `${c}.ilike.%${safe}%`).join(',');
-    // @ts-expect-error supabase generic
     q = q.or(expr);
   }
 
   if (p.filters) {
     for (const [k, v] of Object.entries(p.filters)) {
       if (v === undefined || v === null || v === '') continue;
-      // @ts-expect-error supabase generic
-      q = q.eq(k, v);
+      q = q.eq(k, v as never);
     }
   }
 
   const sort = p.sort ?? { col: cfg.defaultSort, dir: cfg.defaultSortDir ?? 'asc' };
-  // @ts-expect-error supabase generic
   q = q.order(sort.col, { ascending: sort.dir === 'asc' }).range(from, to);
 
   const { data, error, count } = await q;
