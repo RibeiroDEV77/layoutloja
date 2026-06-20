@@ -19,9 +19,11 @@ import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminPriceListsRouteImport } from './routes/_authenticated/admin.price-lists'
 import { Route as AuthenticatedAdminCustomerGroupsRouteImport } from './routes/_authenticated/admin.customer-groups'
 import { Route as AuthenticatedAdminCollectionsRouteImport } from './routes/_authenticated/admin.collections'
+import { Route as AuthenticatedAdminCategoryAttributesRouteImport } from './routes/_authenticated/admin.category-attributes'
 import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin.categories'
 import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenticated/admin.brands'
 import { Route as AuthenticatedAdminAttributesRouteImport } from './routes/_authenticated/admin.attributes'
+import { Route as AuthenticatedAdminAttributeValuesRouteImport } from './routes/_authenticated/admin.attribute-values'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -76,6 +78,12 @@ const AuthenticatedAdminCollectionsRoute =
     path: '/collections',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCategoryAttributesRoute =
+  AuthenticatedAdminCategoryAttributesRouteImport.update({
+    id: '/category-attributes',
+    path: '/category-attributes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCategoriesRoute =
   AuthenticatedAdminCategoriesRouteImport.update({
     id: '/categories',
@@ -94,15 +102,23 @@ const AuthenticatedAdminAttributesRoute =
     path: '/attributes',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminAttributeValuesRoute =
+  AuthenticatedAdminAttributeValuesRouteImport.update({
+    id: '/attribute-values',
+    path: '/attribute-values',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
@@ -113,9 +129,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
@@ -129,9 +147,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/_authenticated/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/_authenticated/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
+  '/_authenticated/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/_authenticated/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/_authenticated/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/_authenticated/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
@@ -145,9 +165,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/brands'
     | '/admin/categories'
+    | '/admin/category-attributes'
     | '/admin/collections'
     | '/admin/customer-groups'
     | '/admin/price-lists'
@@ -158,9 +180,11 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/brands'
     | '/admin/categories'
+    | '/admin/category-attributes'
     | '/admin/collections'
     | '/admin/customer-groups'
     | '/admin/price-lists'
@@ -173,9 +197,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/admin/attribute-values'
     | '/_authenticated/admin/attributes'
     | '/_authenticated/admin/brands'
     | '/_authenticated/admin/categories'
+    | '/_authenticated/admin/category-attributes'
     | '/_authenticated/admin/collections'
     | '/_authenticated/admin/customer-groups'
     | '/_authenticated/admin/price-lists'
@@ -262,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCollectionsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/category-attributes': {
+      id: '/_authenticated/admin/category-attributes'
+      path: '/category-attributes'
+      fullPath: '/admin/category-attributes'
+      preLoaderRoute: typeof AuthenticatedAdminCategoryAttributesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/categories': {
       id: '/_authenticated/admin/categories'
       path: '/categories'
@@ -283,13 +316,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAttributesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/attribute-values': {
+      id: '/_authenticated/admin/attribute-values'
+      path: '/attribute-values'
+      fullPath: '/admin/attribute-values'
+      preLoaderRoute: typeof AuthenticatedAdminAttributeValuesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAttributeValuesRoute: typeof AuthenticatedAdminAttributeValuesRoute
   AuthenticatedAdminAttributesRoute: typeof AuthenticatedAdminAttributesRoute
   AuthenticatedAdminBrandsRoute: typeof AuthenticatedAdminBrandsRoute
   AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
+  AuthenticatedAdminCategoryAttributesRoute: typeof AuthenticatedAdminCategoryAttributesRoute
   AuthenticatedAdminCollectionsRoute: typeof AuthenticatedAdminCollectionsRoute
   AuthenticatedAdminCustomerGroupsRoute: typeof AuthenticatedAdminCustomerGroupsRoute
   AuthenticatedAdminPriceListsRoute: typeof AuthenticatedAdminPriceListsRoute
@@ -298,9 +340,13 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAttributeValuesRoute:
+    AuthenticatedAdminAttributeValuesRoute,
   AuthenticatedAdminAttributesRoute: AuthenticatedAdminAttributesRoute,
   AuthenticatedAdminBrandsRoute: AuthenticatedAdminBrandsRoute,
   AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
+  AuthenticatedAdminCategoryAttributesRoute:
+    AuthenticatedAdminCategoryAttributesRoute,
   AuthenticatedAdminCollectionsRoute: AuthenticatedAdminCollectionsRoute,
   AuthenticatedAdminCustomerGroupsRoute: AuthenticatedAdminCustomerGroupsRoute,
   AuthenticatedAdminPriceListsRoute: AuthenticatedAdminPriceListsRoute,
