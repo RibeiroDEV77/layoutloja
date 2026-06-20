@@ -1,0 +1,102 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session, User } from "@supabase/supabase-js";
+
+export type UserRole = { code: string; name: string; store_id: string | null };
+export type UserContext = {
+  authenticated: boolean;
+  user_id?: string;
+  profile?: { user_id: string; full_name: string | null; avatar_url: string | null } | null;
+  roles?: UserRole[];
+  permissions?: string[];
+  stores?: string[];
+};
+
+type AuthState = {
+  loading: boolean;
+  session: Session | null;
+  user: User | null;
+  ctx: UserContext | null;
+  refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
+  hasRole: (code: string) => boolean;
+  hasAnyRole: (codes: string[]) => boolean;
+  hasPermission: (code: string) => boolean;
+  isSuperAdmin: () => boolean;
+};
+
+const AuthCtx = createContext<AuthState | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [ctx, setCtx] = useState<UserContext | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadContext = async (sess: Session | null) => {
+    if (!sess) {
+      setCtx({ authenticated: false });
+      return;
+    }
+    const { data, error } = await supabase.rpc("current_user_context");
+    if (error) {
+      console.error("current_user_context", error);
+      setCtx({ authenticated: true, user_id: sess.user.id, roles: [], permissions: [], stores: [] });
+      return;
+    }
+    setCtx(data as unknown as UserContext);
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    // Listener FIRST
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      if (!active) return;
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
+        // Defer to avoid deadlock
+        setTimeout(() => loadContext(sess), 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      loadContext(data.session).finally(() => active && setLoading(false));
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const refresh = async () => loadContext(session);
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setCtx({ authenticated: false });
+  };
+
+  const hasRole = (code: string) => !!ctx?.roles?.some((r) => r.code === code);
+  const hasAnyRole = (codes: string[]) => !!ctx?.roles?.some((r) => codes.includes(r.code));
+  const hasPermission = (code: string) =>
+    hasRole("super_admin") || !!ctx?.permissions?.includes(code);
+  const isSuperAdmin = () => hasRole("super_admin");
+
+  return (
+    <AuthCtx.Provider
+      value={{ loading, session, user, ctx, refresh, signOut, hasRole, hasAnyRole, hasPermission, isSuperAdmin }}
+    >
+      {children}
+    </AuthCtx.Provider>
+  );
+}
+
+export function useAuth() {
+  const v = useContext(AuthCtx);
+  if (!v) throw new Error("useAuth must be used within AuthProvider");
+  return v;
+}
