@@ -28,16 +28,6 @@ import { runAction, type BizResult } from "./notify";
 
 type Row = { id: string } & Record<string, unknown>;
 
-type ListInput = {
-  store_id: string;
-  q?: string;
-  page?: number;
-  pageSize?: number;
-  filters?: Record<string, string | number | boolean | null | undefined>;
-};
-
-type ListOutput<T> = { rows: T[]; total: number; page: number; pageSize: number };
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyServerFn = (args: { data: any }) => Promise<BizResult<any>>;
 
