@@ -346,7 +346,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
     enabled: !!product.category_id && !!storeId,
     queryFn: async () => {
       const [cat, prod, attrsAll] = await Promise.all([
-        fnCatAttrs({ data: { store_id: storeId!, filters: { category_id: product.category_id! }, pageSize: 100 } }),
+        fnCatAttrs({ data: { category_id: product.category_id! } }),
         fnList({ data: { product_id: product.id } }),
         fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
       ]);
@@ -356,7 +356,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
 
       const catAttrs = cat.data.rows as Array<{ attribute_id: string; is_required: boolean }>;
       const attrsMap = new Map(
-        (attrsAll.data.rows as Array<{ id: string; name: string; type: string }>).map((a) => [a.id, a]),
+        (attrsAll.data.rows as Array<{ id: string; name: string; input_type: string }>).map((a) => [a.id, a]),
       );
       const productValues = new Map(
         (prod.data as AttrValRow[]).map((p) => [p.attribute_id, p]),
@@ -364,7 +364,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
 
       const valuesMap = new Map<string, Array<{ id: string; label: string }>>();
       for (const ca of catAttrs) {
-        const r = await fnVals({ data: { parent_id: ca.attribute_id, pageSize: 100 } });
+        const r = await fnVals({ data: { attribute_id: ca.attribute_id, pageSize: 100 } });
         if (r.ok) valuesMap.set(ca.attribute_id, r.data.rows as Array<{ id: string; label: string }>);
       }
 
@@ -372,7 +372,7 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
         attribute_id: ca.attribute_id,
         required: ca.is_required,
         name: attrsMap.get(ca.attribute_id)?.name ?? "—",
-        type: attrsMap.get(ca.attribute_id)?.type ?? "text",
+        type: attrsMap.get(ca.attribute_id)?.input_type ?? "text",
         values: valuesMap.get(ca.attribute_id) ?? [],
         current: productValues.get(ca.attribute_id) ?? null,
       }));
