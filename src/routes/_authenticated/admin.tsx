@@ -66,17 +66,19 @@ function AdminLayout() {
 
   return (
     <BreadcrumbProvider>
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full">
-          <AppSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <AdminHeader />
-            <main className="flex-1 p-4 sm:p-6 bg-muted/20">
-              <Outlet />
-            </main>
+      <ActiveStoreProvider>
+        <SidebarProvider>
+          <div className="min-h-screen flex w-full">
+            <AppSidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+              <AdminHeader />
+              <main className="flex-1 p-4 sm:p-6 bg-muted/20">
+                <Outlet />
+              </main>
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </ActiveStoreProvider>
     </BreadcrumbProvider>
   );
 }
