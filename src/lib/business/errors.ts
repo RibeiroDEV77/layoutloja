@@ -14,10 +14,12 @@ export type BusinessErrorCode =
   | 'BUSINESS_RULE'
   | 'INTERNAL';
 
+export type ErrorDetails = Record<string, string | number | boolean | null>;
+
 export class BusinessError extends Error {
   readonly code: BusinessErrorCode;
   readonly httpStatus: number;
-  readonly details?: Record<string, unknown>;
+  readonly details?: ErrorDetails;
 
   constructor(
     code: BusinessErrorCode,
