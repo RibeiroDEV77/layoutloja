@@ -167,13 +167,7 @@ function AssetDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
   });
 
   const [form, setForm] = useState<{ title: string; alt_text: string; description: string; context: Ctx } | null>(null);
-  useMemo(() => {
-    // Lazy init from server data
-  }, []);
-  // Inicializa form quando dados chegarem
-  if (q.data && !form) {
-    // hack mínimo: faz uma fetch separada do asset para ter campos
-  }
+
 
   const save = useMutation({
     mutationFn: async () => {
