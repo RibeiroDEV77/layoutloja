@@ -253,7 +253,7 @@ export async function generateVariants(
     for (const s of sizeRows) {
       const key = `${color.id}|${s.id}`;
       if (existingKey.has(key)) { skipped++; continue; }
-      const sizeCode = sanitizeCode(s.code ?? s.value);
+      const sizeCode = sanitizeCode(s.code ?? s.label);
       const sku = `${prod.sku_root}-${colorCode}-${sizeCode}`;
       const { data, error } = await supabase.from('product_variants').insert({
         product_id: productId,
