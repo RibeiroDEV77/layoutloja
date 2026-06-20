@@ -234,3 +234,62 @@ A partir desta data, **nenhuma alteração estrutural** deve ser feita sem:
 1. Atualização explícita deste documento;
 2. Aprovação do plano;
 3. Migration revisada.
+
+---
+
+## 12. Fase 4 — Painel Administrativo (Infraestrutura Visual) ✅
+
+Biblioteca de componentes administrativos genéricos em `src/components/admin/`, totalmente desacoplada de domínio. Toda interação com dados deve ocorrer via Server Functions da Business Layer (`src/lib/business/*.functions.ts`); nenhuma página acessa Supabase diretamente.
+
+### Layout & Navegação
+- `BreadcrumbProvider` + `usePageBreadcrumbs([...])` — trilha controlada pelas páginas
+- `AdminBreadcrumb` — render do trail (chevron + links tipados)
+- `AdminHeader` — sticky, integra `SidebarTrigger`, breadcrumb, avatar + menu de usuário, logout higienizado
+- `AppSidebar` — já existente, filtragem por `hasPermission` (RBAC)
+- `AdminLayout` (`_authenticated/admin.tsx`) — envolve tudo com `BreadcrumbProvider` + `SidebarProvider`
+
+### Estrutura de página
+- `CrudPage` — header (título/descrição/ações) + toolbar slot + conteúdo; registra breadcrumbs automaticamente
+- `CrudToolbar` — grid responsivo `[content | actions]`
+
+### Listagem & dados
+- `DataTable<T>` genérico — colunas tipadas, ordenação controlada, seleção múltipla, row click, integra estados de loading/erro/vazio nativamente
+- `CrudPagination` — page/pageSize/total com `pageSizes` configurável
+- `CrudSearch` — input debounced com clear button
+- `CrudFilters` — popover de filtros com badge de count + clear
+- `CrudActions` — dropdown de ações por linha (suporta `destructive`, `hidden`, `disabled`)
+
+### Formulários & diálogos
+- `CrudDrawer` — sheet lateral com footer padrão (`onSubmit`/`submitLabel`) ou customizado
+- `CrudDeleteDialog` — confirmação destrutiva especializada
+- `ConfirmDialog` — confirmação genérica com loading state
+- `FormField` / `FormRow` / `FormSection` — wrappers com label, descrição, erro, hint, required
+- `SelectField` — select com options tipadas
+- `MultiSelectField` — combobox com chips removíveis
+- `UploadField` — upload único (validação de tamanho, preview de imagem)
+- `ImageGalleryField` — galeria multi-upload com drag-to-reorder
+- `ColorPicker` — color input + hex manual + presets
+
+### Feedback
+- `StatusBadge` + `statusToTone()` — badges com 6 tons semânticos (success/warning/danger/info/muted/default)
+- `EmptyState` — ícone + título + descrição + ação customizável
+- `ErrorState` — extrai mensagem de qualquer erro, botão "tentar novamente"
+- `LoadingSpinner` / `FullPageLoading` / `TableSkeleton` / `CardSkeleton` / `FormSkeleton`
+- `notify` — wrapper sonner (`success`/`error`/`info`/`warning`/`loading`/`promise`)
+- `unwrap(result)` — converte `BizResult<T>` em `T` ou lança erro tipado
+- `runAction(fn, msgs)` — executa server function com toast de loading/success/error automático
+
+### Widgets
+- `Widget` — card base com size (`sm`/`md`/`lg`/`xl`/`full`), título, ícone, ações, footer, loading
+- `WidgetGrid` — grid responsivo 12 colunas
+- `StatWidget` — KPI card (valor + hint + trend %)
+
+### Princípios
+- **Genéricos**: nenhum componente conhece domínio (suppliers/products/etc.)
+- **Tipados**: `DataTable<T>`, `BizResult<T>`, `SelectOption`, `Crumb`, `WidgetSize` etc.
+- **Responsivos**: padrão `grid-cols-[minmax(0,1fr)_auto]` + `min-w-0` + `shrink-0`
+- **Acessíveis**: labels, aria, focus-visible
+- **Reutilização**: import único `from "@/components/admin"`
+
+### Próximo passo (Fase 4.1)
+Módulos funcionais consumindo essa biblioteca — começar por **Fornecedores** (`/admin/suppliers`) usando `listSuppliers`/`createSupplier`/`updateSupplier`/`deleteSupplier`, seguindo depois Categorias, Marcas, Coleções, Produtos, Atributos, Variações, Galeria, Preços, Estoque.
