@@ -22,11 +22,12 @@
 | 2 — Catálogo | Produto → Cor → Galeria → SKU → Preço | ✅ |
 | 2.5 — Auth Bootstrap | Login, Reset, Super Admin, Sidebar, Layout Admin | ✅ |
 | 2.6 — Consolidação | Auditoria + Congelamento | ✅ |
-| 3 — Operação | Compras / Estoque / Inventários / Transferências | ⏸ Próxima |
+| 2.7 — Domain Events | `domain_events`, `domain_event_subscriptions`, `emit_domain_event()` | ✅ |
+| 3 — Operação Comercial | Fornecedores, Compras, Recebimento, Estoque, Inventários, Transferências, Custos | ✅ Schema |
 
 ---
 
-## 2. Banco de Dados (29 tabelas)
+## 2. Banco de Dados (44 tabelas)
 
 ### Fundação (10)
 `stores`, `store_settings`, `profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`, `user_sessions`, `audit_log`, `system_logs`
@@ -45,6 +46,22 @@
 
 ### Catálogo — Preços (4)
 `customer_groups`, `price_lists`, `price_list_customer_groups`, `price_list_items`
+
+### Domain Events — Fase 2.7 (2)
+`domain_events` (append-only, status: pending/processing/processed/failed/skipped), `domain_event_subscriptions` (canais: webhook/email/whatsapp/internal/erp/marketplace).
+Helper: `emit_domain_event(event_type, aggregate_type, aggregate_id, store_id, payload, metadata)`.
+Eventos previstos: `product.*`, `inventory.*`, `purchase.*`, `order.*`, `customer.*`, `company.*`, `payment.*`, `shipment.*`, `invoice.*`.
+
+### Operação Comercial — Fase 3 (13)
+- **Fornecedores**: `suppliers`, `supplier_contacts`
+- **Armazéns/Estoque**: `warehouses`, `stock_levels`, `stock_movements` (append-only)
+- **Custos**: `cost_history` (imutável, métodos: average/fifo/lifo/standard/last)
+- **Compras**: `purchase_orders`, `purchase_order_items`
+- **Recebimento**: `goods_receipts`, `goods_receipt_items`
+- **Inventários**: `inventory_counts`, `inventory_count_items`
+- **Transferências**: `stock_transfers`, `stock_transfer_items`
+
+Novas permissões RBAC: `suppliers.read/manage`, `purchases.read/manage`, `inventory.read/manage` — concedidas a `super_admin`, `admin`, `manager`.
 
 ---
 
