@@ -293,3 +293,60 @@ Biblioteca de componentes administrativos genéricos em `src/components/admin/`,
 
 ### Próximo passo (Fase 4.1)
 Módulos funcionais consumindo essa biblioteca — começar por **Fornecedores** (`/admin/suppliers`) usando `listSuppliers`/`createSupplier`/`updateSupplier`/`deleteSupplier`, seguindo depois Categorias, Marcas, Coleções, Produtos, Atributos, Variações, Galeria, Preços, Estoque.
+
+---
+
+## 13. Fase 4.1 — Cadastro Mestre ✅
+
+Construção por fluxo operacional (não por módulos isolados): todos os cadastros base que servirão de fundação para a Fase 4.2 (Produtos).
+
+### Camada de Negócio (extensão)
+Novo serviço genérico `services/master.server.ts` (`listGeneric`, `createGeneric`, `updateGeneric`, `deleteGeneric`) parametrizado por `MasterConfig { table, permission, readPermission, searchCols, defaultSort, defaultSortDir }`. Toda escrita verifica `requirePermission(supabase, userId, perm, storeId)`; toda leitura verifica `requireStoreAccess` + permissão de read OU write.
+
+Serviços especializados (parent-scoped) — não usam o generic:
+- `services/attribute-values.server.ts` — escopo herdado de `attributes.store_id`
+- `services/category-attributes.server.ts` — pivot category × attribute, valida que ambos pertencem à mesma loja
+
+Suppliers ganhou `listSuppliers` (paginação, busca por razão/fantasia/CNPJ/código, filtro `is_active`).
+
+### Server Functions (controllers)
+- `categories.functions.ts` — list/create/update/delete (perm: `products.update`)
+- `brands.functions.ts` — list/create/update/delete (perm: `products.update`)
+- `collections.functions.ts` — list/create/update/delete (perm: `products.update`)
+- `attributes.functions.ts` — list/create/update/delete (perm: `products.update`)
+- `attribute-values.functions.ts` — list/create/update/delete (parent-scoped)
+- `category-attributes.functions.ts` — list/create/update/delete (pivot)
+- `customer-groups.functions.ts` — list/create/update/delete (perm: `settings.manage`)
+- `price-lists.functions.ts` — list/create/update/delete (perm: `settings.manage`)
+- `suppliers.functions.ts` — agora exporta `listSuppliers` (além de create/update/delete)
+
+Toda controller envolvida em `withBusiness()` → resposta `BizResult<T>` serializável.
+
+### Infraestrutura UI
+- `useActiveStore()` + `ActiveStoreProvider` — gerencia a loja ativa (persiste em `localStorage`, fallback para primeira loja do usuário / primeira loja acessível para super admin).
+- `StoreSwitcher` — popover no `AdminHeader`. Esconde-se com 0 lojas, mostra label com 1, mostra picker com 2+.
+- `MasterCrudPage<T>` — componente reutilizável: orquestra `useQuery` (lista), `useServerFn`, `CrudDrawer` (form), `CrudDeleteDialog`, `CrudSearch`, `CrudPagination`, `CrudActions`, `DataTable`, paginação, busca, breadcrumbs. Plug-and-play com qualquer trio create/update/delete + columns + renderForm.
+
+### Páginas (9)
+Todas em `src/routes/_authenticated/admin.*`:
+- `/admin/categories` — `MasterCrudPage`, com seletor de categoria pai (slug auto-gerado)
+- `/admin/brands` — `MasterCrudPage`, com preview do logo na tabela
+- `/admin/collections` — `MasterCrudPage`, com tipo manual/smart
+- `/admin/attributes` — `MasterCrudPage`, com flags `is_color`/`is_size` (eixos de variação)
+- `/admin/attribute-values` — bespoke (parent-scoped), seletor de atributo no toolbar
+- `/admin/category-attributes` — bespoke (pivot), seletor de categoria + atributos disponíveis filtrados
+- `/admin/customer-groups` — `MasterCrudPage`, com enum `kind` e `default_discount_pct`
+- `/admin/price-lists` — `MasterCrudPage`, com moeda, prioridade e vigência
+- `/admin/suppliers` — `MasterCrudPage` com formulário seccionado (Identificação / Contato / Comercial)
+
+### Sidebar (RBAC)
+Sidebar atualizada com todas as novas rotas, filtradas por permissão. Itens "Atributos", "Valores de Atributos", "Atributos × Categoria", "Grupos de Clientes", "Listas de Preço" agora aparecem.
+
+### Garantias
+- **Nenhuma tela acessa Supabase diretamente** — toda I/O passa por `useServerFn` → `createServerFn` → service → repository.
+- **Multi-tenant rigoroso** — todas as operações são bound a `store_id` (validado server-side).
+- **Padrão de feedback** — todas as ações usam `runAction(fn, { loading, success })` para toasts automáticos de loading/sucesso/erro.
+- **Reuso visual** — todas as 9 páginas reutilizam a mesma biblioteca da Fase 4 (DataTable, CrudDrawer, CrudDeleteDialog, FormField, etc.). Inclusive as duas páginas bespoke (attribute-values, category-attributes).
+
+### Próximo passo — Fase 4.2: Cadastro Inteligente de Produtos
+Wizard de 8 etapas: Básicas → Atributos → Cores → Galeria → Geração de Variantes (auto SKU) → Preços → SEO → Publicação.

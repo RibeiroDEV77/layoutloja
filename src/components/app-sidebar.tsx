@@ -45,6 +45,9 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Categorias", url: "/admin/categories", icon: Layers, permission: "products.read" },
       { title: "Marcas", url: "/admin/brands", icon: Tags, permission: "products.read" },
       { title: "Coleções", url: "/admin/collections", icon: ClipboardList, permission: "products.read" },
+      { title: "Atributos", url: "/admin/attributes", icon: ClipboardList, permission: "products.read" },
+      { title: "Valores de Atributos", url: "/admin/attribute-values", icon: ClipboardList, permission: "products.read" },
+      { title: "Atributos × Categoria", url: "/admin/category-attributes", icon: ClipboardList, permission: "products.read" },
     ],
   },
   {
@@ -52,6 +55,8 @@ const groups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Pedidos", url: "/admin/orders", icon: ShoppingCart, permission: "orders.read" },
       { title: "Clientes", url: "/admin/customers", icon: Users, permission: "customers.read" },
+      { title: "Grupos de Clientes", url: "/admin/customer-groups", icon: Users, permission: "customers.read" },
+      { title: "Listas de Preço", url: "/admin/price-lists", icon: Receipt, permission: "products.read" },
       { title: "Empresas", url: "/admin/companies", icon: Building2, permission: "customers.read" },
     ],
   },
@@ -60,7 +65,7 @@ const groups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Estoque", url: "/admin/inventory", icon: Warehouse, permission: "inventory.read" },
       { title: "Compras", url: "/admin/purchases", icon: ShoppingBag, permission: "purchases.read" },
-      { title: "Fornecedores", url: "/admin/suppliers", icon: Building2, permission: "suppliers.manage" },
+      { title: "Fornecedores", url: "/admin/suppliers", icon: Building2, permission: "suppliers.read" },
     ],
   },
   {

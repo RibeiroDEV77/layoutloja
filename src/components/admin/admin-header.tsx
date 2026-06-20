@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { AdminBreadcrumb } from "./admin-breadcrumb";
+import { StoreSwitcher } from "./store-switcher";
 
 export function AdminHeader() {
   const { ctx, isSuperAdmin } = useAuth();
@@ -35,6 +36,8 @@ export function AdminHeader() {
         <div className="hidden md:block h-5 w-px bg-border" />
         <div className="hidden md:flex min-w-0"><AdminBreadcrumb /></div>
       </div>
+      <div className="flex items-center gap-2">
+        <StoreSwitcher />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 h-9">
@@ -56,6 +59,7 @@ export function AdminHeader() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

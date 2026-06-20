@@ -2,10 +2,12 @@
 export * from "./breadcrumb-context";
 export * from "./admin-breadcrumb";
 export * from "./admin-header";
+export * from "./store-switcher";
 
 // Page structure
 export * from "./crud-page";
 export * from "./crud-toolbar";
+export * from "./master-crud-page";
 
 // Data display
 export * from "./data-table";
