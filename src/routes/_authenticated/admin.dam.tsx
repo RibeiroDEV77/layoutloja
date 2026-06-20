@@ -256,10 +256,6 @@ function AssetMetaForm({
   form: { title: string; alt_text: string; description: string; context: Ctx } | null;
   setForm: (f: { title: string; alt_text: string; description: string; context: Ctx }) => void;
 }) {
-  const get = useServerFn((async () => null) as never);
-  // Inicialização: faz request paralelo via getAssetUsage já trouxe o asset?
-  // Para simplificar, busca o asset via listAssets cache não é confiável; pedimos getAsset.
-  const { getAsset } = require("@/lib/business/dam.functions") as typeof import("@/lib/business/dam.functions");
   const fn = useServerFn(getAsset);
   const q = useQuery({
     queryKey: ["dam", "asset-meta", id],
