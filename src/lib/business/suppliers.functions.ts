@@ -6,6 +6,16 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { withBusiness } from './with-business';
 import * as Svc from './services/suppliers.server';
 
+export const listSuppliers = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: Svc.ListSuppliersInput) => input)
+  .handler(
+    withBusiness(async ({ data, context }) =>
+      Svc.listSuppliers(context.supabase, context.userId, data),
+    ),
+  );
+
+
 export const createSupplier = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: Svc.CreateSupplierInput) => input)
