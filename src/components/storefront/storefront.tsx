@@ -722,38 +722,8 @@ export function InstitutionalBanner() {
 // ---------------------------------------------------------------------------
 
 export function NewsletterSection() {
-  return (
-    <section className="bg-[#F8F8F8]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20 grid gap-10 md:grid-cols-2 md:items-center">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Newsletter</p>
-          <h3 className="mt-3 text-[32px] md:text-[40px] font-semibold leading-tight text-[#111]">
-            Receba novidades e ofertas em primeira mão.
-          </h3>
-          <p className="mt-3 text-[15px] text-[#666] max-w-md">
-            Cadastre-se e ganhe <span className="text-[var(--brand-red)] font-semibold">10% off</span> na primeira compra.
-          </p>
-        </div>
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
-          <div className="relative flex-1">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" strokeWidth={1.5}/>
-            <input
-              type="email"
-              required
-              placeholder="Seu melhor e-mail"
-              className="w-full bg-white border border-[#EFEFEF] pl-11 pr-4 h-14 text-[15px] text-[#111] placeholder:text-[#666] focus:border-[#111] outline-none transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            className="h-14 px-8 bg-[#111] text-white text-[13px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors"
-          >
-            Cadastrar
-          </button>
-        </form>
-      </div>
-    </section>
-  );
+  // Funcionalidade de newsletter ainda não conectada ao Painel Administrativo.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -761,27 +731,8 @@ export function NewsletterSection() {
 // ---------------------------------------------------------------------------
 
 export function TrustStrip() {
-  const items = [
-    { icon: Truck, title: "Frete grátis", text: "Em compras acima de R$ 299" },
-    { icon: RotateCcw, title: "Troca fácil", text: "Em até 30 dias" },
-    { icon: ShieldCheck, title: "Compra segura", text: "Site protegido SSL" },
-    { icon: MessageCircle, title: "Atendimento", text: "Seg a sáb, 9h às 19h" },
-  ];
-  return (
-    <section className="bg-white border-t border-[#EFEFEF]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {items.map((i) => (
-          <div key={i.title} className="flex items-start gap-3">
-            <i.icon className="h-7 w-7 text-[#111] shrink-0" strokeWidth={1.25}/>
-            <div>
-              <p className="text-[14px] font-semibold text-[#111]">{i.title}</p>
-              <p className="text-[13px] text-[#666] mt-0.5">{i.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  // Benefícios institucionais virão do Painel Administrativo.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
