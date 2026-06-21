@@ -29,6 +29,10 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { FormField, FormRow } from "@/components/admin/form-field";
 import { SelectField } from "@/components/admin/select-field";
@@ -380,46 +384,52 @@ function BasicBlock({
         </FormField>
       </FormRow>
 
-      <FormRow>
-        <SelectField
-          label="Departamento"
-          value={form.department_id || "__none__"}
-          onChange={(v) => patch({ department_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Selecionar —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-          hint="Use sua categoria-raiz como departamento."
-        />
-        <SelectField
-          label="Categoria" required
-          value={form.category_id}
-          onChange={(v) => patch({ category_id: v })}
-          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-          placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
-        />
-      </FormRow>
-
-      <FormRow>
-        <SelectField
-          label="Subcategoria"
-          value={form.subcategory_id || "__none__"}
-          onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Opcional —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Marca"
-          value={form.brand_id || "__none__"}
-          onChange={(v) => patch({ brand_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Sem marca —" },
-            ...(brands.data ?? []).map((b) => ({ value: b.id, label: b.name })),
-          ]}
-        />
-      </FormRow>
+      <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Hierarquia</h3>
+          <span className="text-[11px] text-muted-foreground">Departamento → Categoria → Subcategoria</span>
+        </div>
+        <FormRow>
+          <SelectField
+            label="Departamento"
+            value={form.department_id || "__none__"}
+            onChange={(v) => patch({ department_id: v === "__none__" ? "" : v, category_id: "", subcategory_id: "" })}
+            options={[
+              { value: "__none__", label: "— Selecionar —" },
+              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            hint="Estrutura em cascata será habilitada em breve."
+          />
+          <SelectField
+            label="Categoria" required
+            value={form.category_id}
+            onChange={(v) => patch({ category_id: v, subcategory_id: "" })}
+            options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
+          />
+        </FormRow>
+        <FormRow>
+          <SelectField
+            label="Subcategoria"
+            value={form.subcategory_id || "__none__"}
+            onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
+            disabled={!form.category_id}
+            options={[
+              { value: "__none__", label: form.category_id ? "— Opcional —" : "— Escolha a categoria primeiro —" },
+              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <SelectField
+            label="Marca"
+            value={form.brand_id || "__none__"}
+            onChange={(v) => patch({ brand_id: v === "__none__" ? "" : v })}
+            options={[
+              { value: "__none__", label: "— Sem marca —" },
+              ...(brands.data ?? []).map((b) => ({ value: b.id, label: b.name })),
+            ]}
+          />
+        </FormRow>
+      </div>
 
       <SelectField
         label="Coleção"
@@ -751,18 +761,94 @@ function VariationsBlock({
     if (colors.some((c) => c.name !== "Padrão")) setHasVariations("yes");
   }, [colors]);
 
+  const fnListMediaForMigration = useServerFn(listColorMedia);
+  const fnAddMediaForMigration = useServerFn(addColorMedia);
+  const fnDelMediaForMigration = useServerFn(deleteColorMedia);
+
   const [newColor, setNewColor] = useState({ name: "", hex: "#000000" });
-  const addColor = async () => {
-    if (!newColor.name.trim()) return;
-    const ok = await runAction(
-      () => fnCreateColor({ data: {
-        product_id: productId, name: newColor.name.trim(), hex: newColor.hex,
-        is_default: colors.length === 0,
-      } }),
+  const [migration, setMigration] = useState<null | {
+    padraoId: string;
+    media: MediaRow[];
+    pendingName: string;
+    pendingHex: string;
+  }>(null);
+  const [migrating, setMigrating] = useState(false);
+
+  const createColorRaw = async (name: string, hex: string, isDefault: boolean) => {
+    return runAction(
+      () => fnCreateColor({ data: { product_id: productId, name, hex, is_default: isDefault } }),
       { success: "Cor adicionada" },
     );
+  };
+
+  const addColor = async () => {
+    const name = newColor.name.trim();
+    if (!name) return;
+    // Padrão-only migration: única cor existente é "Padrão" e tem mídias.
+    const onlyPadrao = colors.length === 1 && colors[0].name === "Padrão";
+    if (onlyPadrao) {
+      const padrao = colors[0];
+      try {
+        const r = await fnListMediaForMigration({ data: { color_id: padrao.id } });
+        const media = r.ok ? (r.data as MediaRow[]) : [];
+        if (media.length > 0) {
+          setMigration({ padraoId: padrao.id, media, pendingName: name, pendingHex: newColor.hex });
+          return;
+        }
+      } catch { /* ignore — segue fluxo padrão */ }
+    }
+    const ok = await createColorRaw(name, newColor.hex, colors.length === 0);
     if (ok) { setNewColor({ name: "", hex: "#000000" }); colorsQ.refetch(); onChange(); }
   };
+
+  const runMigration = async (mode: "move" | "duplicate") => {
+    if (!migration) return;
+    setMigrating(true);
+    try {
+      const createdResp = await fnCreateColor({ data: {
+        product_id: productId, name: migration.pendingName, hex: migration.pendingHex, is_default: mode === "move",
+      } });
+      if (!createdResp.ok) throw new Error(createdResp.error.message);
+      const created = createdResp.data as ColorRow;
+      if (!created?.id) throw new Error("Falha ao criar cor");
+
+      for (const m of migration.media) {
+        await fnAddMediaForMigration({ data: {
+          color_id: created.id,
+          media_type: m.media_type as 'image'|'video'|'youtube'|'vimeo',
+          storage_path: m.storage_path,
+          external_url: m.external_url,
+          external_id: m.external_id,
+          thumbnail_url: m.thumbnail_url,
+          alt: m.alt,
+          title: m.title,
+          sort_order: m.sort_order ?? 0,
+          is_cover: !!m.is_cover,
+          is_hover_media: !!m.is_hover_media,
+        } });
+      }
+
+      if (mode === "move") {
+        for (const m of migration.media) {
+          await fnDelMediaForMigration({ data: { id: m.id } });
+        }
+        await fnDelColor({ data: { id: migration.padraoId } });
+        notify.success("Imagens movidas para " + migration.pendingName);
+      } else {
+        notify.success("Imagens duplicadas em " + migration.pendingName);
+      }
+
+      setMigration(null);
+      setNewColor({ name: "", hex: "#000000" });
+      colorsQ.refetch();
+      onChange();
+    } catch (e) {
+      notify.error((e as Error).message || "Falha ao migrar imagens");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   const removeColor = async (id: string) => {
     const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
     if (ok) { colorsQ.refetch(); onChange(); }
@@ -858,6 +944,36 @@ function VariationsBlock({
               </div>
             )}
           </section>
+
+          <AlertDialog open={!!migration} onOpenChange={(o) => { if (!o && !migrating) setMigration(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  As imagens existentes pertencem à cor {migration?.pendingName}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Você cadastrou {migration?.media.length ?? 0} imagem(ns) na cor temporária "Padrão".
+                  Escolha o que fazer ao criar a cor <strong>{migration?.pendingName}</strong>:
+                  <br /><br />
+                  • <strong>Mover</strong>: transfere todas as imagens para {migration?.pendingName} e remove a cor "Padrão".<br />
+                  • <strong>Duplicar</strong>: copia as imagens para {migration?.pendingName} e mantém a cor "Padrão".<br />
+                  • <strong>Cancelar</strong>: não cria a cor agora.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={migrating}>Cancelar</AlertDialogCancel>
+                <Button variant="outline" disabled={migrating} onClick={() => runMigration("duplicate")} className="gap-2">
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Duplicar imagens
+                </Button>
+                <AlertDialogAction disabled={migrating} onClick={(e) => { e.preventDefault(); runMigration("move"); }}>
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Mover imagens
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
 
           <section className="space-y-3 pt-2 border-t">
             <h3 className="font-medium text-sm">
@@ -1246,10 +1362,7 @@ function MatrixRow({
 function OrganizationBlock({
   productId, onChange, onPrev, onNext,
 }: { productId: string; onChange: () => void; onPrev: () => void; onNext: () => void }) {
-  const { storeId } = useActiveStore();
   const fnUpdate = useServerFn(updateProduct);
-  const fnCats = useServerFn(listCategories);
-  const fnCols = useServerFn(listCollections);
 
   const productQ = useQuery({
     queryKey: ["wizard-product", productId],
@@ -1261,28 +1374,7 @@ function OrganizationBlock({
     },
   });
 
-  const cats = useQuery({
-    queryKey: ["wizard-cats", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnCats({ data: { store_id: storeId!, pageSize: 200 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Row[];
-    },
-  });
-  const cols = useQuery({
-    queryKey: ["wizard-cols", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnCols({ data: { store_id: storeId!, pageSize: 200 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Row[];
-    },
-  });
-
   const [form, setForm] = useState({
-    department_id: "",
-    category_id: "",
-    subcategory_id: "",
-    collection_id: "",
     featured: false,
     on_sale: false,
     new_product: false,
@@ -1291,10 +1383,6 @@ function OrganizationBlock({
   useEffect(() => {
     if (productQ.data) {
       setForm({
-        department_id: "",
-        category_id: productQ.data.category_id ?? "",
-        subcategory_id: "",
-        collection_id: "",
         featured: productQ.data.featured,
         on_sale: productQ.data.on_sale,
         new_product: productQ.data.new_product,
@@ -1307,7 +1395,6 @@ function OrganizationBlock({
     setSaving(true);
     const ok = await runAction(
       () => fnUpdate({ data: { id: productId, patch: {
-        category_id: form.category_id || null,
         featured: form.featured,
         on_sale: form.on_sale,
         new_product: form.new_product,
@@ -1321,58 +1408,23 @@ function OrganizationBlock({
   return (
     <BlockCard
       title="Organização"
-      description="Como o produto aparece na navegação e nos destaques da loja."
+      description="Destaques, promoções e tags. Departamento, Categoria, Subcategoria e Coleção são definidos em Dados Básicos."
     >
-      <FormRow>
-        <SelectField
-          label="Departamento"
-          value={form.department_id || "__none__"}
-          onChange={(v) => setForm({ ...form, department_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Selecionar —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Categoria" required
-          value={form.category_id}
-          onChange={(v) => setForm({ ...form, category_id: v })}
-          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-        />
-      </FormRow>
-      <FormRow>
-        <SelectField
-          label="Subcategoria"
-          value={form.subcategory_id || "__none__"}
-          onChange={(v) => setForm({ ...form, subcategory_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Opcional —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Coleção"
-          value={form.collection_id || "__none__"}
-          onChange={(v) => setForm({ ...form, collection_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Nenhuma —" },
-            ...(cols.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-      </FormRow>
-
-      <FormField label="Tags" hint="Cadastre tags na aba de organização avançada (futuro).">
+      <FormField label="Tags" hint="Cadastre tags na aba de organização avançada (em breve).">
         <Input disabled placeholder="—" />
       </FormField>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([
-          ["featured", "Produto em Destaque"],
-          ["on_sale", "Produto em Promoção"],
-          ["new_product", "Produto Novo"],
-        ] as const).map(([k, label]) => (
-          <div key={k} className="flex items-center justify-between rounded-md border p-3">
-            <Label className="text-sm">{label}</Label>
+          ["featured", "Produto em Destaque", "Exibido nas vitrines principais."],
+          ["on_sale", "Produto em Promoção", "Sinaliza preço promocional ativo."],
+          ["new_product", "Produto Novo", "Marca como novidade no catálogo."],
+        ] as const).map(([k, label, desc]) => (
+          <div key={k} className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div className="min-w-0">
+              <Label className="text-sm">{label}</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+            </div>
             <Switch checked={form[k] as boolean} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
           </div>
         ))}
