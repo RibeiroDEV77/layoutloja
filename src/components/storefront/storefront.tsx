@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Search, Heart, User, ShoppingBag, Menu, X, Instagram, Facebook, Youtube,
-  Star, ChevronDown, ChevronLeft, ChevronRight, Truck, MessageCircle, Tag,
-  Mail, ShieldCheck, RotateCcw,
+  Search, Heart, User, ShoppingBag, Menu, X,
+  Star, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
@@ -67,17 +67,16 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
     return m;
   }, [categories]);
 
-  // Itens do navbar — raízes do admin + "Marcas" se houver + atalhos Promoções/Novidades
-  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
+  // Itens do navbar — apenas raízes do admin (+ "Marcas" se houver marcas cadastradas)
+  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" };
   const navItems: NavItem[] = useMemo(() => {
     const items: NavItem[] = roots.map((r) => ({
       key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat",
     }));
     if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
-    items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
-    items.push({ key: "new", label: "Novidades", kind: "link" });
     return items;
   }, [roots, brands.length]);
+
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
@@ -95,19 +94,19 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
       }));
       return {
         tag: root.name,
-        cta: `Ver tudo de ${root.name}`,
+        cta: root.name,
         ctaSlug: root.slug,
-        image: root.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(root.name.length) % FALLBACK_MEGA_IMAGES.length],
+        image: root.image_url ?? null,
         groups,
       };
     }
     if (item.kind === "brands") {
       const cols = chunkColumns(brands, 4);
       return {
-        tag: "Nossas marcas",
-        cta: "Ver todas as marcas",
+        tag: "Marcas",
+        cta: "Marcas",
         ctaSlug: undefined,
-        image: FALLBACK_MEGA_IMAGES[0],
+        image: null,
         groups: cols.map((col, i) => ({
           title: i === 0 ? "Marcas" : "\u00A0",
           slug: undefined,
@@ -115,25 +114,13 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
         })),
       };
     }
+
     return null;
   }, [hover, navItems, roots, childrenOf, brands]);
 
   return (
     <header className="sticky top-0 z-40 bg-white">
-      {/* Barra preta institucional */}
-      <div className="bg-[#111] text-neutral-300">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-9 flex items-center justify-between text-[12px] font-normal">
-          <div className="flex items-center gap-6">
-            <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Frete grátis acima de R$ 299</span>
-            <a href="#" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp</a>
-          </div>
-          <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
-            <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
-            <span className="hidden sm:inline">Promoções da semana</span>
-            <span className="sm:hidden">Promoções</span>
-          </a>
-        </div>
-      </div>
+
 
       {/* Navbar branca */}
       <div
@@ -706,106 +693,8 @@ export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Banner institucional
-// ---------------------------------------------------------------------------
 
-export function InstitutionalBanner() {
-  return (
-    <section className="bg-white">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20">
-        <div className="relative overflow-hidden bg-[#111] text-white">
-          <div className="grid md:grid-cols-2">
-            <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]">
-              <img src={lookCowboy} alt="Indústria Layout" className="absolute inset-0 h-full w-full object-cover opacity-80" />
-            </div>
-            <div className="p-10 md:p-16 flex flex-col justify-center gap-5">
-              <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Indústria Layout</p>
-              <h3 className="text-[32px] md:text-[40px] font-semibold leading-tight">
-                Confecção própria, qualidade que veste gerações.
-              </h3>
-              <p className="text-[15px] text-neutral-300 max-w-md">
-                Há décadas produzindo moda autoral. Cada peça nasce da nossa indústria, com matéria-prima selecionada e acabamento impecável.
-              </p>
-              <div>
-                <a href="#" className="inline-flex bg-white text-[#111] px-7 py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] hover:text-white transition-colors">
-                  Conheça nossa história
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Newsletter
-// ---------------------------------------------------------------------------
-
-export function NewsletterSection() {
-  return (
-    <section className="bg-[#F8F8F8]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20 grid gap-10 md:grid-cols-2 md:items-center">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Newsletter</p>
-          <h3 className="mt-3 text-[32px] md:text-[40px] font-semibold leading-tight text-[#111]">
-            Receba novidades e ofertas em primeira mão.
-          </h3>
-          <p className="mt-3 text-[15px] text-[#666] max-w-md">
-            Cadastre-se e ganhe <span className="text-[var(--brand-red)] font-semibold">10% off</span> na primeira compra.
-          </p>
-        </div>
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
-          <div className="relative flex-1">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" strokeWidth={1.5}/>
-            <input
-              type="email"
-              required
-              placeholder="Seu melhor e-mail"
-              className="w-full bg-white border border-[#EFEFEF] pl-11 pr-4 h-14 text-[15px] text-[#111] placeholder:text-[#666] focus:border-[#111] outline-none transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            className="h-14 px-8 bg-[#111] text-white text-[13px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors"
-          >
-            Cadastrar
-          </button>
-        </form>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Trust strip (acima do footer)
-// ---------------------------------------------------------------------------
-
-export function TrustStrip() {
-  const items = [
-    { icon: Truck, title: "Frete grátis", text: "Em compras acima de R$ 299" },
-    { icon: RotateCcw, title: "Troca fácil", text: "Em até 30 dias" },
-    { icon: ShieldCheck, title: "Compra segura", text: "Site protegido SSL" },
-    { icon: MessageCircle, title: "Atendimento", text: "Seg a sáb, 9h às 19h" },
-  ];
-  return (
-    <section className="bg-white border-t border-[#EFEFEF]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {items.map((i) => (
-          <div key={i.title} className="flex items-start gap-3">
-            <i.icon className="h-7 w-7 text-[#111] shrink-0" strokeWidth={1.25}/>
-            <div>
-              <p className="text-[14px] font-semibold text-[#111]">{i.title}</p>
-              <p className="text-[13px] text-[#666] mt-0.5">{i.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Breadcrumb / Filters / Toolbar (categoria)
@@ -989,68 +878,36 @@ export function StorefrontFooter({
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
-          <p className="mt-5 text-[14px] text-[#666] leading-relaxed max-w-xs">
-            Indústria do vestuário com tradição em moda autoral, qualidade e atenção aos detalhes.
-          </p>
-          <div className="mt-5 flex gap-3">
-            <a href="#" aria-label="Instagram" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Instagram className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="Facebook" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Facebook className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="YouTube" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Youtube className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-          </div>
         </div>
 
-        <div className="md:col-span-2">
-          <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-            {roots.length === 0 ? (
-              <li className="text-[#999]">—</li>
-            ) : roots.map((c) => (
-              <li key={c.id}>
-                <Link
-                  to="/categoria/$slug"
-                  params={{ slug: c.slug }}
-                  className="hover:text-[var(--brand-red)] transition-colors"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <FooterCol className="md:col-span-2" title="Ajuda" items={["Central de ajuda", "Trocas e devoluções", "Entregas", "Formas de pagamento", "Fale conosco"]} />
-        <FooterCol className="md:col-span-2" title="Minha Conta" items={["Acessar", "Meus pedidos", "Endereços", "Favoritos", "Cadastro"]} />
-        <FooterCol className="md:col-span-3" title="Políticas" items={["Política de privacidade", "Termos de uso", "Política de cookies", "Trocas e devoluções"]} />
+        {roots.length > 0 && (
+          <div className="md:col-span-4">
+            <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
+            <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
+              {roots.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    to="/categoria/$slug"
+                    params={{ slug: c.slug }}
+                    className="hover:text-[var(--brand-red)] transition-colors"
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-[12px] text-[#666]">
-          <span>© {new Date().getFullYear()} {storeName} — Indústria do Vestuário Ltda. Todos os direitos reservados.</span>
-          <span>CNPJ 00.000.000/0001-00 · Atendimento (00) 0000-0000</span>
+        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
+          © {new Date().getFullYear()} {storeName}
         </div>
       </div>
     </footer>
   );
 }
 
-function FooterCol({ title, items, className }: { title: string; items: string[]; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">{title}</p>
-      <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-        {items.map((i) => (
-          <li key={i}>
-            <a href="#" className="hover:text-[var(--brand-red)] transition-colors">{i}</a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
