@@ -49,6 +49,8 @@ export interface CreateInput {
   is_required?: boolean;
   is_variant_axis?: boolean;
   sort_order?: number;
+  show_in_filters?: boolean;
+  filter_order?: number;
 }
 
 export async function create(supabase: SbClient, userId: string, input: CreateInput) {
