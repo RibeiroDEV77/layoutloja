@@ -13,7 +13,7 @@ export interface PostalLookup {
   state: string;
   country: string;              // 'BR'
   ibge?: string | null;
-  raw?: Record<string, unknown>;
+
 }
 
 function digits(s: string) { return (s ?? '').replace(/\D/g, ''); }
