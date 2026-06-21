@@ -532,13 +532,29 @@ export function SectionHeader({
 // Carrossel horizontal
 // ---------------------------------------------------------------------------
 
+function ProductCardSkeleton() {
+  return (
+    <div className="block animate-pulse">
+      <div className="block relative overflow-hidden bg-[#F4F4F4] aspect-[3/4]" />
+      <div className="mt-4 space-y-2">
+        <div className="h-3 w-1/3 bg-[#F0F0F0]" />
+        <div className="h-4 w-4/5 bg-[#F0F0F0]" />
+        <div className="h-4 w-1/2 bg-[#F0F0F0]" />
+        <div className="h-5 w-1/3 bg-[#EFEFEF] mt-2" />
+      </div>
+    </div>
+  );
+}
+
 export function ProductCarousel({ products }: { products: StorefrontProduct[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const scroll = (dir: 1 | -1) => {
     const el = ref.current; if (!el) return;
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 900), behavior: "smooth" });
   };
-  if (products.length === 0) return null;
+  const items: Array<StorefrontProduct | null> = products.length > 0
+    ? products
+    : Array.from({ length: 6 }, () => null);
   return (
     <div className="relative">
       <button
@@ -557,9 +573,9 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
         ref={ref}
         className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
-        {products.map((p) => (
-          <div key={p.id} className="snap-start shrink-0 w-[68%] sm:w-[44%] md:w-[31%] lg:w-[23%]">
-            <ProductCard p={p} />
+        {items.map((p, i) => (
+          <div key={p?.id ?? `sk-${i}`} className="snap-start shrink-0 w-[68%] sm:w-[44%] md:w-[31%] lg:w-[23%]">
+            {p ? <ProductCard p={p} /> : <ProductCardSkeleton />}
           </div>
         ))}
       </div>
@@ -573,7 +589,15 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
 
 export function CategoryGrid({ categories }: { categories: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id);
-  if (roots.length === 0) return null;
+  if (roots.length === 0) {
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="relative overflow-hidden bg-[#F4F4F4] aspect-[4/5] animate-pulse" />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {roots.map((c) => (
@@ -717,10 +741,12 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
 }
 
 export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
-  if (products.length === 0) return null;
+  const items: Array<StorefrontProduct | null> = products.length > 0
+    ? products
+    : Array.from({ length: 8 }, () => null);
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-7 md:gap-y-12">
-      {products.map((p) => <ProductCard key={p.id} p={p} />)}
+      {items.map((p, i) => p ? <ProductCard key={p.id} p={p} /> : <ProductCardSkeleton key={`sk-${i}`} />)}
     </div>
   );
 }
