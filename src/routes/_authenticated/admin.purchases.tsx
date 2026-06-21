@@ -126,10 +126,10 @@ function PurchasesListPage() {
       {query.data?.ok && query.data.data.rows.length > 0 && (
         <>
           <DataTable<PORow>
-            data={query.data.data.rows as PORow[]}
+            rows={query.data.data.rows as PORow[]}
             columns={columns}
-            getRowId={(r) => r.id}
-            onRowClick={(r) => navigate({ to: "/admin/purchases/$poId", params: { poId: r.id } })}
+            rowKey={(r) => r.id}
+            onRowClick={(r: PORow) => navigate({ to: "/admin/purchases/$poId", params: { poId: r.id } })}
           />
           <CrudPagination
             page={page}
