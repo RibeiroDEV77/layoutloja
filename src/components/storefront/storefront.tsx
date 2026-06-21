@@ -560,7 +560,7 @@ const CATEGORY_FALLBACK_IMAGES = [lookSocial, lookFeminino, lookCowboy, lookSoci
 export function CategoryGrid({ categories }: { categories: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id);
   const list = (roots.length > 0 ? roots : []).slice(0, 6);
-  if (list.length === 0) return <EmptyState message="Categorias em breve." />;
+  if (list.length === 0) return null;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {list.map((c, i) => (
