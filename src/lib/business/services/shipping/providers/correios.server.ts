@@ -188,6 +188,9 @@ export const correiosAdapter: ShippingAdapter = {
     }
   },
 
+  async calculateQuote(ctx, req): Promise<AdapterQuoteOption[]> {
+    return this.quote!(ctx, req);
+  },
   async quote(ctx, req): Promise<AdapterQuoteOption[]> {
     assertCredentials(ctx);
     const services = resolveServices(ctx, req);

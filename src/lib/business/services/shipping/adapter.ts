@@ -139,8 +139,10 @@ export interface ShippingAdapter {
   /** Smoke test: verifica conectividade/credenciais sem efeitos colaterais. */
   testConnection(ctx: AdapterContext): Promise<AdapterTestResult>;
 
-  /** Opcional: cotação online. Lança se não suportado. */
+  /** Cotação online. Lança se não suportado. Nome canônico: `calculateQuote`. */
   quote?(ctx: AdapterContext, req: AdapterQuoteRequest): Promise<AdapterQuoteOption[]>;
+  /** Alias canônico usado pelo ShippingProviderRegistry. */
+  calculateQuote?(ctx: AdapterContext, req: AdapterQuoteRequest): Promise<AdapterQuoteOption[]>;
 
   /** Opcional: emissão de etiqueta. */
   createLabel?(ctx: AdapterContext, req: AdapterLabelRequest): Promise<AdapterLabelResult>;
