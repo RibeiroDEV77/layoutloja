@@ -365,3 +365,93 @@ async function applyWebhookEvent(
     _message: ev.event_type,
   });
 }
+
+// ============================== Reads (Admin) ===========================
+import { requireStoreAccess } from './permissions.server';
+
+export interface InvoiceListFilters {
+  store_id: string;
+  q?: string;
+  status?: string[];
+  document_type?: string[];
+  environment?: 'sandbox' | 'production';
+  provider_id?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listInvoices(supabase: SbClient, userId: string, f: InvoiceListFilters) {
+  if (!f.store_id) throw new Error('store_id obrigatório');
+  await requireStoreAccess(supabase, userId, f.store_id);
+  const page = Math.max(1, f.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 25));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let q = (supabase as any)
+    .from('fiscal_invoices')
+    .select('*, fiscal_providers(display_name, adapter, environment)', { count: 'exact' })
+    .eq('store_id', f.store_id)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (f.q) q = q.or(`number.ilike.%${f.q}%,access_key.ilike.%${f.q}%,external_id.ilike.%${f.q}%`);
+  if (f.status?.length) q = q.in('status', f.status);
+  if (f.document_type?.length) q = q.in('document_type', f.document_type);
+  if (f.provider_id) q = q.eq('provider_id', f.provider_id);
+
+  const { data, error, count } = await q;
+  if (error) throw new Error(error.message);
+
+  let rows = (data ?? []) as any[];
+  if (f.environment) rows = rows.filter((r) => r.fiscal_providers?.environment === f.environment);
+
+  return {
+    rows: rows.map((r) => ({
+      ...r,
+      provider_name: r.fiscal_providers?.display_name ?? null,
+      provider_adapter: r.fiscal_providers?.adapter ?? null,
+      provider_environment: r.fiscal_providers?.environment ?? null,
+    })),
+    total: count ?? rows.length,
+    page,
+    pageSize,
+  };
+}
+
+export async function getInvoice(supabase: SbClient, userId: string, id: string) {
+  const { data: inv, error } = await (supabase as any)
+    .from('fiscal_invoices')
+    .select('*, fiscal_providers(display_name, adapter, environment)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!inv) throw new Error('Nota fiscal não encontrada');
+  await requireStoreAccess(supabase, userId, inv.store_id);
+  return inv;
+}
+
+export async function getInvoiceTimeline(supabase: SbClient, userId: string, id: string) {
+  const inv = await getInvoice(supabase, userId, id);
+  const { data, error } = await (supabase as any)
+    .from('fiscal_invoice_events')
+    .select('id, event_type, status, message, payload, created_at')
+    .eq('invoice_id', inv.id)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getInvoiceAudit(supabase: SbClient, userId: string, id: string) {
+  const inv = await getInvoice(supabase, userId, id);
+  const { data, error } = await supabase
+    .from('audit_log')
+    .select('id, actor_user_id, action, diff, created_at')
+    .eq('entity_type', 'fiscal_invoice')
+    .eq('entity_id', inv.id)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
