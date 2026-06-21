@@ -486,18 +486,27 @@ export function SectionHeader({
   align?: "left" | "center";
 }) {
   return (
-    <div className="mb-12 md:mb-16 flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-10">
-      <div className="max-w-3xl">
+    <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between md:gap-10">
+      <div className="max-w-3xl text-left">
         {eyebrow && (
-          <p className="text-[12px] md:text-[13px] font-medium uppercase tracking-[0.28em] text-[var(--brand-red)]">
+          <p
+            className="text-[12px] md:text-[13px] lg:text-[14px] uppercase tracking-[0.24em] text-[var(--brand-red)]"
+            style={{ fontFamily: "Inter, sans-serif", fontWeight: 500 }}
+          >
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-3 text-[44px] md:text-[56px] lg:text-[60px] leading-[1.02] font-bold tracking-tight text-[#111111]">
+        <h2
+          className="text-[34px] md:text-[42px] lg:text-[52px] leading-[1.05] tracking-tight text-[#111111]"
+          style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, marginTop: 12 }}
+        >
           {title}
         </h2>
         {description && (
-          <p className="mt-4 text-[18px] md:text-[20px] font-normal leading-relaxed text-[#6B6B6B]">
+          <p
+            className="text-[16px] md:text-[18px] lg:text-[20px] leading-[1.5] text-[#6B6B6B] line-clamp-2"
+            style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, marginTop: 18 }}
+          >
             {description}
           </p>
         )}
@@ -505,14 +514,16 @@ export function SectionHeader({
       {action && (
         <a
           href={action.href ?? "#"}
-          className="self-start md:self-end shrink-0 inline-flex items-center gap-2 text-[12px] md:text-[13px] font-semibold uppercase tracking-[0.22em] text-[#111111] border-b border-[#111111] pb-1.5 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors duration-200"
+          className="self-start md:self-end shrink-0 inline-flex items-center gap-2 text-[12px] md:text-[13px] uppercase tracking-[0.22em] text-[#111111] border-b border-[#111111] pb-1.5 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors duration-200"
+          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
         >
-          {action.label} →
+          {action.label.toUpperCase()} →
         </a>
       )}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Carrossel horizontal

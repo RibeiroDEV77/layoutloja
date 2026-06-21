@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontFooter,
-  Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid,
+  Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid, SectionHeader,
   type FilterGroup,
 } from "@/components/storefront/storefront";
 import {
@@ -220,11 +220,13 @@ function CategoryPage() {
             ]}
           />
 
-          <header className="mt-8 mb-6 max-w-3xl">
-            <h1 className="font-storefront-display text-4xl md:text-5xl font-light tracking-tight text-neutral-900">
-              {category.name}
-            </h1>
-          </header>
+          <div className="mt-8">
+            <SectionHeader
+              eyebrow={(parents[0]?.name ?? "Categoria").toUpperCase()}
+              title={category.name}
+              description={category.seo_description ?? undefined}
+            />
+          </div>
 
           {subcategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-8">
