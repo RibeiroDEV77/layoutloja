@@ -19,6 +19,7 @@ import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin.products'
 import { Route as AuthenticatedAdminPriceListsRouteImport } from './routes/_authenticated/admin.price-lists'
 import { Route as AuthenticatedAdminDamRouteImport } from './routes/_authenticated/admin.dam'
+import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
 import { Route as AuthenticatedAdminCustomerGroupsRouteImport } from './routes/_authenticated/admin.customer-groups'
 import { Route as AuthenticatedAdminCollectionsRouteImport } from './routes/_authenticated/admin.collections'
 import { Route as AuthenticatedAdminCategoryAttributesRouteImport } from './routes/_authenticated/admin.category-attributes'
@@ -80,6 +81,12 @@ const AuthenticatedAdminDamRoute = AuthenticatedAdminDamRouteImport.update({
   path: '/dam',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminCustomersRoute =
+  AuthenticatedAdminCustomersRouteImport.update({
+    id: '/customers',
+    path: '/customers',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCustomerGroupsRoute =
   AuthenticatedAdminCustomerGroupsRouteImport.update({
     id: '/customer-groups',
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
+  '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/dam': typeof AuthenticatedAdminDamRoute
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
@@ -159,6 +167,7 @@ export interface FileRoutesByTo {
   '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
+  '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/dam': typeof AuthenticatedAdminDamRoute
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
@@ -180,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/_authenticated/admin/collections': typeof AuthenticatedAdminCollectionsRoute
   '/_authenticated/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
+  '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/dam': typeof AuthenticatedAdminDamRoute
   '/_authenticated/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin/category-attributes'
     | '/admin/collections'
     | '/admin/customer-groups'
+    | '/admin/customers'
     | '/admin/dam'
     | '/admin/price-lists'
     | '/admin/products'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/admin/category-attributes'
     | '/admin/collections'
     | '/admin/customer-groups'
+    | '/admin/customers'
     | '/admin/dam'
     | '/admin/price-lists'
     | '/admin/products'
@@ -239,6 +251,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/category-attributes'
     | '/_authenticated/admin/collections'
     | '/_authenticated/admin/customer-groups'
+    | '/_authenticated/admin/customers'
     | '/_authenticated/admin/dam'
     | '/_authenticated/admin/price-lists'
     | '/_authenticated/admin/products'
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDamRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/customers': {
+      id: '/_authenticated/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AuthenticatedAdminCustomersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/customer-groups': {
       id: '/_authenticated/admin/customer-groups'
       path: '/customer-groups'
@@ -408,6 +428,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCategoryAttributesRoute: typeof AuthenticatedAdminCategoryAttributesRoute
   AuthenticatedAdminCollectionsRoute: typeof AuthenticatedAdminCollectionsRoute
   AuthenticatedAdminCustomerGroupsRoute: typeof AuthenticatedAdminCustomerGroupsRoute
+  AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminDamRoute: typeof AuthenticatedAdminDamRoute
   AuthenticatedAdminPriceListsRoute: typeof AuthenticatedAdminPriceListsRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
@@ -425,6 +446,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminCategoryAttributesRoute,
   AuthenticatedAdminCollectionsRoute: AuthenticatedAdminCollectionsRoute,
   AuthenticatedAdminCustomerGroupsRoute: AuthenticatedAdminCustomerGroupsRoute,
+  AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminDamRoute: AuthenticatedAdminDamRoute,
   AuthenticatedAdminPriceListsRoute: AuthenticatedAdminPriceListsRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRouteWithChildren,
