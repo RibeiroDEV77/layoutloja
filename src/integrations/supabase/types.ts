@@ -887,6 +887,13 @@ export type Database = {
             foreignKeyName: "carts_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "carts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1200,6 +1207,13 @@ export type Database = {
             foreignKeyName: "coupon_ledger_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "coupon_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1257,6 +1271,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "coupons"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
           },
           {
             foreignKeyName: "coupon_redemptions_customer_id_fkey"
@@ -1451,6 +1472,13 @@ export type Database = {
             foreignKeyName: "customer_addresses_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1491,6 +1519,13 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_consents_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_consents_log_customer_id_fkey"
             columns: ["customer_id"]
@@ -1542,6 +1577,13 @@ export type Database = {
             foreignKeyName: "customer_contacts_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1585,6 +1627,13 @@ export type Database = {
           reference_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_credit_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_credit_ledger_customer_id_fkey"
             columns: ["customer_id"]
@@ -1672,6 +1721,13 @@ export type Database = {
             foreignKeyName: "customer_groups_map_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_groups_map_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1706,6 +1762,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_notes_customer_id_fkey"
             columns: ["customer_id"]
@@ -1750,6 +1813,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_notification_preferences_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_notification_preferences_customer_id_fkey"
             columns: ["customer_id"]
@@ -1814,6 +1884,13 @@ export type Database = {
             foreignKeyName: "customer_portal_sessions_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_portal_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1856,6 +1933,13 @@ export type Database = {
             foreignKeyName: "customer_score_factors_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_score_factors_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1878,6 +1962,13 @@ export type Database = {
           tag_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_tag_map_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_tag_map_customer_id_fkey"
             columns: ["customer_id"]
@@ -1967,6 +2058,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_tax_profiles_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "customer_tax_profiles_customer_id_fkey"
             columns: ["customer_id"]
@@ -2158,6 +2256,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_attempts_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_tracking_v"
+            referencedColumns: ["shipment_id"]
           },
           {
             foreignKeyName: "delivery_attempts_shipment_id_fkey"
@@ -2875,6 +2980,13 @@ export type Database = {
             foreignKeyName: "fulfillments_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "fulfillments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -3474,6 +3586,13 @@ export type Database = {
             foreignKeyName: "notification_deliveries_notification_id_fkey"
             columns: ["notification_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_notifications_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
             referencedRelation: "notifications"
             referencedColumns: ["id"]
           },
@@ -3716,6 +3835,13 @@ export type Database = {
             foreignKeyName: "notifications_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -3804,6 +3930,13 @@ export type Database = {
             foreignKeyName: "order_addresses_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_addresses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -3844,6 +3977,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_assignments_order_id_fkey"
             columns: ["order_id"]
@@ -3895,6 +4035,13 @@ export type Database = {
             foreignKeyName: "order_audit_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_audit_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -3939,6 +4086,13 @@ export type Database = {
             foreignKeyName: "order_coupon_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_coupon_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -3973,6 +4127,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_customer_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_customer_snapshots_order_id_fkey"
             columns: ["order_id"]
@@ -4035,6 +4196,13 @@ export type Database = {
           warehouse_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_fulfillments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_fulfillments_order_id_fkey"
             columns: ["order_id"]
@@ -4104,6 +4272,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_holds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_holds_order_id_fkey"
             columns: ["order_id"]
@@ -4186,6 +4361,13 @@ export type Database = {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4253,6 +4435,13 @@ export type Database = {
             foreignKeyName: "order_ledger_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4293,6 +4482,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_locks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_locks_order_id_fkey"
             columns: ["order_id"]
@@ -4344,6 +4540,13 @@ export type Database = {
             foreignKeyName: "order_notes_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4384,6 +4587,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_payment_allocations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_payment_allocations_order_id_fkey"
             columns: ["order_id"]
@@ -4473,6 +4683,13 @@ export type Database = {
             foreignKeyName: "order_payments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4507,6 +4724,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_pricing_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_pricing_snapshots_order_id_fkey"
             columns: ["order_id"]
@@ -4557,6 +4781,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_return_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_return_items_order_id_fkey"
             columns: ["order_id"]
@@ -4643,6 +4874,13 @@ export type Database = {
             foreignKeyName: "order_returns_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4721,6 +4959,13 @@ export type Database = {
             foreignKeyName: "order_shipments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4768,6 +5013,13 @@ export type Database = {
             foreignKeyName: "order_shipping_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipping_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4805,6 +5057,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_split_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_split_items_order_id_fkey"
             columns: ["order_id"]
@@ -4885,6 +5144,13 @@ export type Database = {
             foreignKeyName: "order_splits_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_splits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4930,6 +5196,13 @@ export type Database = {
           tag_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_tag_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_tag_assignments_order_id_fkey"
             columns: ["order_id"]
@@ -4982,6 +5255,13 @@ export type Database = {
             foreignKeyName: "order_tax_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tax_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5026,6 +5306,13 @@ export type Database = {
             foreignKeyName: "order_timeline_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_timeline_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5059,6 +5346,13 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "workflow_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_workflow_instances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
             referencedColumns: ["id"]
           },
           {
@@ -5175,6 +5469,13 @@ export type Database = {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -5250,6 +5551,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_search_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_search_order_id_fkey"
             columns: ["order_id"]
@@ -6943,6 +7251,13 @@ export type Database = {
             foreignKeyName: "payments_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -7527,6 +7842,13 @@ export type Database = {
             foreignKeyName: "product_review_helpful_votes_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "product_review_helpful_votes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -7663,7 +7985,21 @@ export type Database = {
             foreignKeyName: "product_reviews_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "product_reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
             referencedColumns: ["id"]
           },
           {
@@ -7936,6 +8272,108 @@ export type Database = {
         }
         Relationships: []
       }
+      public_tracking_access_log: {
+        Row: {
+          accessed_at: string
+          id: string
+          ip_hash: string | null
+          result: string
+          shipment_id: string | null
+          store_id: string | null
+          token_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          id?: string
+          ip_hash?: string | null
+          result: string
+          shipment_id?: string | null
+          store_id?: string | null
+          token_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          id?: string
+          ip_hash?: string | null
+          result?: string
+          shipment_id?: string | null
+          store_id?: string | null
+          token_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_tracking_access_log_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "public_tracking_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_tracking_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          hits: number
+          id: string
+          max_hits: number
+          revoked_at: string | null
+          shipment_id: string
+          store_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          hits?: number
+          id?: string
+          max_hits?: number
+          revoked_at?: string | null
+          shipment_id: string
+          store_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          hits?: number
+          id?: string
+          max_hits?: number
+          revoked_at?: string | null
+          shipment_id?: string
+          store_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_tracking_tokens_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_tracking_v"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "public_tracking_tokens_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_tracking_tokens_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           created_at: string
@@ -8196,6 +8634,13 @@ export type Database = {
             foreignKeyName: "shipment_packages_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_tracking_v"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_packages_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
             referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
@@ -8390,6 +8835,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_labels_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_tracking_v"
+            referencedColumns: ["shipment_id"]
           },
           {
             foreignKeyName: "shipping_labels_shipment_id_fkey"
@@ -9448,6 +9900,13 @@ export type Database = {
             foreignKeyName: "support_ticket_assignments_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_support_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_assignments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
@@ -9530,7 +9989,21 @@ export type Database = {
             foreignKeyName: "support_ticket_events_actor_customer_id_fkey"
             columns: ["actor_customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "support_ticket_events_actor_customer_id_fkey"
+            columns: ["actor_customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_support_v"
             referencedColumns: ["id"]
           },
           {
@@ -9638,7 +10111,21 @@ export type Database = {
             foreignKeyName: "support_ticket_messages_author_customer_id_fkey"
             columns: ["author_customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_author_customer_id_fkey"
+            columns: ["author_customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_support_v"
             referencedColumns: ["id"]
           },
           {
@@ -9667,6 +10154,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "support_ticket_watchers_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_support_v"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "support_ticket_watchers_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -9788,7 +10282,21 @@ export type Database = {
             foreignKeyName: "support_tickets_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
             referencedColumns: ["id"]
           },
           {
@@ -10043,6 +10551,13 @@ export type Database = {
           trace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_tracking_v"
+            referencedColumns: ["shipment_id"]
+          },
           {
             foreignKeyName: "tracking_events_shipment_id_fkey"
             columns: ["shipment_id"]
@@ -10327,6 +10842,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wishlists_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "wishlists_customer_id_fkey"
             columns: ["customer_id"]
@@ -10653,6 +11175,284 @@ export type Database = {
       }
     }
     Views: {
+      customer_dashboard_daily_v: {
+        Row: {
+          active_customers: number | null
+          day: string | null
+          open_tickets: number | null
+          orders_24h: number | null
+          store_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_dashboard_v: {
+        Row: {
+          customer_id: string | null
+          open_tickets: number | null
+          store_id: string | null
+          total_orders: number | null
+          unread_notifications: number | null
+        }
+        Insert: {
+          customer_id?: string | null
+          open_tickets?: never
+          store_id?: string | null
+          total_orders?: never
+          unread_notifications?: never
+        }
+        Update: {
+          customer_id?: string | null
+          open_tickets?: never
+          store_id?: string | null
+          total_orders?: never
+          unread_notifications?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_notifications_v: {
+        Row: {
+          channels: Database["public"]["Enums"]["notification_channel"][] | null
+          created_at: string | null
+          customer_id: string | null
+          id: string | null
+          payload: Json | null
+          read_at: string | null
+          status: Database["public"]["Enums"]["notification_status"] | null
+          store_id: string | null
+          template_code: string | null
+        }
+        Insert: {
+          channels?:
+            | Database["public"]["Enums"]["notification_channel"][]
+            | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string | null
+          payload?: Json | null
+          read_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          store_id?: string | null
+          template_code?: string | null
+        }
+        Update: {
+          channels?:
+            | Database["public"]["Enums"]["notification_channel"][]
+            | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string | null
+          payload?: Json | null
+          read_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          store_id?: string | null
+          template_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_orders_v: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          customer_id: string | null
+          id: string | null
+          order_number: string | null
+          placed_at: string | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          store_id: string | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          id?: string | null
+          order_number?: string | null
+          placed_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          store_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          id?: string | null
+          order_number?: string | null
+          placed_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          store_id?: string | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_support_v: {
+        Row: {
+          created_at: string | null
+          customer_id: string | null
+          id: string | null
+          priority:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          sla_state: Database["public"]["Enums"]["support_sla_state"] | null
+          status: Database["public"]["Enums"]["support_ticket_status"] | null
+          store_id: string | null
+          subject: string | null
+          ticket_number: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string | null
+          priority?:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          sla_state?: Database["public"]["Enums"]["support_sla_state"] | null
+          status?: Database["public"]["Enums"]["support_ticket_status"] | null
+          store_id?: string | null
+          subject?: string | null
+          ticket_number?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string | null
+          priority?:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          sla_state?: Database["public"]["Enums"]["support_sla_state"] | null
+          status?: Database["public"]["Enums"]["support_ticket_status"] | null
+          store_id?: string | null
+          subject?: string | null
+          ticket_number?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_tracking_v: {
+        Row: {
+          created_at: string | null
+          shipment_id: string | null
+          status: Database["public"]["Enums"]["shipment_status"] | null
+          store_id: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          shipment_id?: string | null
+          status?: Database["public"]["Enums"]["shipment_status"] | null
+          store_id?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          shipment_id?: string | null
+          status?: Database["public"]["Enums"]["shipment_status"] | null
+          store_id?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_timeline_view: {
         Row: {
           actor_user_id: string | null
@@ -10664,6 +11464,24 @@ export type Database = {
           source: string | null
         }
         Relationships: []
+      }
+      mv_customer_dashboard_daily: {
+        Row: {
+          active_customers: number | null
+          day: string | null
+          open_tickets: number | null
+          orders_24h: number | null
+          store_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mv_orders_daily: {
         Row: {
@@ -10685,6 +11503,25 @@ export type Database = {
           },
         ]
       }
+      mv_support_metrics_daily: {
+        Row: {
+          day: string | null
+          sla_at_risk: number | null
+          sla_breached: number | null
+          store_id: string | null
+          tickets_created: number | null
+          tickets_resolved: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders_daily_v: {
         Row: {
           day: string | null
@@ -10698,6 +11535,25 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_metrics_daily_v: {
+        Row: {
+          day: string | null
+          sla_at_risk: number | null
+          sla_breached: number | null
+          store_id: string | null
+          tickets_created: number | null
+          tickets_resolved: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -10845,7 +11701,9 @@ export type Database = {
         Returns: Json
       }
       current_user_context: { Args: never; Returns: Json }
+      customer_dashboard_refresh: { Args: never; Returns: undefined }
       customer_store_id: { Args: { _customer_id: string }; Returns: string }
+      customer_timeline_refresh: { Args: never; Returns: undefined }
       delivery_attempt_register: {
         Args: {
           p_notes?: string
@@ -10964,6 +11822,10 @@ export type Database = {
       }
       notification_consume_outbox_event: {
         Args: { p_event_id: string }
+        Returns: number
+      }
+      notification_dispatch_worker: {
+        Args: { p_batch?: number }
         Returns: number
       }
       notification_enqueue: {
@@ -11569,7 +12431,16 @@ export type Database = {
       }
       pick_list_start: { Args: { p_pick_list_id: string }; Returns: undefined }
       po_store_id: { Args: { _po_id: string }; Returns: string }
+      portal_cache_invalidate: {
+        Args: { p_store_id?: string }
+        Returns: undefined
+      }
+      portal_refresh_metrics: { Args: never; Returns: undefined }
       product_store_id: { Args: { _product_id: string }; Returns: string }
+      public_tracking_resolve: {
+        Args: { p_ip_hash?: string; p_token: string; p_user_agent?: string }
+        Returns: Json
+      }
       purge_expired_idempotency_keys: { Args: never; Returns: number }
       recompute_customer_score: {
         Args: { _customer_id: string }
@@ -11665,6 +12536,8 @@ export type Database = {
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
       support_recompute_sla_states: { Args: never; Returns: number }
+      support_sla_breach_worker: { Args: never; Returns: number }
+      support_sla_warning_worker: { Args: never; Returns: number }
       support_ticket_add_message: {
         Args: {
           p_author_type?: Database["public"]["Enums"]["support_message_author_type"]
