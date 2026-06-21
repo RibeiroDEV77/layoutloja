@@ -230,6 +230,6 @@ export async function recomputeScore(supabase: SbClient, userId: string, custome
   const c = await assertWrite(supabase, userId, customer_id);
   const { data, error } = await supabase.rpc('recompute_customer_score', { _customer_id: customer_id });
   if (error) throw Errors.internal('Falha ao recalcular score', { error: error.message });
-  await recordMetric('customers', 'customer.score.recomputed', 1, 'count', {}, c.store_id);
+  await recordMetric(supabase, { scope: 'customers', name: 'score_recomputed', value: 1, storeId: c.store_id });
   return { score: data as number };
 }
