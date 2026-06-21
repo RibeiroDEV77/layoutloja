@@ -26,103 +26,95 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Navbar — barra preta + navbar branca + mega menu (sem logo)
+// Navbar — barra preta + navbar branca + mega menu data-driven
 // ---------------------------------------------------------------------------
 
-type MegaGroup = { title: string; items: string[] };
-type MegaConfig = { groups: MegaGroup[]; image: string; tag: string; cta: string };
+const FALLBACK_MEGA_IMAGES = [lookSocial, lookFeminino, lookCowboy];
 
-const MEGA_MENU: Record<string, MegaConfig> = {
-  Masculino: {
-    tag: "Coleção Masculina", cta: "Ver tudo de masculino", image: lookSocial,
-    groups: [
-      { title: "Roupas", items: ["Camisas", "Camisetas", "Polos", "Calças", "Bermudas", "Jaquetas", "Blazers"] },
-      { title: "Calçados", items: ["Sapatos", "Tênis", "Botas", "Mocassins"] },
-      { title: "Acessórios", items: ["Cintos", "Carteiras", "Bonés", "Relógios"] },
-      { title: "Destaques", items: ["Novidades", "Mais vendidos", "Promoções", "Coleção atual"] },
-    ],
-  },
-  Feminino: {
-    tag: "Coleção Feminina", cta: "Ver tudo de feminino", image: lookFeminino,
-    groups: [
-      { title: "Roupas", items: ["Blusas", "Vestidos", "Saias", "Calças", "Conjuntos", "Casacos"] },
-      { title: "Calçados", items: ["Sandálias", "Tênis", "Botas", "Scarpins"] },
-      { title: "Acessórios", items: ["Bolsas", "Bijuterias", "Lenços", "Chapéus"] },
-      { title: "Destaques", items: ["Novidades", "Mais vendidas", "Promoções", "Edição limitada"] },
-    ],
-  },
-  Country: {
-    tag: "Country", cta: "Ver tudo de country", image: lookCowboy,
-    groups: [
-      { title: "Roupas", items: ["Camisas country", "Calças jeans", "Coletes", "Jaquetas"] },
-      { title: "Calçados", items: ["Botas country", "Botinas", "Coturnos"] },
-      { title: "Acessórios", items: ["Chapéus", "Cintos", "Fivelas", "Bandanas"] },
-      { title: "Destaques", items: ["Rodeio", "Cavalgada", "Promoções", "Lançamentos"] },
-    ],
-  },
-  "Sport Fino": {
-    tag: "Sport Fino", cta: "Ver tudo de sport fino", image: lookSocial,
-    groups: [
-      { title: "Roupas", items: ["Camisas slim", "Polos", "Calças chino", "Blazers"] },
-      { title: "Calçados", items: ["Sapatos casuais", "Mocassins", "Tênis premium"] },
-      { title: "Acessórios", items: ["Cintos", "Carteiras", "Óculos"] },
-      { title: "Destaques", items: ["Looks prontos", "Lançamentos", "Coleção atual"] },
-    ],
-  },
-  Social: {
-    tag: "Social", cta: "Ver tudo de social", image: lookSocial,
-    groups: [
-      { title: "Roupas", items: ["Ternos", "Camisas sociais", "Calças sociais", "Coletes", "Gravatas"] },
-      { title: "Calçados", items: ["Sapatos sociais", "Oxfords", "Loafers"] },
-      { title: "Acessórios", items: ["Abotoaduras", "Cintos sociais", "Lenços de bolso"] },
-      { title: "Ocasiões", items: ["Casamento", "Trabalho", "Eventos"] },
-    ],
-  },
-  Botas: {
-    tag: "Botas", cta: "Ver todas as botas", image: lookCowboy,
-    groups: [
-      { title: "Por estilo", items: ["Country", "Texanas", "Cano longo", "Cano curto", "Coturnos"] },
-      { title: "Por gênero", items: ["Masculinas", "Femininas", "Infantis"] },
-      { title: "Materiais", items: ["Couro legítimo", "Camurça", "Nobuck"] },
-      { title: "Destaques", items: ["Lançamentos", "Mais vendidas", "Promoções"] },
-    ],
-  },
-  Acessórios: {
-    tag: "Acessórios", cta: "Ver todos os acessórios", image: lookFeminino,
-    groups: [
-      { title: "Masculino", items: ["Cintos", "Carteiras", "Bonés", "Chapéus"] },
-      { title: "Feminino", items: ["Bolsas", "Bijuterias", "Lenços", "Cintos"] },
-      { title: "Outros", items: ["Óculos", "Relógios", "Mochilas"] },
-      { title: "Destaques", items: ["Novidades", "Mais vendidos", "Promoções"] },
-    ],
-  },
-  Marcas: {
-    tag: "Nossas marcas", cta: "Ver todas as marcas", image: lookSocial,
-    groups: [
-      { title: "Premium", items: ["Layout Premium", "Layout Atelier", "Layout Couture"] },
-      { title: "Country", items: ["Layout Country", "Layout Rodeio"] },
-      { title: "Casual", items: ["Layout Sport", "Layout Urban", "Layout Daily"] },
-      { title: "Infantil", items: ["Layout Kids", "Layout Baby"] },
-    ],
-  },
+type NavbarProps = {
+  categories?: StorefrontCategory[];
+  brands?: StorefrontBrand[];
 };
 
-const NAV_ITEMS: { label: string; mega?: boolean; accent?: boolean }[] = [
-  { label: "Masculino", mega: true },
-  { label: "Feminino", mega: true },
-  { label: "Country", mega: true },
-  { label: "Sport Fino", mega: true },
-  { label: "Social", mega: true },
-  { label: "Botas", mega: true },
-  { label: "Acessórios", mega: true },
-  { label: "Marcas", mega: true },
-  { label: "Promoções", accent: true },
-  { label: "Novidades" },
-];
+function chunkColumns<T>(items: T[], maxCols = 4): T[][] {
+  if (items.length === 0) return [];
+  const cols = Math.min(maxCols, Math.max(1, Math.ceil(items.length / 6)));
+  const perCol = Math.ceil(items.length / cols);
+  const out: T[][] = [];
+  for (let i = 0; i < cols; i++) out.push(items.slice(i * perCol, (i + 1) * perCol));
+  return out;
+}
 
-export function StorefrontNavbar() {
+export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
+
+  // Árvore: raízes são categorias sem parent_id (ou level 0/1)
+  const roots = useMemo(
+    () => categories.filter((c) => !c.parent_id).slice(0, 8),
+    [categories],
+  );
+  const childrenOf = useMemo(() => {
+    const m = new Map<string, StorefrontCategory[]>();
+    for (const c of categories) {
+      if (!c.parent_id) continue;
+      const arr = m.get(c.parent_id) ?? [];
+      arr.push(c);
+      m.set(c.parent_id, arr);
+    }
+    return m;
+  }, [categories]);
+
+  // Itens do navbar — raízes do admin + "Marcas" se houver + atalhos Promoções/Novidades
+  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
+  const navItems: NavItem[] = useMemo(() => {
+    const items: NavItem[] = roots.map((r) => ({
+      key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat",
+    }));
+    if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
+    items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
+    items.push({ key: "new", label: "Novidades", kind: "link" });
+    return items;
+  }, [roots, brands.length]);
+
+  const activeMega = useMemo(() => {
+    if (!hover) return null;
+    const item = navItems.find((n) => n.key === hover);
+    if (!item) return null;
+    if (item.kind === "cat") {
+      const root = roots.find((r) => r.slug === item.slug);
+      if (!root) return null;
+      const subs = childrenOf.get(root.id) ?? [];
+      if (subs.length === 0) return null;
+      const groups = subs.slice(0, 16).map((sub) => ({
+        title: sub.name,
+        slug: sub.slug,
+        items: (childrenOf.get(sub.id) ?? []).slice(0, 8),
+      }));
+      return {
+        tag: root.name,
+        cta: `Ver tudo de ${root.name}`,
+        ctaSlug: root.slug,
+        image: root.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(root.name.length) % FALLBACK_MEGA_IMAGES.length],
+        groups,
+      };
+    }
+    if (item.kind === "brands") {
+      const cols = chunkColumns(brands, 4);
+      return {
+        tag: "Nossas marcas",
+        cta: "Ver todas as marcas",
+        ctaSlug: undefined,
+        image: FALLBACK_MEGA_IMAGES[0],
+        groups: cols.map((col, i) => ({
+          title: i === 0 ? "Marcas" : "\u00A0",
+          slug: undefined,
+          items: col.map((b) => ({ id: b.id, name: b.name, slug: b.slug })) as unknown as StorefrontCategory[],
+        })),
+      };
+    }
+    return null;
+  }, [hover, navItems, roots, childrenOf, brands]);
 
   return (
     <header className="sticky top-0 z-40 bg-white">
@@ -143,7 +135,7 @@ export function StorefrontNavbar() {
 
       {/* Navbar branca */}
       <div
-        className="border-b border-[#EFEFEF] bg-white"
+        className="border-b border-[#EFEFEF] bg-white relative"
         onMouseLeave={() => setHover(null)}
       >
         <div className="mx-auto max-w-[1440px] px-5 lg:px-10">
@@ -160,14 +152,11 @@ export function StorefrontNavbar() {
 
             {/* Categorias centralizadas — desktop sempre visíveis */}
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[15px] font-normal text-[#111]">
-              {NAV_ITEMS.map((i) => (
-                <div
-                  key={i.label}
-                  onMouseEnter={() => setHover(i.mega ? i.label : null)}
-                  className="relative"
-                >
+              {navItems.map((i) => {
+                const LinkOrA = i.kind === "cat" && i.slug ? (
                   <Link
-                    to="/"
+                    to="/categoria/$slug"
+                    params={{ slug: i.slug }}
                     className={cn(
                       "group relative inline-flex items-center py-5 transition-colors duration-200 hover:text-[var(--brand-red)]",
                       i.accent && "text-[var(--brand-red)] font-medium",
@@ -178,12 +167,38 @@ export function StorefrontNavbar() {
                       aria-hidden
                       className={cn(
                         "absolute left-0 right-0 -bottom-px h-0.5 origin-center scale-x-0 bg-[var(--brand-red)] transition-transform duration-300",
-                        hover === i.label ? "scale-x-100" : "group-hover:scale-x-100",
+                        hover === i.key ? "scale-x-100" : "group-hover:scale-x-100",
                       )}
                     />
                   </Link>
-                </div>
-              ))}
+                ) : (
+                  <a
+                    href="#"
+                    className={cn(
+                      "group relative inline-flex items-center py-5 transition-colors duration-200 hover:text-[var(--brand-red)]",
+                      i.accent && "text-[var(--brand-red)] font-medium",
+                    )}
+                  >
+                    {i.label}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-0 right-0 -bottom-px h-0.5 origin-center scale-x-0 bg-[var(--brand-red)] transition-transform duration-300",
+                        hover === i.key ? "scale-x-100" : "group-hover:scale-x-100",
+                      )}
+                    />
+                  </a>
+                );
+                return (
+                  <div
+                    key={i.key}
+                    onMouseEnter={() => setHover(i.key)}
+                    className="relative"
+                  >
+                    {LinkOrA}
+                  </div>
+                );
+              })}
             </nav>
 
             {/* Right icons */}
@@ -191,43 +206,65 @@ export function StorefrontNavbar() {
               <IconBtn label="Pesquisar"><Search className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
-              <IconBtn label="Sacola" badge={2}><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <IconBtn label="Sacola"><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
             </div>
           </div>
         </div>
 
         {/* Mega Menu */}
-        {hover && MEGA_MENU[hover] && (
+        {activeMega && (
           <div
             className="hidden lg:block absolute left-0 right-0 top-full bg-white border-t border-[#EFEFEF] shadow-[0_24px_40px_-24px_rgba(0,0,0,0.12)] animate-in fade-in duration-200"
             onMouseEnter={() => setHover(hover)}
           >
             <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-12 grid grid-cols-12 gap-10">
-              <div className="col-span-9 grid grid-cols-4 gap-10">
-                {MEGA_MENU[hover].groups.map((g) => (
-                  <div key={g.title}>
-                    <p className="text-[13px] uppercase tracking-[0.12em] text-[#111] font-semibold">{g.title}</p>
+              <div className={cn("grid gap-10", activeMega.image ? "col-span-9 grid-cols-4" : "col-span-12 grid-cols-4")}>
+                {activeMega.groups.map((g, gi) => (
+                  <div key={`${g.title}-${gi}`}>
+                    {g.slug ? (
+                      <Link
+                        to="/categoria/$slug"
+                        params={{ slug: g.slug }}
+                        className="text-[13px] uppercase tracking-[0.12em] text-[#111] font-semibold hover:text-[var(--brand-red)] transition-colors"
+                      >
+                        {g.title}
+                      </Link>
+                    ) : (
+                      <p className="text-[13px] uppercase tracking-[0.12em] text-[#111] font-semibold">{g.title}</p>
+                    )}
                     <ul className="mt-4 space-y-2.5 text-[14px] text-[#666] font-normal">
-                      {g.items.map((it) => (
-                        <li key={it}>
-                          <a href="#" className="hover:text-[var(--brand-red)] transition-colors duration-200">{it}</a>
+                      {(g.items as Array<{ id: string; name: string; slug: string }>).map((it) => (
+                        <li key={it.id}>
+                          <Link
+                            to="/categoria/$slug"
+                            params={{ slug: it.slug }}
+                            className="hover:text-[var(--brand-red)] transition-colors duration-200"
+                          >
+                            {it.name}
+                          </Link>
                         </li>
                       ))}
                     </ul>
                   </div>
                 ))}
               </div>
-              <div className="col-span-3">
-                <a href="#" className="group block relative overflow-hidden aspect-[4/5] bg-[#F8F8F8]">
-                  <img src={MEGA_MENU[hover].image} alt={MEGA_MENU[hover].tag}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                  <div className="absolute inset-x-5 bottom-5 text-white">
-                    <p className="text-[11px] uppercase tracking-[0.22em] opacity-90">{MEGA_MENU[hover].tag}</p>
-                    <p className="mt-2 text-[18px] font-medium">{MEGA_MENU[hover].cta} →</p>
-                  </div>
-                </a>
-              </div>
+              {activeMega.image && (
+                <div className="col-span-3">
+                  {activeMega.ctaSlug ? (
+                    <Link
+                      to="/categoria/$slug"
+                      params={{ slug: activeMega.ctaSlug }}
+                      className="group block relative overflow-hidden aspect-[4/5] bg-[#F8F8F8]"
+                    >
+                      <MegaImage src={activeMega.image} alt={activeMega.tag} tag={activeMega.tag} cta={activeMega.cta} />
+                    </Link>
+                  ) : (
+                    <a href="#" className="group block relative overflow-hidden aspect-[4/5] bg-[#F8F8F8]">
+                      <MegaImage src={activeMega.image} alt={activeMega.tag} tag={activeMega.tag} cta={activeMega.cta} />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -237,25 +274,55 @@ export function StorefrontNavbar() {
       {open && (
         <div className="lg:hidden border-t border-[#EFEFEF] bg-white">
           <nav className="px-5 py-4 grid gap-1 text-[15px]">
-            {NAV_ITEMS.map((i) => (
-              <Link
-                key={i.label}
-                to="/"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
-                  i.accent && "text-[var(--brand-red)] font-medium",
-                )}
-              >
-                {i.label}
-              </Link>
-            ))}
+            {navItems.map((i) =>
+              i.kind === "cat" && i.slug ? (
+                <Link
+                  key={i.key}
+                  to="/categoria/$slug"
+                  params={{ slug: i.slug }}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
+                    i.accent && "text-[var(--brand-red)] font-medium",
+                  )}
+                >
+                  {i.label}
+                </Link>
+              ) : (
+                <a
+                  key={i.key}
+                  href="#"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
+                    i.accent && "text-[var(--brand-red)] font-medium",
+                  )}
+                >
+                  {i.label}
+                </a>
+              ),
+            )}
           </nav>
         </div>
       )}
     </header>
   );
 }
+
+function MegaImage({ src, alt, tag, cta }: { src: string; alt: string; tag: string; cta: string }) {
+  return (
+    <>
+      <img src={src} alt={alt}
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+      <div className="absolute inset-x-5 bottom-5 text-white">
+        <p className="text-[11px] uppercase tracking-[0.22em] opacity-90">{tag}</p>
+        <p className="mt-2 text-[18px] font-medium">{cta} →</p>
+      </div>
+    </>
+  );
+}
+
 
 function IconBtn({ label, children, badge }: { label: string; children: ReactNode; badge?: number }) {
   return (
