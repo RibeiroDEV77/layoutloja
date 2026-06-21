@@ -941,7 +941,11 @@ function EmptyState({ message }: { message: string }) {
 // Footer
 // ---------------------------------------------------------------------------
 
-export function StorefrontFooter({ storeName = "Layout" }: { storeName?: string }) {
+export function StorefrontFooter({
+  storeName = "Layout",
+  categories = [],
+}: { storeName?: string; categories?: StorefrontCategory[] }) {
+  const roots = categories.filter((c) => !c.parent_id).slice(0, 6);
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
@@ -963,7 +967,24 @@ export function StorefrontFooter({ storeName = "Layout" }: { storeName?: string 
           </div>
         </div>
 
-        <FooterCol className="md:col-span-2" title="Categorias" items={["Masculino", "Feminino", "Country", "Sport Fino", "Social", "Botas"]} />
+        <div className="md:col-span-2">
+          <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
+          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
+            {roots.length === 0 ? (
+              <li className="text-[#999]">—</li>
+            ) : roots.map((c) => (
+              <li key={c.id}>
+                <Link
+                  to="/categoria/$slug"
+                  params={{ slug: c.slug }}
+                  className="hover:text-[var(--brand-red)] transition-colors"
+                >
+                  {c.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
         <FooterCol className="md:col-span-2" title="Ajuda" items={["Central de ajuda", "Trocas e devoluções", "Entregas", "Formas de pagamento", "Fale conosco"]} />
         <FooterCol className="md:col-span-2" title="Minha Conta" items={["Acessar", "Meus pedidos", "Endereços", "Favoritos", "Cadastro"]} />
         <FooterCol className="md:col-span-3" title="Políticas" items={["Política de privacidade", "Termos de uso", "Política de cookies", "Trocas e devoluções"]} />
@@ -993,5 +1014,3 @@ function FooterCol({ title, items, className }: { title: string; items: string[]
   );
 }
 
-// Suppress unused import warning for useEffect (kept for potential future use)
-void useEffect;
