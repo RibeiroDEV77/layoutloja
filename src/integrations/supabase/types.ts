@@ -4974,11 +4974,14 @@ export type Database = {
       order_shipping_snapshots: {
         Row: {
           carrier: string | null
+          carrier_account_id: string | null
           created_at: string
           eta_days: number | null
           id: string
           order_id: string
           price: number | null
+          provider_code: string | null
+          quoted_at: string | null
           schema_version: number
           service: string | null
           snapshot: Json
@@ -4986,11 +4989,14 @@ export type Database = {
         }
         Insert: {
           carrier?: string | null
+          carrier_account_id?: string | null
           created_at?: string
           eta_days?: number | null
           id?: string
           order_id: string
           price?: number | null
+          provider_code?: string | null
+          quoted_at?: string | null
           schema_version?: number
           service?: string | null
           snapshot: Json
@@ -4998,17 +5004,27 @@ export type Database = {
         }
         Update: {
           carrier?: string | null
+          carrier_account_id?: string | null
           created_at?: string
           eta_days?: number | null
           id?: string
           order_id?: string
           price?: number | null
+          provider_code?: string | null
+          quoted_at?: string | null
           schema_version?: number
           service?: string | null
           snapshot?: Json
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_shipping_snapshots_carrier_account_id_fkey"
+            columns: ["carrier_account_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_carrier_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_shipping_snapshots_order_id_fkey"
             columns: ["order_id"]
@@ -9004,6 +9020,7 @@ export type Database = {
       shipping_quotes: {
         Row: {
           carrier: string | null
+          carrier_account_id: string | null
           cart_id: string
           created_at: string
           estimated_days_max: number | null
@@ -9016,12 +9033,15 @@ export type Database = {
           payload: Json
           postal_code: string | null
           price: number
+          provider_code: string | null
+          quoted_at: string
           selected: boolean
           store_id: string
           weight_g: number | null
         }
         Insert: {
           carrier?: string | null
+          carrier_account_id?: string | null
           cart_id: string
           created_at?: string
           estimated_days_max?: number | null
@@ -9034,12 +9054,15 @@ export type Database = {
           payload?: Json
           postal_code?: string | null
           price: number
+          provider_code?: string | null
+          quoted_at?: string
           selected?: boolean
           store_id: string
           weight_g?: number | null
         }
         Update: {
           carrier?: string | null
+          carrier_account_id?: string | null
           cart_id?: string
           created_at?: string
           estimated_days_max?: number | null
@@ -9052,11 +9075,20 @@ export type Database = {
           payload?: Json
           postal_code?: string | null
           price?: number
+          provider_code?: string | null
+          quoted_at?: string
           selected?: boolean
           store_id?: string
           weight_g?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shipping_quotes_carrier_account_id_fkey"
+            columns: ["carrier_account_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_carrier_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shipping_quotes_cart_id_fkey"
             columns: ["cart_id"]
@@ -12002,6 +12034,10 @@ export type Database = {
       notification_mark_read: {
         Args: { p_notification_id: string }
         Returns: undefined
+      }
+      order_persist_shipping_snapshot: {
+        Args: { _cart_id: string; _order_id: string }
+        Returns: string
       }
       order_store_id: { Args: { _order_id: string }; Returns: string }
       package_add_item: {
