@@ -49,7 +49,7 @@ export const evaluateFlag = createServerFn({ method: 'GET' })
     const { data: value, error } = await context.supabase.rpc('evaluate_feature_flag', {
       _key: data.key,
       _user_id: context.userId,
-      _store_id: data.storeId ?? null,
+      _store_id: data.storeId ?? undefined,
     });
     if (error) throw error;
     return value;
