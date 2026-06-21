@@ -192,5 +192,7 @@ export async function testCarrierAccount(supabase: SbClient, userId: string, id:
     scope: 'shipping', name: 'carrier_account.test', value: 1, storeId: acc.store_id,
     tags: { provider: acc.provider_code, ok: String(result.ok) },
   });
-  return result;
+  return result.ok
+    ? { ok: true as const, details: (result.details ?? {}) as Record<string, string | number | boolean | null> }
+    : { ok: false as const, error: result.error };
 }
