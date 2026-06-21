@@ -232,7 +232,7 @@ function ProductNewWizardPage() {
             progress={progress}
             canPublish={canPublish}
             issues={issues}
-            checks={checks}
+            steps={steps}
           />
         </aside>
       </div>
