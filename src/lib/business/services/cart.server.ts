@@ -72,7 +72,7 @@ async function snapshot(supabase: SbClient, cartId: string, reason: string): Pro
 
 async function timeline(supabase: SbClient, cartId: string, event: string, payload: Record<string, unknown> = {}): Promise<void> {
   await supabase.rpc('record_cart_timeline_event', {
-    _cart_id: cartId, _event_type: event, _payload: payload as never,
+    _cart_id: cartId, _event_type: event as never, _payload: payload as never,
   });
 }
 
@@ -281,7 +281,7 @@ export async function listAdminCarts(supabase: SbClient, userId: string, storeId
     throw Errors.forbidden('Permissão necessária: carts.read');
   }
   let q = supabase.from('carts').select('*').eq('store_id', storeId).order('updated_at', { ascending: false }).limit(200);
-  if (status) q = q.eq('status', status);
+  if (status) q = q.eq('status', status as never);
   const { data, error } = await q;
   if (error) throw Errors.internal('Falha ao listar carrinhos', { error: error.message });
   return data ?? [];
