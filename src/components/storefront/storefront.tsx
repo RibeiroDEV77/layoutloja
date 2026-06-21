@@ -374,11 +374,15 @@ export type HeroBanner = {
   ctaSlug?: string;
 };
 
+const HERO_FALLBACK_IMAGES = [lookSocial, lookFeminino, lookCowboy];
+
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
-  const slides: HeroBanner[] = useMemo(
-    () => (banners ?? []).filter((b) => !!b.image).slice(0, 6),
-    [banners],
-  );
+  const slides: HeroBanner[] = useMemo(() => {
+    const list = (banners ?? []).filter((b) => !!b.image).slice(0, 6);
+    if (list.length > 0) return list;
+    // Fallback visual: mantém o Hero presente até que existam banners do Admin.
+    return HERO_FALLBACK_IMAGES.map((image) => ({ image }));
+  }, [banners]);
 
   const [active, setActive] = useState(0);
   useEffect(() => {
@@ -387,7 +391,6 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     return () => clearInterval(id);
   }, [slides.length]);
 
-  if (slides.length === 0) return null;
   const current = slides[active];
   const hasOverlay = !!(current?.tag || current?.title || current?.subtitle || (current?.ctaSlug && current?.ctaLabel));
 
