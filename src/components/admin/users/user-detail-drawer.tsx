@@ -446,17 +446,18 @@ export function UserDetailDrawer({ userId, onClose }: Props) {
         open={blockOpen}
         onOpenChange={setBlockOpen}
         title="Bloquear usuário"
-        description="O usuário não conseguirá mais acessar o sistema e suas sessões serão encerradas."
+        description={
+          <div className="space-y-3">
+            <p>O usuário não conseguirá mais acessar o sistema e suas sessões serão encerradas.</p>
+            <FormField label="Motivo do bloqueio" required>
+              <Textarea value={blockReason} onChange={(e) => setBlockReason(e.target.value)} rows={3} />
+            </FormField>
+          </div>
+        }
         confirmLabel="Bloquear"
-        variant="destructive"
-        loading={busy}
+        destructive
         onConfirm={handleBlock}
-        confirmDisabled={!blockReason.trim()}
-      >
-        <FormField label="Motivo do bloqueio" required>
-          <Textarea value={blockReason} onChange={(e) => setBlockReason(e.target.value)} rows={3} />
-        </FormField>
-      </ConfirmDialog>
+      />
     </>
   );
 }
