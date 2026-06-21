@@ -1,14 +1,16 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontFooter,
-  Breadcrumb, CategoryToolbar, ProductGrid,
+  Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid,
+  type FilterGroup,
 } from "@/components/storefront/storefront";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
   type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/categoria/$slug")({
@@ -39,7 +41,9 @@ export const Route = createFileRoute("/categoria/$slug")({
     return {
       meta: [
         { title: `${name} — Layout` },
+        { name: "description", content: `Confira a seleção ${name} da Layout.` },
         { property: "og:title", content: `${name} — Layout` },
+        { property: "og:description", content: `Confira a seleção ${name} da Layout.` },
       ],
     };
   },
@@ -54,6 +58,32 @@ export const Route = createFileRoute("/categoria/$slug")({
   ),
   component: CategoryPage,
 });
+
+const FILTER_GROUPS: FilterGroup[] = [
+  { key: "color", title: "Cor", options: [
+    { label: "Preto", swatch: "#111" }, { label: "Branco", swatch: "#fff" },
+    { label: "Cinza", swatch: "#9ca3af" }, { label: "Bege", swatch: "#d6c6a8" },
+    { label: "Marinho", swatch: "#1e3a5f" }, { label: "Vinho", swatch: "#7a1f2b" },
+    { label: "Verde", swatch: "#3f6b3a" }, { label: "Vermelho", swatch: "#c02633" },
+  ]},
+  { key: "brand", title: "Marca", options: [
+    { label: "Layout", count: 42 }, { label: "Layout Premium", count: 18 },
+    { label: "Layout Sport", count: 24 }, { label: "Layout Kids", count: 12 },
+  ]},
+  { key: "size", title: "Tamanho", options: [
+    { label: "PP" }, { label: "P" }, { label: "M" }, { label: "G" },
+    { label: "GG" }, { label: "XGG" }, { label: "38" }, { label: "40" },
+    { label: "42" }, { label: "44" },
+  ]},
+  { key: "price", title: "Faixa de preço", options: [] },
+  { key: "collection", title: "Coleção", options: [
+    { label: "Outono Inverno 26" }, { label: "Primavera Verão 26" },
+    { label: "Cápsula Atemporal" }, { label: "Edição Limitada" },
+  ]},
+  { key: "availability", title: "Disponibilidade", options: [
+    { label: "Em estoque" }, { label: "Pré-venda" },
+  ]},
+];
 
 function CategoryPage() {
   const { store, category, subcategories, parents, products, categories, brands } = Route.useLoaderData();
@@ -81,12 +111,17 @@ function CategoryPage() {
             ]}
           />
 
-          <header className="mt-8 mb-8 max-w-3xl">
+          {/* Título da categoria — alinhamento à esquerda em páginas internas */}
+          <header className="mt-8 mb-6 max-w-3xl">
             <h1 className="font-storefront-display text-4xl md:text-5xl font-light tracking-tight text-neutral-900">
               {category.name}
             </h1>
+            <p className="mt-3 text-sm font-light text-neutral-500 max-w-xl">
+              Peças cuidadosamente selecionadas para compor o seu estilo.
+            </p>
           </header>
 
+          {/* Subcategorias */}
           {subcategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-8">
               {subcategories.map((s: StorefrontCategory) => (
@@ -107,16 +142,19 @@ function CategoryPage() {
 
           <CategoryToolbar count={sorted.length} sort={sort} onSortChange={setSort} />
 
-          <div className="mt-10">
-            {sorted.length === 0 ? (
-              <div className="py-24 text-center">
-                <p className="text-sm font-light text-neutral-500">
-                  Nenhum produto cadastrado nesta categoria.
-                </p>
-              </div>
-            ) : (
-              <ProductGrid products={sorted} />
-            )}
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-10 lg:gap-14">
+            <SidebarFilter groups={FILTER_GROUPS} onClear={() => setSort("relevance")} />
+            <div>
+              {sorted.length === 0 ? (
+                <div className="py-24 text-center">
+                  <p className="text-sm font-light text-neutral-500">
+                    Nenhum produto encontrado nesta categoria por enquanto.
+                  </p>
+                </div>
+              ) : (
+                <ProductGrid products={sorted} />
+              )}
+            </div>
           </div>
         </main>
         <StorefrontFooter storeName={storeName} categories={categories} />
