@@ -253,7 +253,7 @@ function CategoryPage() {
                 {/* Active value chips: clickable to toggle. Sits below the
                     read-only SidebarFilter without altering its component. */}
                 <div className="flex flex-wrap gap-1.5 pt-2">
-                  {filters.flatMap((g) =>
+                  {(filters as StorefrontFilterGroup[]).flatMap((g) =>
                     g.values.map((v) => {
                       const isSelected = selected[g.code]?.has(v.id) ?? false;
                       if (g.values.length > 24 && !isSelected) return null;
