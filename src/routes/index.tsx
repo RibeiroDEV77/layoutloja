@@ -85,9 +85,6 @@ function HomePage() {
             <CategoryGrid categories={categories} />
           </Section>
 
-          {/* Banner institucional */}
-          <InstitutionalBanner />
-
           {/* Mais vendidos */}
           <Section>
             <SectionHeader title="Mais vendidos" action={{ label: "Ver todos" }} />
