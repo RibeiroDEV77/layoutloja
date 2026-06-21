@@ -114,7 +114,7 @@ function HomePage() {
               description="As peças mais procuradas do momento."
               action={{ label: "Ver todos" }}
             />
-            <ProductGrid products={(maisVendidos.length ? maisVendidos : todos).slice(0, 8)} />
+            <ProductCarousel products={(maisVendidos.length ? maisVendidos : todos).slice(0, 12)} />
           </Section>
 
           {/* Sport Fino */}
