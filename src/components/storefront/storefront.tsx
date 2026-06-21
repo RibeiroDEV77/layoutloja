@@ -12,6 +12,7 @@ import logoAsset from "@/assets/layout-logo.png.asset.json";
 import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
 
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
+import { COMPANY, whatsappUrl, mailtoUrl } from "@/lib/company";
 
 
 // ---------------------------------------------------------------------------
