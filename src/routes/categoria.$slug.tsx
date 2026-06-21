@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontFooter,
-  Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid,
+  Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid, SectionHeader,
   type FilterGroup,
 } from "@/components/storefront/storefront";
 import {
