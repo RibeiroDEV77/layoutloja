@@ -46,15 +46,40 @@ function chunkColumns<T>(items: T[], maxCols = 4): T[][] {
   return out;
 }
 
+// Estrutura canônica de navegação. Cada item resolve para uma categoria real
+// (raiz ou subcategoria) cadastrada no Painel Administrativo via match por
+// slug/nome. Quando a categoria existir, mega menu e link usam os dados
+// reais; caso contrário, o item permanece como link funcional para manter a
+// navegação consistente até o cadastro.
+const CANONICAL_NAV: Array<{
+  key: string;
+  label: string;
+  match: string[];
+  kind: "cat" | "brands";
+  accent?: boolean;
+}> = [
+  { key: "masculino", label: "Masculino", match: ["masculino"], kind: "cat" },
+  { key: "feminino", label: "Feminino", match: ["feminino"], kind: "cat" },
+  { key: "country", label: "Country", match: ["country"], kind: "cat" },
+  { key: "sport-fino", label: "Sport Fino", match: ["sport-fino", "esporte-fino", "masc-esporte-fino"], kind: "cat" },
+  { key: "social", label: "Social", match: ["social", "masc-social"], kind: "cat" },
+  { key: "botas", label: "Botas", match: ["botas", "calc-botas"], kind: "cat" },
+  { key: "acessorios", label: "Acessórios", match: ["acessorios"], kind: "cat" },
+  { key: "brands", label: "Marcas", match: [], kind: "brands" },
+  { key: "promocoes", label: "Promoções", match: ["promocoes", "promocao", "promo"], kind: "cat", accent: true },
+  { key: "novidades", label: "Novidades", match: ["novidades"], kind: "cat" },
+];
+
 export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
 
-  // Árvore: raízes são categorias sem parent_id
-  const roots = useMemo(
-    () => categories.filter((c) => !c.parent_id).slice(0, 12),
-    [categories],
-  );
+  const bySlug = useMemo(() => {
+    const m = new Map<string, StorefrontCategory>();
+    for (const c of categories) m.set(c.slug.toLowerCase(), c);
+    return m;
+  }, [categories]);
+
   const childrenOf = useMemo(() => {
     const m = new Map<string, StorefrontCategory[]>();
     for (const c of categories) {
@@ -66,49 +91,69 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
     return m;
   }, [categories]);
 
-  // Itens do navbar — raízes do Painel Administrativo + Marcas + atalhos institucionais.
-  // Promoções/Novidades só aparecem como atalho se não existirem como raiz no admin.
-  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
+  type NavItem = {
+    key: string;
+    label: string;
+    accent?: boolean;
+    kind: "cat" | "brands" | "link";
+    slug?: string;
+    categoryId?: string;
+  };
+
   const navItems: NavItem[] = useMemo(() => {
-    const items: NavItem[] = roots.map((r) => {
-      const slug = r.slug.toLowerCase();
-      const accent = slug === "promocoes" || slug === "promocao" || slug === "promo";
-      return { key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat", accent };
+    return CANONICAL_NAV.map((entry) => {
+      if (entry.kind === "brands") {
+        return { key: entry.key, label: entry.label, kind: "brands" as const };
+      }
+      let resolved: StorefrontCategory | undefined;
+      for (const slug of entry.match) {
+        const hit = bySlug.get(slug.toLowerCase());
+        if (hit) { resolved = hit; break; }
+      }
+      if (resolved) {
+        return {
+          key: entry.key,
+          label: entry.label,
+          accent: entry.accent,
+          kind: "cat" as const,
+          slug: resolved.slug,
+          categoryId: resolved.id,
+        };
+      }
+      // Sem categoria correspondente: mantemos o item como link funcional.
+      return {
+        key: entry.key,
+        label: entry.label,
+        accent: entry.accent,
+        kind: "link" as const,
+        slug: entry.match[0],
+      };
     });
-    if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
-    const rootSlugs = new Set(roots.map((r) => r.slug.toLowerCase()));
-    if (!rootSlugs.has("promocoes") && !rootSlugs.has("promocao")) {
-      items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
-    }
-    if (!rootSlugs.has("novidades")) {
-      items.push({ key: "new", label: "Novidades", kind: "link" });
-    }
-    return items;
-  }, [roots, brands.length]);
+  }, [bySlug]);
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
     const item = navItems.find((n) => n.key === hover);
     if (!item) return null;
-    if (item.kind === "cat") {
-      const root = roots.find((r) => r.slug === item.slug);
-      if (!root) return null;
-      const subs = childrenOf.get(root.id) ?? [];
+    if (item.kind === "cat" && item.categoryId) {
+      const subs = childrenOf.get(item.categoryId) ?? [];
       if (subs.length === 0) return null;
       const groups = subs.slice(0, 16).map((sub) => ({
         title: sub.name,
         slug: sub.slug,
         items: (childrenOf.get(sub.id) ?? []).slice(0, 8),
       }));
+      const root = categories.find((c) => c.id === item.categoryId);
       return {
-        tag: root.name,
-        cta: `Ver tudo de ${root.name}`,
-        ctaSlug: root.slug,
-        image: root.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(root.name.length) % FALLBACK_MEGA_IMAGES.length],
+        tag: item.label,
+        cta: `Ver tudo de ${item.label}`,
+        ctaSlug: item.slug,
+        image: root?.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(item.label.length) % FALLBACK_MEGA_IMAGES.length],
         groups,
       };
     }
     if (item.kind === "brands") {
+      if (brands.length === 0) return null;
       const cols = chunkColumns(brands, 4);
       return {
         tag: "Nossas marcas",
@@ -123,7 +168,8 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
       };
     }
     return null;
-  }, [hover, navItems, roots, childrenOf, brands]);
+  }, [hover, navItems, childrenOf, categories, brands]);
+
 
   return (
     <header className="sticky top-0 z-40 bg-white">
