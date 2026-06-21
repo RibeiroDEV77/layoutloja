@@ -153,7 +153,7 @@ function PurchaseDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Can permission="purchases.manage" storeId={po.store_id}>
+          <Can permission="purchases.manage">
             {canApprove && (
               <Button onClick={() => approveMut.mutate()} disabled={approveMut.isPending}>
                 Aprovar
