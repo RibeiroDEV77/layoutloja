@@ -700,7 +700,7 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
 }
 
 export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
-  if (products.length === 0) return <EmptyState message="Nenhum produto encontrado." />;
+  if (products.length === 0) return null;
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-7 md:gap-y-12">
       {products.map((p) => <ProductCard key={p.id} p={p} />)}
