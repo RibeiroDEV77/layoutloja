@@ -126,11 +126,11 @@ export async function inviteUser(supabase: SbClient, userId: string, input: Invi
   if (error) throw Errors.internal('Falha ao enviar convite', { error: error.message });
 
   const newUserId = data.user?.id;
-  if (newUserId && input.role_id) {
+  if (newUserId && input.role_id && input.store_id) {
     await supabase.from('user_roles').insert({
       user_id: newUserId,
       role_id: input.role_id,
-      store_id: input.store_id ?? null,
+      store_id: input.store_id,
       granted_by: userId,
     });
   }
