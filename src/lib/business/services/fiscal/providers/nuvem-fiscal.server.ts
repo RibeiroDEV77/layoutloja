@@ -52,7 +52,7 @@ function base(ctx: FiscalAdapterContext): string {
 }
 
 async function getAccessToken(ctx: FiscalAdapterContext): Promise<string> {
-  const c = (ctx.credentials ?? {}) as Creds;
+  const c = (ctx.credentials ?? {}) as unknown as Creds;
   if (c.access_token) return c.access_token;
   if (!c.client_id || !c.client_secret) {
     throw new Error('NuvemFiscal: client_id/client_secret ausentes');
