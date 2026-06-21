@@ -97,7 +97,7 @@ function CategoryPage() {
   return (
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
-        <StorefrontNavbar storeName={storeName} />
+        <StorefrontNavbar />
         <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 lg:px-10 pt-8 pb-24">
           <Breadcrumb
             items={[
