@@ -61,8 +61,8 @@ export async function createCarrierAccount(
       display_name: input.display_name,
       sandbox: input.sandbox ?? true,
       is_active: input.is_active ?? true,
-      config: input.config ?? {},
-      capabilities: adapter.capabilities as unknown as Record<string, unknown>,
+      config: (input.config ?? {}) as never,
+      capabilities: adapter.capabilities as never,
       created_by: userId,
     })
     .select('id, store_id, provider_code, display_name, is_active, sandbox, config, capabilities, created_at, updated_at')
