@@ -4504,6 +4504,255 @@ export type Database = {
           },
         ]
       }
+      payment_chargeback_evidences: {
+        Row: {
+          asset_id: string | null
+          chargeback_id: string
+          created_at: string
+          description: string | null
+          evidence_kind: string
+          gateway_response: Json | null
+          id: string
+          payload: Json
+          store_id: string
+          submitted_at: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          chargeback_id: string
+          created_at?: string
+          description?: string | null
+          evidence_kind: string
+          gateway_response?: Json | null
+          id?: string
+          payload?: Json
+          store_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          chargeback_id?: string
+          created_at?: string
+          description?: string | null
+          evidence_kind?: string
+          gateway_response?: Json | null
+          id?: string
+          payload?: Json
+          store_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_chargeback_evidences_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_chargeback_evidences_chargeback_id_fkey"
+            columns: ["chargeback_id"]
+            isOneToOne: false
+            referencedRelation: "payment_chargebacks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_chargeback_evidences_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_chargebacks: {
+        Row: {
+          amount: number
+          causation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          currency: string
+          evidence_due_at: string | null
+          evidence_submitted_at: string | null
+          fee_amount: number
+          gateway_dispute_id: string | null
+          gateway_id: string | null
+          id: string
+          liable_party: string | null
+          metadata: Json
+          network_reference: string | null
+          opened_at: string
+          outcome_note: string | null
+          payment_id: string
+          reason: Database["public"]["Enums"]["payment_chargeback_reason"]
+          reason_note: string | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["payment_chargeback_status"]
+          store_id: string
+          trace_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          amount: number
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency: string
+          evidence_due_at?: string | null
+          evidence_submitted_at?: string | null
+          fee_amount?: number
+          gateway_dispute_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          liable_party?: string | null
+          metadata?: Json
+          network_reference?: string | null
+          opened_at?: string
+          outcome_note?: string | null
+          payment_id: string
+          reason?: Database["public"]["Enums"]["payment_chargeback_reason"]
+          reason_note?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["payment_chargeback_status"]
+          store_id: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          amount?: number
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          evidence_due_at?: string | null
+          evidence_submitted_at?: string | null
+          fee_amount?: number
+          gateway_dispute_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          liable_party?: string | null
+          metadata?: Json
+          network_reference?: string | null
+          opened_at?: string
+          outcome_note?: string | null
+          payment_id?: string
+          reason?: Database["public"]["Enums"]["payment_chargeback_reason"]
+          reason_note?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["payment_chargeback_status"]
+          store_id?: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_chargebacks_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_chargebacks_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_chargebacks_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_documents: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          description: string | null
+          external_url: string | null
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          kind: Database["public"]["Enums"]["payment_document_kind"]
+          metadata: Json
+          payment_id: string
+          sent_at: string | null
+          sent_to: string | null
+          status: Database["public"]["Enums"]["payment_document_status"]
+          store_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          kind: Database["public"]["Enums"]["payment_document_kind"]
+          metadata?: Json
+          payment_id: string
+          sent_at?: string | null
+          sent_to?: string | null
+          status?: Database["public"]["Enums"]["payment_document_status"]
+          store_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          kind?: Database["public"]["Enums"]["payment_document_kind"]
+          metadata?: Json
+          payment_id?: string
+          sent_at?: string | null
+          sent_to?: string | null
+          status?: Database["public"]["Enums"]["payment_document_status"]
+          store_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_documents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_documents_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_documents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_events: {
         Row: {
           actor_id: string | null
@@ -4667,6 +4916,472 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_metadata_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_notes: {
+        Row: {
+          author_user_id: string | null
+          body: string
+          created_at: string
+          id: string
+          metadata: Json
+          payment_id: string
+          pinned: boolean
+          store_id: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["payment_note_visibility"]
+        }
+        Insert: {
+          author_user_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          payment_id: string
+          pinned?: boolean
+          store_id: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["payment_note_visibility"]
+        }
+        Update: {
+          author_user_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          payment_id?: string
+          pinned?: boolean
+          store_id?: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["payment_note_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_notes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_notes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_reconciliation_discrepancies: {
+        Row: {
+          actual_amount: number | null
+          created_at: string
+          details: Json
+          expected_amount: number | null
+          id: string
+          kind: Database["public"]["Enums"]["payment_reconciliation_discrepancy_kind"]
+          payment_id: string | null
+          reconciliation_id: string
+          reconciliation_item_id: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          store_id: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          created_at?: string
+          details?: Json
+          expected_amount?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["payment_reconciliation_discrepancy_kind"]
+          payment_id?: string | null
+          reconciliation_id: string
+          reconciliation_item_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          store_id: string
+        }
+        Update: {
+          actual_amount?: number | null
+          created_at?: string
+          details?: Json
+          expected_amount?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_reconciliation_discrepancy_kind"]
+          payment_id?: string | null
+          reconciliation_id?: string
+          reconciliation_item_id?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reconciliation_discrepancie_reconciliation_item_id_fkey"
+            columns: ["reconciliation_item_id"]
+            isOneToOne: false
+            referencedRelation: "payment_reconciliation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliation_discrepancies_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliation_discrepancies_reconciliation_id_fkey"
+            columns: ["reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "payment_reconciliations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliation_discrepancies_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_reconciliation_items: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          external_transaction_id: string | null
+          fee_amount: number
+          id: string
+          matched_at: string | null
+          matched_by: string | null
+          net_amount: number
+          payment_id: string | null
+          posted_at: string | null
+          raw_payload: Json
+          reconciliation_id: string
+          status: Database["public"]["Enums"]["payment_reconciliation_item_status"]
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          external_transaction_id?: string | null
+          fee_amount?: number
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          net_amount?: number
+          payment_id?: string | null
+          posted_at?: string | null
+          raw_payload?: Json
+          reconciliation_id: string
+          status?: Database["public"]["Enums"]["payment_reconciliation_item_status"]
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          external_transaction_id?: string | null
+          fee_amount?: number
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          net_amount?: number
+          payment_id?: string | null
+          posted_at?: string | null
+          raw_payload?: Json
+          reconciliation_id?: string
+          status?: Database["public"]["Enums"]["payment_reconciliation_item_status"]
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reconciliation_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliation_items_reconciliation_id_fkey"
+            columns: ["reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "payment_reconciliations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliation_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_reconciliations: {
+        Row: {
+          created_at: string
+          discrepant_items: number
+          external_batch_id: string | null
+          failure_message: string | null
+          gateway_id: string
+          id: string
+          matched_items: number
+          metadata: Json
+          net_amount: number
+          period_end: string | null
+          period_start: string | null
+          processed_at: string | null
+          reference: string
+          source_file_asset_id: string | null
+          status: Database["public"]["Enums"]["payment_reconciliation_status"]
+          store_id: string
+          total_amount: number
+          total_fees: number
+          total_items: number
+          unmatched_items: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discrepant_items?: number
+          external_batch_id?: string | null
+          failure_message?: string | null
+          gateway_id: string
+          id?: string
+          matched_items?: number
+          metadata?: Json
+          net_amount?: number
+          period_end?: string | null
+          period_start?: string | null
+          processed_at?: string | null
+          reference: string
+          source_file_asset_id?: string | null
+          status?: Database["public"]["Enums"]["payment_reconciliation_status"]
+          store_id: string
+          total_amount?: number
+          total_fees?: number
+          total_items?: number
+          unmatched_items?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discrepant_items?: number
+          external_batch_id?: string | null
+          failure_message?: string | null
+          gateway_id?: string
+          id?: string
+          matched_items?: number
+          metadata?: Json
+          net_amount?: number
+          period_end?: string | null
+          period_start?: string | null
+          processed_at?: string | null
+          reference?: string
+          source_file_asset_id?: string | null
+          status?: Database["public"]["Enums"]["payment_reconciliation_status"]
+          store_id?: string
+          total_amount?: number
+          total_fees?: number
+          total_items?: number
+          unmatched_items?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reconciliations_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliations_source_file_asset_id_fkey"
+            columns: ["source_file_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reconciliations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_refund_items: {
+        Row: {
+          allocation_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          metadata: Json
+          refund_id: string
+          store_id: string
+          transaction_id: string | null
+        }
+        Insert: {
+          allocation_id?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          metadata?: Json
+          refund_id: string
+          store_id: string
+          transaction_id?: string | null
+        }
+        Update: {
+          allocation_id?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          metadata?: Json
+          refund_id?: string
+          store_id?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_refund_items_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "payment_allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refund_items_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "payment_refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refund_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refund_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "payment_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_refunds: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          causation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          currency: string
+          external_reference: string | null
+          failure_code: string | null
+          failure_message: string | null
+          gateway_id: string | null
+          gateway_refund_id: string | null
+          id: string
+          metadata: Json
+          payment_id: string
+          processed_at: string | null
+          reason: Database["public"]["Enums"]["payment_refund_reason"]
+          reason_note: string | null
+          requested_by: string | null
+          status: Database["public"]["Enums"]["payment_refund_status"]
+          store_id: string
+          trace_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency: string
+          external_reference?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          gateway_id?: string | null
+          gateway_refund_id?: string | null
+          id?: string
+          metadata?: Json
+          payment_id: string
+          processed_at?: string | null
+          reason?: Database["public"]["Enums"]["payment_refund_reason"]
+          reason_note?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["payment_refund_status"]
+          store_id: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          external_reference?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          gateway_id?: string | null
+          gateway_refund_id?: string | null
+          id?: string
+          metadata?: Json
+          payment_id?: string
+          processed_at?: string | null
+          reason?: Database["public"]["Enums"]["payment_refund_reason"]
+          reason_note?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["payment_refund_status"]
+          store_id?: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_refunds_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refunds_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -7845,6 +8560,33 @@ export type Database = {
         | "refund"
         | "query"
         | "tokenize"
+      payment_chargeback_reason:
+        | "fraudulent"
+        | "product_not_received"
+        | "product_unacceptable"
+        | "duplicate"
+        | "credit_not_processed"
+        | "subscription_cancelled"
+        | "general"
+        | "other"
+      payment_chargeback_status:
+        | "opened"
+        | "under_review"
+        | "evidence_required"
+        | "evidence_submitted"
+        | "won"
+        | "lost"
+        | "accepted"
+        | "cancelled"
+      payment_document_kind:
+        | "receipt"
+        | "invoice"
+        | "credit_note"
+        | "authorization_proof"
+        | "chargeback_evidence"
+        | "refund_proof"
+        | "other"
+      payment_document_status: "draft" | "issued" | "sent" | "archived" | "void"
       payment_event_actor:
         | "system"
         | "user"
@@ -7860,11 +8602,46 @@ export type Database = {
         | "bank_transfer"
         | "store_credit"
         | "gift_card"
+      payment_note_visibility: "internal" | "staff" | "customer"
       payment_payable_type:
         | "order"
         | "subscription"
         | "wallet_topup"
         | "marketplace_split"
+      payment_reconciliation_discrepancy_kind:
+        | "amount_mismatch"
+        | "status_mismatch"
+        | "fee_mismatch"
+        | "missing_in_psp"
+        | "missing_in_platform"
+        | "duplicate"
+        | "other"
+      payment_reconciliation_item_status:
+        | "unmatched"
+        | "matched"
+        | "discrepant"
+        | "ignored"
+      payment_reconciliation_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "partially_matched"
+      payment_refund_reason:
+        | "customer_request"
+        | "duplicate"
+        | "fraudulent"
+        | "order_cancelled"
+        | "product_unavailable"
+        | "return"
+        | "chargeback"
+        | "other"
+      payment_refund_status:
+        | "pending"
+        | "processing"
+        | "succeeded"
+        | "failed"
+        | "cancelled"
       payment_status:
         | "pending"
         | "authorized"
@@ -8270,6 +9047,36 @@ export const Constants = {
         "query",
         "tokenize",
       ],
+      payment_chargeback_reason: [
+        "fraudulent",
+        "product_not_received",
+        "product_unacceptable",
+        "duplicate",
+        "credit_not_processed",
+        "subscription_cancelled",
+        "general",
+        "other",
+      ],
+      payment_chargeback_status: [
+        "opened",
+        "under_review",
+        "evidence_required",
+        "evidence_submitted",
+        "won",
+        "lost",
+        "accepted",
+        "cancelled",
+      ],
+      payment_document_kind: [
+        "receipt",
+        "invoice",
+        "credit_note",
+        "authorization_proof",
+        "chargeback_evidence",
+        "refund_proof",
+        "other",
+      ],
+      payment_document_status: ["draft", "issued", "sent", "archived", "void"],
       payment_event_actor: ["system", "user", "gateway", "webhook", "workflow"],
       payment_method: [
         "pix",
@@ -8281,11 +9088,51 @@ export const Constants = {
         "store_credit",
         "gift_card",
       ],
+      payment_note_visibility: ["internal", "staff", "customer"],
       payment_payable_type: [
         "order",
         "subscription",
         "wallet_topup",
         "marketplace_split",
+      ],
+      payment_reconciliation_discrepancy_kind: [
+        "amount_mismatch",
+        "status_mismatch",
+        "fee_mismatch",
+        "missing_in_psp",
+        "missing_in_platform",
+        "duplicate",
+        "other",
+      ],
+      payment_reconciliation_item_status: [
+        "unmatched",
+        "matched",
+        "discrepant",
+        "ignored",
+      ],
+      payment_reconciliation_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "partially_matched",
+      ],
+      payment_refund_reason: [
+        "customer_request",
+        "duplicate",
+        "fraudulent",
+        "order_cancelled",
+        "product_unavailable",
+        "return",
+        "chargeback",
+        "other",
+      ],
+      payment_refund_status: [
+        "pending",
+        "processing",
+        "succeeded",
+        "failed",
+        "cancelled",
       ],
       payment_status: [
         "pending",
