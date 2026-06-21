@@ -4,7 +4,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
-export type SupabaseClient = ReturnType<typeof import('@supabase/supabase-js').createClient>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SupabaseClient = any;
+
 
 /** Fire-and-forget metric recording. Failures are swallowed to never break callers. */
 export async function recordMetric(
@@ -58,16 +60,16 @@ export const getSetting = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { scope: 'global' | 'store'; storeId?: string | null; key: string }) => d)
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = (context.supabase as any)
       .from('system_settings')
       .select('*')
       .eq('scope', data.scope)
-      .eq('key', data.key)
-      .is('store_id', data.storeId ?? null)
-      .maybeSingle();
+      .eq('key', data.key);
+    q = data.storeId ? q.eq('store_id', data.storeId) : q.is('store_id', null);
+    const { data: row, error } = await q.maybeSingle();
     if (error) throw error;
     if (row && row.is_secret) {
-      // Strip value for non-admins — RLS allows row visibility but UI must not see secret values.
       return { ...row, value: null };
     }
     return row;

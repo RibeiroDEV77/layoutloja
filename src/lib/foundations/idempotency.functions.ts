@@ -18,7 +18,8 @@ export function hashRequest(payload: unknown): string {
 }
 
 export interface WithIdempotencyOptions<T> {
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
   scope: string;
   key: string;
   storeId: string | null;

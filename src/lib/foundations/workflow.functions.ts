@@ -8,7 +8,9 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { CommerceEventTypes, AggregateTypes } from './events';
 
-export type SupabaseClient = ReturnType<typeof import('@supabase/supabase-js').createClient>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SupabaseClient = any;
+
 
 /** Start a workflow instance for an aggregate, positioned at the initial state. */
 export async function startWorkflow(
@@ -149,7 +151,9 @@ export const getWorkflowForAggregate = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { aggregateType: string; aggregateId: string }) => d)
   .handler(async ({ data, context }) => {
-    const { data: inst, error } = await context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = context.supabase;
+    const { data: inst, error } = await sb
       .from('workflow_instances')
       .select('*, current_state:workflow_states!current_state_id(*), definition:workflow_definitions(*)')
       .eq('aggregate_type', data.aggregateType)
@@ -157,7 +161,7 @@ export const getWorkflowForAggregate = createServerFn({ method: 'GET' })
       .maybeSingle();
     if (error) throw error;
     if (!inst) return null;
-    const { data: history } = await context.supabase
+    const { data: history } = await sb
       .from('workflow_state_history')
       .select('*')
       .eq('instance_id', inst.id)

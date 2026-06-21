@@ -25,10 +25,8 @@ export interface EnqueueOutboxInput {
  * that has already performed (or is about to perform, in the same transaction)
  * the aggregate write.
  */
-export async function enqueueOutbox(
-  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>,
-  input: EnqueueOutboxInput,
-): Promise<string> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function enqueueOutbox(supabase: any, input: EnqueueOutboxInput): Promise<string> {
   const { data, error } = await supabase.rpc('enqueue_outbox_event', {
     _store_id: input.storeId,
     _aggregate_type: input.aggregateType,
@@ -49,7 +47,8 @@ export const listOutbox = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { storeId?: string; status?: string; limit?: number }) => d)
   .handler(async ({ data, context }) => {
-    let q = context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = context.supabase
       .from('event_outbox')
       .select('*')
       .order('occurred_at', { ascending: false })
