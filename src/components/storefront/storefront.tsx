@@ -67,17 +67,16 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
     return m;
   }, [categories]);
 
-  // Itens do navbar — raízes do admin + "Marcas" se houver + atalhos Promoções/Novidades
-  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
+  // Itens do navbar — apenas raízes do admin (+ "Marcas" se houver marcas cadastradas)
+  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" };
   const navItems: NavItem[] = useMemo(() => {
     const items: NavItem[] = roots.map((r) => ({
       key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat",
     }));
     if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
-    items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
-    items.push({ key: "new", label: "Novidades", kind: "link" });
     return items;
   }, [roots, brands.length]);
+
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
