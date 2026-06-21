@@ -40,4 +40,24 @@ export const receivePurchaseOrder = createServerFn({ method: 'POST' })
     withBusiness(async ({ data, context }) =>
       Svc.receivePurchaseOrder(context.supabase, context.userId, data),
     ),
-  );
+);
+
+export const listPurchaseOrders = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: Svc.ListInput) => d)
+  .handler(withBusiness(async ({ data, context }) => Svc.list(context.supabase, context.userId, data)));
+
+export const getPurchaseOrder = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => Svc.get(context.supabase, context.userId, data.id)));
+
+export const getPurchaseOrderTimeline = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => Svc.timeline(context.supabase, context.userId, data.id)));
+
+export const getPurchaseOrderAudit = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => Svc.audit(context.supabase, context.userId, data.id)));
