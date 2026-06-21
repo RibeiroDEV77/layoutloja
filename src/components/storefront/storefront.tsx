@@ -386,15 +386,17 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const hasOverlay = !!(current?.tag || current?.title || current?.subtitle || (current?.ctaSlug && current?.ctaLabel));
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#111]">
-      <div className="relative aspect-[16/9] sm:aspect-[16/8] md:aspect-[16/7] min-h-[260px] md:min-h-[360px] max-h-[560px]">
+    <section className="relative w-full overflow-hidden bg-neutral-100">
+      <div className="relative w-full aspect-[16/9] md:aspect-[16/8] lg:aspect-[21/9]">
         {slides.map((s, i) => (
           <img
             key={`${s.image}-${i}`}
             src={s.image}
             alt={s.tag ?? ""}
+            loading={i === 0 ? "eager" : "lazy"}
+            decoding="async"
             className={cn(
-              "absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out",
+              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity duration-[1200ms] ease-in-out",
               i === active ? "opacity-100" : "opacity-0",
             )}
           />
