@@ -10,6 +10,8 @@ import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
 import lookSocial from "@/assets/look-social.jpg";
 import logoAsset from "@/assets/layout-logo.png.asset.json";
+import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
+
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
 
 
