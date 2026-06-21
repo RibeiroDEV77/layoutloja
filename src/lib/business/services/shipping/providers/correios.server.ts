@@ -123,10 +123,52 @@ interface PrecoItem {
   msgErro?: string;
 }
 
+/**
+ * Mapeia o "tipo" do evento do SRO Rastro para o enum
+ * `tracking_event_kind` que o módulo Fulfillment utiliza.
+ * Referência: https://cws.correios.com.br/ (SRO Rastro v1).
+ */
+function mapCorreiosEventKind(tipo: string, status: string, descricao: string): string {
+  const t = (tipo || '').toUpperCase();
+  const s = String(status ?? '');
+  const d = (descricao || '').toLowerCase();
+  // Entrega efetuada
+  if (['BDE', 'BDI', 'BDR'].includes(t)) return 'delivered';
+  // Saiu para entrega
+  if (t === 'OEC') return 'out_for_delivery';
+  // Tentativa de entrega
+  if (['LDE', 'LDI', 'TRI', 'EST'].includes(t)) return 'delivery_attempted';
+  // Devolução
+  if (t === 'RDV' || d.includes('devolvido')) return 'returned';
+  // Extravio/objeto perdido
+  if (t === 'PAR' || d.includes('extravio')) return 'lost';
+  // Restrição / exceção
+  if (['IDC', 'FC', 'AL', 'IE'].includes(t)) return 'exception';
+  // Postagem
+  if (t === 'PO' && s === '01') return 'pickup_scheduled';
+  if (t === 'PO') return 'picked_up';
+  // Encaminhamento / trânsito
+  if (['RO', 'DO', 'TRI', 'PMT'].includes(t)) return 'in_transit';
+  return 'in_transit';
+}
+
+interface SroEvento {
+  codigo?: string;
+  tipo?: string;
+  descricao?: string;
+  dtHrCriado?: string;
+  unidade?: { endereco?: { cidade?: string; uf?: string }; tipo?: string };
+}
+interface SroObjeto {
+  codObjeto?: string;
+  mensagem?: string;
+  eventos?: SroEvento[];
+}
+
 export const correiosAdapter: ShippingAdapter = {
   code: 'correios',
   displayName: 'Correios',
-  capabilities: { quote: true, label: false, tracking: false, sandbox: true },
+  capabilities: { quote: true, label: false, tracking: true, sandbox: true },
   credentialSchema: CREDENTIAL_SCHEMA,
   configSchema: CONFIG_SCHEMA,
 
@@ -207,7 +249,42 @@ export const correiosAdapter: ShippingAdapter = {
   async createLabel(_ctx, _req) {
     throw new AdapterCapabilityError('correios', 'label');
   },
-  async track(_ctx, _code) {
-    throw new AdapterCapabilityError('correios', 'tracking');
+  async track(ctx, code) {
+    assertCredentials(ctx);
+    const cleaned = String(code ?? '').trim().toUpperCase();
+    if (!cleaned) throw new Error('Código de rastreio vazio');
+    const token = await authenticate(ctx);
+    const body = await fetchJson(
+      `${host(ctx.account.sandbox)}/srorastro/v1/objetos/${encodeURIComponent(cleaned)}?resultado=T`,
+      {
+        method: 'GET',
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: 'application/json',
+        },
+      },
+    );
+    const objetos = ((body as { objetos?: SroObjeto[] }).objetos ?? []) as SroObjeto[];
+    const obj = objetos.find((o) => (o.codObjeto ?? '').toUpperCase() === cleaned) ?? objetos[0] ?? null;
+    const eventos = obj?.eventos ?? [];
+    const events = eventos
+      .map((e) => {
+        const tipo = String(e.tipo ?? '');
+        const status = String(e.codigo ?? '');
+        const desc = String(e.descricao ?? '');
+        const cidade = e.unidade?.endereco?.cidade ?? '';
+        const uf = e.unidade?.endereco?.uf ?? '';
+        const location = [cidade, uf].filter(Boolean).join(' / ');
+        return {
+          occurred_at: e.dtHrCriado ? new Date(e.dtHrCriado).toISOString() : new Date().toISOString(),
+          status: mapCorreiosEventKind(tipo, status, desc),
+          description: desc,
+          location: location || undefined,
+          raw: e as unknown as Record<string, unknown>,
+        };
+      })
+      .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+    const delivered = events.some((ev) => ev.status === 'delivered');
+    return { tracking_code: cleaned, delivered, events };
   },
 };

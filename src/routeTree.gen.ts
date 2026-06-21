@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminCartsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenticated/admin.brands'
 import { Route as AuthenticatedAdminAttributesRouteImport } from './routes/_authenticated/admin.attributes'
 import { Route as AuthenticatedAdminAttributeValuesRouteImport } from './routes/_authenticated/admin.attribute-values'
+import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes/api/public/hooks/shipping-tracking-sync'
 import { Route as AuthenticatedAdminCustomersCustomerIdRouteImport } from './routes/_authenticated/admin.customers.$customerId'
 import { Route as AuthenticatedAdminProductsIdEditRouteImport } from './routes/_authenticated/admin.products.$id.edit'
 
@@ -150,6 +151,12 @@ const AuthenticatedAdminAttributeValuesRoute =
     path: '/attribute-values',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicHooksShippingTrackingSyncRoute =
+  ApiPublicHooksShippingTrackingSyncRouteImport.update({
+    id: '/api/public/hooks/shipping-tracking-sync',
+    path: '/api/public/hooks/shipping-tracking-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminCustomersCustomerIdRoute =
   AuthenticatedAdminCustomersCustomerIdRouteImport.update({
     id: '/$customerId',
@@ -185,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
+  '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -208,6 +216,7 @@ export interface FileRoutesByTo {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
+  '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRoutesById {
@@ -234,6 +243,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
+  '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/_authenticated/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin/'
     | '/admin/customers/$customerId'
+    | '/api/public/hooks/shipping-tracking-sync'
     | '/admin/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin'
     | '/admin/customers/$customerId'
+    | '/api/public/hooks/shipping-tracking-sync'
     | '/admin/products/$id/edit'
   id:
     | '__root__'
@@ -308,6 +320,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/customers/$customerId'
+    | '/api/public/hooks/shipping-tracking-sync'
     | '/_authenticated/admin/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -316,6 +329,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicHooksShippingTrackingSyncRoute: typeof ApiPublicHooksShippingTrackingSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -467,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAttributeValuesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/hooks/shipping-tracking-sync': {
+      id: '/api/public/hooks/shipping-tracking-sync'
+      path: '/api/public/hooks/shipping-tracking-sync'
+      fullPath: '/api/public/hooks/shipping-tracking-sync'
+      preLoaderRoute: typeof ApiPublicHooksShippingTrackingSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/customers/$customerId': {
       id: '/_authenticated/admin/customers/$customerId'
       path: '/$customerId'
@@ -574,6 +595,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicHooksShippingTrackingSyncRoute:
+    ApiPublicHooksShippingTrackingSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
