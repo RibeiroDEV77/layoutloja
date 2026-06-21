@@ -87,6 +87,26 @@ function AttributesPage() {
               </div>
             </FormField>
           </FormRow>
+          <FormRow>
+            <FormField label="Exibir como filtro na Loja">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.is_filterable !== false} onCheckedChange={(v) => setForm({ is_filterable: v })} />
+                <span className="text-sm text-muted-foreground">Aparece na barra lateral</span>
+              </div>
+            </FormField>
+            <SelectField label="Interface do filtro" value={(form.filter_ui as string) ?? "checkbox"}
+              onChange={(v) => setForm({ filter_ui: v })}
+              options={[
+                { value: "checkbox", label: "Caixas (checkbox)" },
+                { value: "color", label: "Swatches de cor" },
+                { value: "size", label: "Chips de tamanho" },
+                { value: "range", label: "Faixa (slider)" },
+              ]} />
+          </FormRow>
+          <FormField label="Ordem do filtro" hint="Menor aparece primeiro.">
+            <Input type="number" value={(form.filter_order as number) ?? 0}
+              onChange={(e) => setForm({ filter_order: Number(e.target.value) })} />
+          </FormField>
           <FormField label="Descrição">
             <Textarea rows={3} value={(form.description as string) ?? ""}
               onChange={(e) => setForm({ description: e.target.value })} />
