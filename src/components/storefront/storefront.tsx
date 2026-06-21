@@ -7,18 +7,31 @@ import { cn } from "@/lib/utils";
 import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
 import lookSocial from "@/assets/look-social.jpg";
+import logoAsset from "@/assets/layout-logo.png.asset.json";
 import type { StorefrontCategory, StorefrontProduct } from "@/lib/business/storefront.functions";
 
 // ---------------------------------------------------------------------------
-// Shared
+// Shell
 // ---------------------------------------------------------------------------
 
 export function StorefrontShell({ children }: { children: ReactNode }) {
-  // Scope editorial fonts and white background to the public storefront only.
   return (
     <div className="font-storefront-sans font-light text-neutral-900 bg-white antialiased [&_*]:tracking-[0.005em]">
       {children}
     </div>
+  );
+}
+
+// Brand horizontal line — inspired by the line in the logo
+function BrandLine({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "block h-px w-12 bg-neutral-900 relative after:absolute after:-right-1.5 after:-top-[2px] after:h-[5px] after:w-[5px] after:rounded-full after:bg-[var(--brand-red)]",
+        className,
+      )}
+    />
   );
 }
 
@@ -28,7 +41,7 @@ const NAV_ITEMS = [
   { label: "Infantil", to: "/" },
   { label: "Calçados", to: "/" },
   { label: "Acessórios", to: "/" },
-  { label: "Promoções", to: "/" },
+  { label: "Promoções", to: "/", accent: true as const },
   { label: "Novidades", to: "/" },
 ];
 
@@ -36,59 +49,67 @@ const NAV_ITEMS = [
 // Navbar
 // ---------------------------------------------------------------------------
 
-export function StorefrontNavbar({ storeName = "ATELIER" }: { storeName?: string }) {
+export function StorefrontNavbar({ storeName = "Layout" }: { storeName?: string }) {
   const [open, setOpen] = useState(false);
-  const brand = storeName.toUpperCase();
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-100">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-100">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-        <div className="flex h-20 items-center">
-          {/* Mobile menu */}
+        <div className="flex h-20 items-center gap-4">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="md:hidden -ml-2 p-2 text-neutral-700"
+            className="md:hidden -ml-2 p-2 text-neutral-800 hover:text-[var(--brand-red)] transition-colors"
             aria-label="Menu"
           >
             {open ? <X className="h-[18px] w-[18px]" strokeWidth={1.25} /> : <Menu className="h-[18px] w-[18px]" strokeWidth={1.25} />}
           </button>
 
-          {/* Brand */}
-          <Link
-            to="/"
-            className="font-storefront-display text-2xl font-light tracking-[0.32em] md:absolute md:left-1/2 md:-translate-x-1/2"
-          >
-            {brand}
+          {/* Logo à esquerda */}
+          <Link to="/" className="flex items-center" aria-label={storeName}>
+            <img
+              src={logoAsset.url}
+              alt={storeName}
+              className="h-10 md:h-12 w-auto object-contain"
+            />
           </Link>
 
-          {/* Right icons */}
-          <div className="ml-auto flex items-center gap-1 md:gap-2">
+          {/* Desktop nav (centro) */}
+          <nav className="hidden md:flex flex-1 items-center justify-center gap-9 text-[11px] uppercase tracking-[0.22em] text-neutral-800">
+            {NAV_ITEMS.map((i) => (
+              <Link
+                key={i.label}
+                to={i.to}
+                className={cn(
+                  "relative py-1 transition-colors duration-300 hover:text-[var(--brand-red)]",
+                  i.accent && "text-[var(--brand-red)]",
+                )}
+              >
+                {i.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="ml-auto md:ml-0 flex items-center gap-0.5">
             <IconBtn label="Buscar"><Search className="h-[18px] w-[18px]" strokeWidth={1.25} /></IconBtn>
             <IconBtn label="Favoritos"><Heart className="h-[18px] w-[18px]" strokeWidth={1.25} /></IconBtn>
             <IconBtn label="Minha conta"><User className="h-[18px] w-[18px]" strokeWidth={1.25} /></IconBtn>
             <IconBtn label="Sacola"><ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.25} /></IconBtn>
           </div>
         </div>
+      </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex h-11 items-center justify-center gap-10 text-[11px] uppercase tracking-[0.22em] text-neutral-700">
+      {open && (
+        <nav className="md:hidden border-t border-neutral-100 bg-white px-6 py-4 grid gap-3 text-sm uppercase tracking-[0.18em]">
           {NAV_ITEMS.map((i) => (
             <Link
               key={i.label}
               to={i.to}
-              className="relative py-1 hover:text-neutral-950 transition-colors duration-300"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "py-1.5 text-neutral-800 hover:text-[var(--brand-red)] transition-colors",
+                i.accent && "text-[var(--brand-red)]",
+              )}
             >
-              {i.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      {/* Mobile drawer */}
-      {open && (
-        <nav className="md:hidden border-t border-neutral-100 bg-white px-6 py-4 grid gap-3 text-sm uppercase tracking-[0.18em]">
-          {NAV_ITEMS.map((i) => (
-            <Link key={i.label} to={i.to} onClick={() => setOpen(false)} className="py-1.5 text-neutral-800">
               {i.label}
             </Link>
           ))}
@@ -103,7 +124,7 @@ function IconBtn({ label, children }: { label: string; children: ReactNode }) {
     <button
       type="button"
       aria-label={label}
-      className="p-2 text-neutral-700 hover:text-neutral-950 transition-colors duration-300"
+      className="p-2 text-neutral-800 hover:text-[var(--brand-red)] transition-colors duration-300"
     >
       {children}
     </button>
@@ -111,24 +132,25 @@ function IconBtn({ label, children }: { label: string; children: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Hero (banner horizontal baixo, sem imagem placeholder)
+// Hero — horizontal, baixo
 // ---------------------------------------------------------------------------
 
 export function StorefrontHero({ storeName }: { storeName?: string }) {
   return (
-    <section className="border-b border-neutral-100">
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-10 md:py-14 flex flex-col items-center text-center gap-4">
+    <section className="bg-white">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-14 md:py-20 flex flex-col items-center text-center gap-5">
         <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-500">
           Coleção atual · Outono Inverno
         </span>
-        <h1 className="font-storefront-display text-3xl md:text-5xl font-light tracking-tight max-w-2xl text-balance">
+        <h1 className="font-storefront-display text-3xl md:text-5xl font-light tracking-tight max-w-2xl text-balance text-neutral-900">
           {storeName ? `Bem-vindo à ${storeName}` : "Peças atemporais para o seu cotidiano"}
         </h1>
+        <BrandLine className="mt-1" />
         <Link
           to="/"
-          className="mt-2 inline-flex items-center justify-center border border-neutral-900 px-7 py-2.5 text-[11px] uppercase tracking-[0.28em] text-neutral-900 hover:bg-neutral-900 hover:text-white transition-colors duration-500"
+          className="mt-3 inline-flex items-center justify-center bg-neutral-900 px-8 py-3 text-[11px] uppercase tracking-[0.28em] text-white hover:bg-[var(--brand-red)] transition-colors duration-500"
         >
-          Explorar
+          Explorar coleção
         </Link>
       </div>
     </section>
@@ -152,8 +174,9 @@ export function LooksSlider() {
     return () => clearInterval(t);
   }, []);
   return (
-    <section className="bg-white">
-      <div className="relative w-full overflow-hidden aspect-[21/10] md:aspect-[21/8]">
+    <Section tone="soft" compact>
+      <SectionTitle title="Lookbook" subtitle="Inspirações da estação" />
+      <div className="relative w-full overflow-hidden aspect-[21/10] md:aspect-[21/9]">
         {LOOKS.map((look, i) => (
           <div
             key={look.title}
@@ -166,14 +189,12 @@ export function LooksSlider() {
             <img
               src={look.src}
               alt={look.title}
-              width={1600}
-              height={900}
               loading={i === 0 ? "eager" : "lazy"}
               className="h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
             <div className="absolute inset-x-0 bottom-10 md:bottom-16 flex flex-col items-center text-center text-white px-6">
-              <span className="text-[10px] uppercase tracking-[0.4em] opacity-80">Lookbook</span>
+              <span className="text-[10px] uppercase tracking-[0.4em] opacity-80">Look</span>
               <h3 className="mt-2 font-storefront-display text-2xl md:text-4xl font-light">{look.title}</h3>
               <p className="mt-1 text-xs md:text-sm font-light opacity-90">{look.subtitle}</p>
             </div>
@@ -193,7 +214,7 @@ export function LooksSlider() {
           ))}
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -228,9 +249,11 @@ export function CategoryCards({ categories }: { categories: StorefrontCategory[]
                   </div>
                 )}
               </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.22em] text-neutral-800">{c.name}</span>
-                <span className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 group-hover:text-neutral-900 transition-colors duration-300">
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.22em] text-neutral-900 group-hover:text-[var(--brand-red)] transition-colors duration-300">
+                  {c.name}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 group-hover:text-[var(--brand-red)] transition-colors duration-300">
                   Ver →
                 </span>
               </div>
@@ -267,13 +290,29 @@ export function ProductSection({
   );
 }
 
+function formatBRL(n?: number | null) {
+  if (n == null) return null;
+  try {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+  } catch {
+    return `R$ ${n.toFixed(2)}`;
+  }
+}
+
 function ProductCard({ p }: { p: StorefrontProduct }) {
+  const price = formatBRL((p as { price?: number | null }).price ?? null);
+  const salePrice = formatBRL((p as { sale_price?: number | null }).sale_price ?? null);
   return (
     <Link to="/" className="group block">
       <div className="relative aspect-[3/4] overflow-hidden bg-neutral-50">
-        {(p.on_sale || p.new_product) && (
-          <span className="absolute left-3 top-3 z-10 bg-white px-2 py-1 text-[9px] uppercase tracking-[0.24em] text-neutral-800">
-            {p.on_sale ? "Sale" : "Novo"}
+        {p.on_sale && (
+          <span className="absolute left-3 top-3 z-10 bg-[var(--brand-red)] px-2 py-1 text-[9px] uppercase tracking-[0.24em] text-white">
+            Sale
+          </span>
+        )}
+        {!p.on_sale && p.new_product && (
+          <span className="absolute left-3 top-3 z-10 bg-white px-2 py-1 text-[9px] uppercase tracking-[0.24em] text-neutral-900">
+            Novo
           </span>
         )}
         <div className="absolute inset-0 grid place-items-center">
@@ -282,12 +321,21 @@ function ProductCard({ p }: { p: StorefrontProduct }) {
           </span>
         </div>
       </div>
-      <div className="mt-3 space-y-0.5">
-        <h3 className="text-sm font-normal text-neutral-900 truncate group-hover:text-neutral-600 transition-colors duration-300">
+      <div className="mt-4 space-y-1">
+        <h3 className="text-sm font-normal text-neutral-900 truncate group-hover:text-[var(--brand-red)] transition-colors duration-300">
           {p.name}
         </h3>
-        {p.short_description && (
-          <p className="text-xs text-neutral-500 line-clamp-1">{p.short_description}</p>
+        {(price || salePrice) && (
+          <div className="flex items-baseline gap-2 text-xs">
+            {p.on_sale && salePrice ? (
+              <>
+                <span className="text-[var(--brand-red)]">{salePrice}</span>
+                {price && <span className="text-neutral-400 line-through">{price}</span>}
+              </>
+            ) : (
+              price && <span className="text-neutral-700">{price}</span>
+            )}
+          </div>
         )}
       </div>
     </Link>
@@ -298,24 +346,31 @@ function ProductCard({ p }: { p: StorefrontProduct }) {
 // Section primitives
 // ---------------------------------------------------------------------------
 
-function Section({ children, tone = "white" }: { children: ReactNode; tone?: "white" | "soft" }) {
+function Section({ children, tone = "white", compact = false }: {
+  children: ReactNode; tone?: "white" | "soft"; compact?: boolean;
+}) {
   return (
-    <section className={cn(tone === "soft" ? "bg-neutral-50/60" : "bg-white")}>
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16 md:py-20">{children}</div>
+    <section className={cn(tone === "soft" ? "bg-neutral-50/70" : "bg-white")}>
+      <div className={cn(
+        "mx-auto max-w-[1400px] px-6 lg:px-10",
+        compact ? "py-14 md:py-16" : "py-20 md:py-24",
+      )}>{children}</div>
     </section>
   );
 }
 
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="mb-10 flex flex-col items-center text-center md:mb-14">
-      {subtitle && (
-        <span className="text-[10px] uppercase tracking-[0.4em] text-neutral-500">{subtitle}</span>
-      )}
-      <h2 className="mt-2 font-storefront-display text-2xl md:text-3xl font-light tracking-tight text-neutral-900">
+    <div className="mb-12 flex flex-col items-center text-center md:mb-16">
+      <h2 className="font-storefront-display text-3xl md:text-4xl font-light tracking-tight text-neutral-900">
         {title}
       </h2>
-      <span aria-hidden className="mt-5 block h-px w-10 bg-neutral-300" />
+      {subtitle && (
+        <p className="mt-3 text-xs uppercase tracking-[0.3em] text-neutral-500 font-light">
+          {subtitle}
+        </p>
+      )}
+      <BrandLine className="mt-6" />
     </div>
   );
 }
@@ -323,7 +378,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="mx-auto max-w-md text-center py-12">
-      <p className="text-sm font-light text-neutral-600">{message}</p>
+      <p className="text-sm font-light text-neutral-500">{message}</p>
     </div>
   );
 }
@@ -332,45 +387,35 @@ function EmptyState({ message }: { message: string }) {
 // Rodapé
 // ---------------------------------------------------------------------------
 
-export function StorefrontFooter({ storeName = "ATELIER" }: { storeName?: string }) {
+export function StorefrontFooter({ storeName = "Layout" }: { storeName?: string }) {
   return (
     <footer className="bg-white border-t border-neutral-100">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-1">
-          <p className="font-storefront-display text-xl font-light tracking-[0.32em]">
-            {storeName.toUpperCase()}
-          </p>
-          <p className="mt-3 text-xs font-light text-neutral-500 leading-relaxed max-w-xs">
-            Moda autoral, criada com atenção aos detalhes.
-            Entrega para todo o Brasil.
+          <img src={logoAsset.url} alt={storeName} className="h-10 w-auto object-contain" />
+          <p className="mt-5 text-xs font-light text-neutral-500 leading-relaxed max-w-xs">
+            Indústria do vestuário com tradição e qualidade. Moda autoral, criada com atenção aos detalhes.
           </p>
           <div className="mt-5 flex gap-3 text-neutral-500">
-            <a href="#" aria-label="Instagram" className="hover:text-neutral-900 transition-colors duration-300">
+            <a href="#" aria-label="Instagram" className="hover:text-[var(--brand-red)] transition-colors duration-300">
               <Instagram className="h-4 w-4" strokeWidth={1.25} />
             </a>
-            <a href="#" aria-label="Facebook" className="hover:text-neutral-900 transition-colors duration-300">
+            <a href="#" aria-label="Facebook" className="hover:text-[var(--brand-red)] transition-colors duration-300">
               <Facebook className="h-4 w-4" strokeWidth={1.25} />
             </a>
-            <a href="#" aria-label="YouTube" className="hover:text-neutral-900 transition-colors duration-300">
+            <a href="#" aria-label="YouTube" className="hover:text-[var(--brand-red)] transition-colors duration-300">
               <Youtube className="h-4 w-4" strokeWidth={1.25} />
             </a>
           </div>
         </div>
         <FooterCol title="Institucional" items={["Sobre", "Nossa história", "Trabalhe conosco"]} />
         <FooterCol title="Atendimento" items={["Contato", "Trocas e devoluções", "Políticas", "Privacidade"]} />
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-neutral-900">Pagamento</p>
-          <p className="mt-4 text-xs font-light text-neutral-500">
-            Cartão de crédito · Pix · Boleto
-          </p>
-          <p className="mt-3 text-xs font-light text-neutral-500">
-            Compra 100% segura
-          </p>
-        </div>
+        <FooterCol title="Minha conta" items={["Acessar", "Meus pedidos", "Endereços", "Favoritos"]} />
       </div>
       <div className="border-t border-neutral-100">
-        <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-5 text-[11px] uppercase tracking-[0.2em] text-neutral-400">
-          © {new Date().getFullYear()} {storeName.toUpperCase()}
+        <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-5 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.2em] text-neutral-400">
+          <span>© {new Date().getFullYear()} {storeName} — Indústria do vestuário Ltda.</span>
+          <span className="hidden md:inline">Compra 100% segura</span>
         </div>
       </div>
     </footer>
@@ -381,10 +426,10 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
       <p className="text-[11px] uppercase tracking-[0.24em] text-neutral-900">{title}</p>
-      <ul className="mt-4 space-y-2 text-sm font-light text-neutral-600">
+      <ul className="mt-5 space-y-2.5 text-sm font-light text-neutral-600">
         {items.map((i) => (
           <li key={i}>
-            <a href="#" className="hover:text-neutral-900 transition-colors duration-300">{i}</a>
+            <a href="#" className="hover:text-[var(--brand-red)] transition-colors duration-300">{i}</a>
           </li>
         ))}
       </ul>
