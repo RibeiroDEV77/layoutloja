@@ -2662,6 +2662,340 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_credentials_keyring: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          key: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          key?: string
+        }
+        Relationships: []
+      }
+      fiscal_invoice_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          invoice_id: string
+          message: string | null
+          payload: Json
+          status: Database["public"]["Enums"]["fiscal_invoice_status"] | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          invoice_id: string
+          message?: string | null
+          payload?: Json
+          status?: Database["public"]["Enums"]["fiscal_invoice_status"] | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          invoice_id?: string
+          message?: string | null
+          payload?: Json
+          status?: Database["public"]["Enums"]["fiscal_invoice_status"] | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_invoice_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoice_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_invoices: {
+        Row: {
+          access_key: string | null
+          cancel_protocol: string | null
+          cancelled_at: string | null
+          corrected_at: string | null
+          correction_text: string | null
+          created_at: string
+          created_by: string | null
+          danfe_url: string | null
+          document_type: Database["public"]["Enums"]["fiscal_document_type"]
+          external_id: string | null
+          id: string
+          idempotency_key: string | null
+          issue_date: string | null
+          metadata: Json
+          number: string | null
+          order_id: string | null
+          payload: Json
+          protocol: string | null
+          provider_id: string
+          rejection_code: string | null
+          rejection_reason: string | null
+          series: string | null
+          status: Database["public"]["Enums"]["fiscal_invoice_status"]
+          store_id: string
+          total_amount: number | null
+          updated_at: string
+          xml_url: string | null
+        }
+        Insert: {
+          access_key?: string | null
+          cancel_protocol?: string | null
+          cancelled_at?: string | null
+          corrected_at?: string | null
+          correction_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_url?: string | null
+          document_type?: Database["public"]["Enums"]["fiscal_document_type"]
+          external_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          issue_date?: string | null
+          metadata?: Json
+          number?: string | null
+          order_id?: string | null
+          payload?: Json
+          protocol?: string | null
+          provider_id: string
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          series?: string | null
+          status?: Database["public"]["Enums"]["fiscal_invoice_status"]
+          store_id: string
+          total_amount?: number | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Update: {
+          access_key?: string | null
+          cancel_protocol?: string | null
+          cancelled_at?: string | null
+          corrected_at?: string | null
+          correction_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          danfe_url?: string | null
+          document_type?: Database["public"]["Enums"]["fiscal_document_type"]
+          external_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          issue_date?: string | null
+          metadata?: Json
+          number?: string | null
+          order_id?: string | null
+          payload?: Json
+          protocol?: string | null
+          provider_id?: string
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          series?: string | null
+          status?: Database["public"]["Enums"]["fiscal_invoice_status"]
+          store_id?: string
+          total_amount?: number | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoices_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoices_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_providers: {
+        Row: {
+          adapter: string
+          capabilities: Json
+          config: Json
+          created_at: string
+          created_by: string | null
+          credentials_encrypted: string | null
+          credentials_fingerprint: string | null
+          credentials_set_at: string | null
+          credentials_set_by: string | null
+          display_name: string
+          environment: Database["public"]["Enums"]["fiscal_environment"]
+          id: string
+          is_active: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_ok: boolean | null
+          priority: number
+          store_id: string
+          supported_documents: string[]
+          updated_at: string
+          webhook_secret_encrypted: string | null
+        }
+        Insert: {
+          adapter: string
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
+          display_name: string
+          environment?: Database["public"]["Enums"]["fiscal_environment"]
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          priority?: number
+          store_id: string
+          supported_documents?: string[]
+          updated_at?: string
+          webhook_secret_encrypted?: string | null
+        }
+        Update: {
+          adapter?: string
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
+          display_name?: string
+          environment?: Database["public"]["Enums"]["fiscal_environment"]
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          priority?: number
+          store_id?: string
+          supported_documents?: string[]
+          updated_at?: string
+          webhook_secret_encrypted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_providers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_webhook_inbox: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string | null
+          external_event_id: string | null
+          id: string
+          processed_at: string | null
+          provider_code: string
+          provider_id: string | null
+          raw_body: string
+          raw_headers: Json
+          signature_header: string | null
+          signature_valid: boolean | null
+          status: string
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          external_event_id?: string | null
+          id?: string
+          processed_at?: string | null
+          provider_code: string
+          provider_id?: string | null
+          raw_body: string
+          raw_headers?: Json
+          signature_header?: string | null
+          signature_valid?: boolean | null
+          status?: string
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          external_event_id?: string | null
+          id?: string
+          processed_at?: string | null
+          provider_code?: string
+          provider_id?: string | null
+          raw_body?: string
+          raw_headers?: Json
+          signature_header?: string | null
+          signature_valid?: boolean | null
+          status?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_webhook_inbox_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_webhook_inbox_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fulfillment_events: {
         Row: {
           actor_kind: Database["public"]["Enums"]["fulfillment_event_actor"]
@@ -11908,6 +12242,64 @@ export type Database = {
         Returns: Json
       }
       expire_stale_cart_reservations: { Args: never; Returns: number }
+      fiscal_get_credentials: { Args: { _provider_id: string }; Returns: Json }
+      fiscal_get_webhook_secret: {
+        Args: { _provider_id: string }
+        Returns: string
+      }
+      fiscal_record_cancellation: {
+        Args: { _invoice_id: string; _protocol: string; _reason: string }
+        Returns: undefined
+      }
+      fiscal_record_correction: {
+        Args: { _invoice_id: string; _protocol: string; _text: string }
+        Returns: undefined
+      }
+      fiscal_record_issuance: {
+        Args: {
+          _document_type: Database["public"]["Enums"]["fiscal_document_type"]
+          _idempotency_key: string
+          _order_id: string
+          _payload?: Json
+          _provider_id: string
+          _store_id: string
+        }
+        Returns: string
+      }
+      fiscal_set_credentials: {
+        Args: { _creds: Json; _provider_id: string }
+        Returns: undefined
+      }
+      fiscal_set_webhook_secret: {
+        Args: { _provider_id: string; _secret: string }
+        Returns: undefined
+      }
+      fiscal_update_status: {
+        Args: {
+          _invoice_id: string
+          _message?: string
+          _patch?: Json
+          _status: Database["public"]["Enums"]["fiscal_invoice_status"]
+        }
+        Returns: undefined
+      }
+      fiscal_webhook_ingest: {
+        Args: {
+          _body: string
+          _event_type: string
+          _external_event_id: string
+          _headers: Json
+          _provider_code: string
+          _provider_id: string
+          _signature_header: string
+          _signature_valid: boolean
+        }
+        Returns: string
+      }
+      fiscal_webhook_mark_processed: {
+        Args: { _error?: string; _inbox_id: string; _ok: boolean }
+        Returns: undefined
+      }
       fulfillment_allocate: {
         Args: {
           p_expected_version?: number
@@ -12910,6 +13302,16 @@ export type Database = {
         | "damaged"
         | "rescheduled"
         | "other"
+      fiscal_document_type: "nfe" | "nfce" | "nfse" | "cte"
+      fiscal_environment: "production" | "sandbox"
+      fiscal_invoice_status:
+        | "pending"
+        | "processing"
+        | "authorized"
+        | "denied"
+        | "cancelled"
+        | "corrected"
+        | "error"
       fulfillment_event_actor: "system" | "user" | "carrier" | "customer"
       fulfillment_event_kind:
         | "created"
@@ -13520,6 +13922,17 @@ export const Constants = {
         "damaged",
         "rescheduled",
         "other",
+      ],
+      fiscal_document_type: ["nfe", "nfce", "nfse", "cte"],
+      fiscal_environment: ["production", "sandbox"],
+      fiscal_invoice_status: [
+        "pending",
+        "processing",
+        "authorized",
+        "denied",
+        "cancelled",
+        "corrected",
+        "error",
       ],
       fulfillment_event_actor: ["system", "user", "carrier", "customer"],
       fulfillment_event_kind: [
