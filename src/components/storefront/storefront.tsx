@@ -483,21 +483,28 @@ export function Section({ children, tone = "white", id }: {
 }
 
 export function SectionHeader({
-  title, description, action,
+  eyebrow, title, description, action,
 }: {
-  title: string; description?: string;
+  eyebrow?: string;
+  title: string;
+  description?: string;
   action?: { label: string; href?: string };
   /** @deprecated mantido por compatibilidade — todas as seções usam left */
   align?: "left" | "center";
 }) {
   return (
-    <div className="mb-10 md:mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-8">
-      <div className="max-w-2xl">
-        <h2 className="text-[32px] md:text-[44px] leading-tight font-semibold tracking-tight text-[#111]">
+    <div className="mb-12 md:mb-16 flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-10">
+      <div className="max-w-3xl">
+        {eyebrow && (
+          <p className="text-[12px] md:text-[13px] font-medium uppercase tracking-[0.28em] text-[var(--brand-red)]">
+            {eyebrow}
+          </p>
+        )}
+        <h2 className="mt-3 text-[44px] md:text-[56px] lg:text-[60px] leading-[1.02] font-bold tracking-tight text-[#111111]">
           {title}
         </h2>
         {description && (
-          <p className="mt-2 text-[15px] text-[#666]">
+          <p className="mt-4 text-[18px] md:text-[20px] font-normal leading-relaxed text-[#6B6B6B]">
             {description}
           </p>
         )}
@@ -505,7 +512,7 @@ export function SectionHeader({
       {action && (
         <a
           href={action.href ?? "#"}
-          className="self-start md:self-end shrink-0 inline-flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.16em] text-[#111] border-b border-[#111] pb-1 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors"
+          className="self-start md:self-end shrink-0 inline-flex items-center gap-2 text-[12px] md:text-[13px] font-semibold uppercase tracking-[0.22em] text-[#111111] border-b border-[#111111] pb-1.5 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors duration-200"
         >
           {action.label} →
         </a>
