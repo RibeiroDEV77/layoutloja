@@ -17,7 +17,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Sb = SupabaseClient<Database>;
 
-const PUBLIC_VIS = ['published', 'catalog_only'] as const;
+const PUBLIC_VIS: Array<'published' | 'catalog_only'> = ['published', 'catalog_only'];
 
 /** Estrutura mínima do card de produto exibida em listas. */
 export interface StorefrontProductCard {
@@ -174,13 +174,13 @@ async function enrichCards(supabase: Sb, base: Array<{
   if (variantIds.length) {
     const { data: pli } = await supabase
       .from('price_list_items')
-      .select('variant_id, list_price, sale_price')
+      .select('variant_id, price, compare_at_price')
       .in('variant_id', variantIds);
-    for (const it of pli ?? []) {
+    for (const it of (pli ?? []) as Array<{ variant_id: string; price: number | null; compare_at_price: number | null }>) {
       const pid = variantToProduct.get(it.variant_id);
       if (!pid) continue;
-      const effective = Number(it.sale_price ?? it.list_price ?? 0);
-      const list = it.list_price != null ? Number(it.list_price) : null;
+      const effective = Number(it.price ?? 0);
+      const list = it.compare_at_price != null ? Number(it.compare_at_price) : null;
       if (!effective) continue;
       const cur = priceByProduct.get(pid);
       if (!cur || effective < cur.price) priceByProduct.set(pid, { price: effective, list });
@@ -247,7 +247,8 @@ export async function listPublicProducts(supabase: Sb, p: ListPublicProductsInpu
     .select('id, slug, name, short_description, brand_id, category_id, featured, new_product, best_seller, on_sale, published_at, created_at, updated_at', { count: 'exact' })
     .eq('store_id', p.store_id)
     .eq('status', 'published')
-    .in('visibility', PUBLIC_VIS as unknown as string[]);
+    .in('visibility', PUBLIC_VIS);
+
 
   if (categoryId) q = q.eq('category_id', categoryId);
   if (brandId) q = q.eq('brand_id', brandId);
@@ -352,7 +353,7 @@ export async function getPublicProductBySlug(
     .eq('store_id', storeId)
     .eq('slug', slug)
     .eq('status', 'published')
-    .in('visibility', PUBLIC_VIS as unknown as string[])
+    .in('visibility', PUBLIC_VIS)
     .maybeSingle();
   if (!product) return null;
 
@@ -396,34 +397,34 @@ export async function getPublicProductBySlug(
   }
 
   // preços
-  const { data: pli } = variantIds.length
-    ? await supabase.from('price_list_items').select('variant_id, list_price, sale_price').in('variant_id', variantIds)
-    : { data: [] };
+  const pliRes = variantIds.length
+    ? await supabase.from('price_list_items').select('variant_id, price, compare_at_price').in('variant_id', variantIds)
+    : { data: [] as Array<{ variant_id: string; price: number | null; compare_at_price: number | null }> };
   const priceByVariant = new Map<string, { list: number | null; sale: number | null }>();
-  for (const it of pli ?? []) {
+  for (const it of (pliRes.data ?? []) as Array<{ variant_id: string; price: number | null; compare_at_price: number | null }>) {
     const cur = priceByVariant.get(it.variant_id);
-    const list = it.list_price != null ? Number(it.list_price) : null;
-    const sale = it.sale_price != null ? Number(it.sale_price) : null;
+    const sale = it.price != null ? Number(it.price) : null;
+    const list = it.compare_at_price != null ? Number(it.compare_at_price) : sale;
     if (!cur || (sale ?? list ?? Infinity) < (cur.sale ?? cur.list ?? Infinity)) {
       priceByVariant.set(it.variant_id, { list, sale });
     }
   }
 
   // estoque
-  const { data: levels } = variantIds.length
-    ? await supabase.from('stock_levels').select('variant_id, available_qty, reserved_qty').in('variant_id', variantIds)
-    : { data: [] };
+  const stockRes = variantIds.length
+    ? await supabase.from('stock_levels').select('variant_id, quantity_on_hand, quantity_reserved').in('variant_id', variantIds)
+    : { data: [] as Array<{ variant_id: string; quantity_on_hand: number | null; quantity_reserved: number | null }> };
   const stockByVariant = new Map<string, number>();
-  for (const l of levels ?? []) {
-    const free = Number(l.available_qty ?? 0) - Number(l.reserved_qty ?? 0);
+  for (const l of (stockRes.data ?? []) as Array<{ variant_id: string; quantity_on_hand: number | null; quantity_reserved: number | null }>) {
+    const free = Number(l.quantity_on_hand ?? 0) - Number(l.quantity_reserved ?? 0);
     stockByVariant.set(l.variant_id, (stockByVariant.get(l.variant_id) ?? 0) + Math.max(0, free));
   }
 
-  // variant color: tentar via variant.color_id se houver, senão via variant_attribute_values com attribute 'cor'/'color'
+  // variant color: product_variants.product_color_id é a ligação canônica
   const colorByVariant = new Map<string, string>();
   for (const v of variants ?? []) {
-    const vAny = v as unknown as { color_id?: string | null };
-    if (vAny.color_id) colorByVariant.set(v.id, vAny.color_id);
+    const vAny = v as unknown as { product_color_id?: string | null };
+    if (vAny.product_color_id) colorByVariant.set(v.id, vAny.product_color_id);
   }
 
   const attributes: StorefrontProductDetail['attributes'] = (pavRows as unknown as Array<{ attributes: { name?: string } | null; attribute_values: { value?: string } | null; value_text: string | null; value_number: number | null; value_boolean: boolean | null }>)
@@ -497,7 +498,7 @@ export async function listRelatedProducts(
         .select('id')
         .eq('store_id', storeId)
         .eq('status', 'published')
-        .in('visibility', PUBLIC_VIS as unknown as string[])
+        .in('visibility', PUBLIC_VIS)
         .eq('category_id', src.category_id)
         .neq('id', productId)
         .limit(limit);
