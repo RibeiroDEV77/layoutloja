@@ -2376,6 +2376,343 @@ export type Database = {
         }
         Relationships: []
       }
+      fulfillment_events: {
+        Row: {
+          actor_kind: Database["public"]["Enums"]["fulfillment_event_actor"]
+          actor_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          fulfillment_id: string
+          id: string
+          kind: Database["public"]["Enums"]["fulfillment_event_kind"]
+          payload: Json
+          store_id: string
+          summary: string | null
+          trace_id: string | null
+        }
+        Insert: {
+          actor_kind?: Database["public"]["Enums"]["fulfillment_event_actor"]
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          fulfillment_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["fulfillment_event_kind"]
+          payload?: Json
+          store_id: string
+          summary?: string | null
+          trace_id?: string | null
+        }
+        Update: {
+          actor_kind?: Database["public"]["Enums"]["fulfillment_event_actor"]
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          fulfillment_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["fulfillment_event_kind"]
+          payload?: Json
+          store_id?: string
+          summary?: string | null
+          trace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_events_fulfillment_id_fkey"
+            columns: ["fulfillment_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fulfillment_items: {
+        Row: {
+          created_at: string
+          fulfillment_id: string
+          id: string
+          metadata: Json
+          name: string | null
+          order_item_id: string | null
+          product_id: string | null
+          quantity_allocated: number
+          quantity_delivered: number
+          quantity_packed: number
+          quantity_picked: number
+          quantity_requested: number
+          quantity_shipped: number
+          sku: string | null
+          snapshot: Json
+          store_id: string
+          unit_volume_cm3: number | null
+          unit_weight_g: number | null
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fulfillment_id: string
+          id?: string
+          metadata?: Json
+          name?: string | null
+          order_item_id?: string | null
+          product_id?: string | null
+          quantity_allocated?: number
+          quantity_delivered?: number
+          quantity_packed?: number
+          quantity_picked?: number
+          quantity_requested: number
+          quantity_shipped?: number
+          sku?: string | null
+          snapshot?: Json
+          store_id: string
+          unit_volume_cm3?: number | null
+          unit_weight_g?: number | null
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fulfillment_id?: string
+          id?: string
+          metadata?: Json
+          name?: string | null
+          order_item_id?: string | null
+          product_id?: string | null
+          quantity_allocated?: number
+          quantity_delivered?: number
+          quantity_packed?: number
+          quantity_picked?: number
+          quantity_requested?: number
+          quantity_shipped?: number
+          sku?: string | null
+          snapshot?: Json
+          store_id?: string
+          unit_volume_cm3?: number | null
+          unit_weight_g?: number | null
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_items_fulfillment_id_fkey"
+            columns: ["fulfillment_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fulfillment_metadata: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fulfillment_id: string
+          id: string
+          is_pii: boolean
+          is_secret: boolean
+          key: string
+          store_id: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fulfillment_id: string
+          id?: string
+          is_pii?: boolean
+          is_secret?: boolean
+          key: string
+          store_id: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fulfillment_id?: string
+          id?: string
+          is_pii?: boolean
+          is_secret?: boolean
+          key?: string
+          store_id?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_metadata_fulfillment_id_fkey"
+            columns: ["fulfillment_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_metadata_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fulfillments: {
+        Row: {
+          allocated_at: string | null
+          assigned_to: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          causation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          failure_code: string | null
+          failure_message: string | null
+          fulfillable_id: string
+          fulfillable_type: Database["public"]["Enums"]["fulfillment_fulfillable_type"]
+          fulfillment_number: string
+          id: string
+          metadata: Json
+          packed_at: string | null
+          picked_at: string | null
+          priority: Database["public"]["Enums"]["fulfillment_priority"]
+          schema_version: number
+          shipped_at: string | null
+          sla_due_at: string | null
+          status: Database["public"]["Enums"]["fulfillment_status"]
+          store_id: string
+          trace_id: string | null
+          type: Database["public"]["Enums"]["fulfillment_type"]
+          updated_at: string
+          version: number
+          warehouse_id: string | null
+        }
+        Insert: {
+          allocated_at?: string | null
+          assigned_to?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          fulfillable_id: string
+          fulfillable_type?: Database["public"]["Enums"]["fulfillment_fulfillable_type"]
+          fulfillment_number: string
+          id?: string
+          metadata?: Json
+          packed_at?: string | null
+          picked_at?: string | null
+          priority?: Database["public"]["Enums"]["fulfillment_priority"]
+          schema_version?: number
+          shipped_at?: string | null
+          sla_due_at?: string | null
+          status?: Database["public"]["Enums"]["fulfillment_status"]
+          store_id: string
+          trace_id?: string | null
+          type?: Database["public"]["Enums"]["fulfillment_type"]
+          updated_at?: string
+          version?: number
+          warehouse_id?: string | null
+        }
+        Update: {
+          allocated_at?: string | null
+          assigned_to?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          fulfillable_id?: string
+          fulfillable_type?: Database["public"]["Enums"]["fulfillment_fulfillable_type"]
+          fulfillment_number?: string
+          id?: string
+          metadata?: Json
+          packed_at?: string | null
+          picked_at?: string | null
+          priority?: Database["public"]["Enums"]["fulfillment_priority"]
+          schema_version?: number
+          shipped_at?: string | null
+          sla_due_at?: string | null
+          status?: Database["public"]["Enums"]["fulfillment_status"]
+          store_id?: string
+          trace_id?: string | null
+          type?: Database["public"]["Enums"]["fulfillment_type"]
+          updated_at?: string
+          version?: number
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillments_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goods_receipt_items: {
         Row: {
           created_at: string
@@ -9191,6 +9528,33 @@ export type Database = {
         | "vip"
       customer_status: "active" | "inactive" | "blocked"
       customer_type: "pf" | "pj"
+      fulfillment_event_actor: "system" | "user" | "carrier" | "customer"
+      fulfillment_event_kind:
+        | "created"
+        | "allocated"
+        | "status_changed"
+        | "item_added"
+        | "item_removed"
+        | "note_added"
+        | "carrier_assigned"
+        | "escalated"
+        | "sla_breached"
+      fulfillment_fulfillable_type: "order"
+      fulfillment_priority: "low" | "normal" | "high" | "urgent"
+      fulfillment_status:
+        | "pending"
+        | "allocated"
+        | "picking"
+        | "picked"
+        | "packing"
+        | "packed"
+        | "awaiting_shipment"
+        | "shipped"
+        | "in_transit"
+        | "delivered"
+        | "cancelled"
+        | "failed"
+      fulfillment_type: "standard" | "express" | "pickup" | "digital"
       health_status: "ok" | "degraded" | "down" | "unknown"
       idempotency_status: "in_flight" | "succeeded" | "failed"
       media_type: "image" | "video" | "youtube" | "vimeo"
@@ -9693,6 +10057,35 @@ export const Constants = {
       ],
       customer_status: ["active", "inactive", "blocked"],
       customer_type: ["pf", "pj"],
+      fulfillment_event_actor: ["system", "user", "carrier", "customer"],
+      fulfillment_event_kind: [
+        "created",
+        "allocated",
+        "status_changed",
+        "item_added",
+        "item_removed",
+        "note_added",
+        "carrier_assigned",
+        "escalated",
+        "sla_breached",
+      ],
+      fulfillment_fulfillable_type: ["order"],
+      fulfillment_priority: ["low", "normal", "high", "urgent"],
+      fulfillment_status: [
+        "pending",
+        "allocated",
+        "picking",
+        "picked",
+        "packing",
+        "packed",
+        "awaiting_shipment",
+        "shipped",
+        "in_transit",
+        "delivered",
+        "cancelled",
+        "failed",
+      ],
+      fulfillment_type: ["standard", "express", "pickup", "digital"],
       health_status: ["ok", "degraded", "down", "unknown"],
       idempotency_status: ["in_flight", "succeeded", "failed"],
       media_type: ["image", "video", "youtube", "vimeo"],
