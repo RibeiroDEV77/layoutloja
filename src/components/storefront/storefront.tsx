@@ -131,7 +131,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
       <div className="bg-[#111] text-neutral-300">
         <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-9 flex items-center justify-between text-[12px] font-normal">
           <div className="flex items-center gap-6">
-            <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Frete grátis acima de R$ 299</span>
+            <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Entrega para todo o Brasil</span>
             <a href="#" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp</a>
           </div>
           <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
