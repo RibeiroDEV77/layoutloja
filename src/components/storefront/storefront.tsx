@@ -543,12 +543,15 @@ export function SectionHeader({
 function ProductCardSkeleton() {
   return (
     <div className="block animate-pulse">
-      <div className="block relative overflow-hidden bg-[#F4F4F4] aspect-[3/4]" />
+      <div className="relative overflow-hidden bg-[#F0F0F0] aspect-[3/4]">
+        <div className="absolute inset-x-3 bottom-3 h-10 bg-[#E8E8E8]" />
+      </div>
       <div className="mt-4 space-y-2">
-        <div className="h-3 w-1/3 bg-[#F0F0F0]" />
-        <div className="h-4 w-4/5 bg-[#F0F0F0]" />
-        <div className="h-4 w-1/2 bg-[#F0F0F0]" />
-        <div className="h-5 w-1/3 bg-[#EFEFEF] mt-2" />
+        <div className="h-3 w-1/4 bg-[#F0F0F0]" />
+        <div className="h-4 w-4/5 bg-[#EFEFEF]" />
+        <div className="h-3 w-1/3 bg-[#F4F4F4]" />
+        <div className="h-5 w-2/5 bg-[#E8E8E8] mt-2" />
+        <div className="h-3 w-3/5 bg-[#F4F4F4]" />
       </div>
     </div>
   );
@@ -556,33 +559,72 @@ function ProductCardSkeleton() {
 
 export function ProductCarousel({ products }: { products: StorefrontProduct[] }) {
   const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ active: boolean; startX: number; startLeft: number; moved: boolean }>({
+    active: false, startX: 0, startLeft: 0, moved: false,
+  });
+
   const scroll = (dir: 1 | -1) => {
     const el = ref.current; if (!el) return;
-    el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 900), behavior: "smooth" });
+    // Avança aproximadamente a largura de um card (~22% do container) por clique.
+    const step = Math.max(el.clientWidth * 0.22 + 20, 240);
+    el.scrollBy({ left: dir * step * 4, behavior: "smooth" });
   };
+
+  // Mouse drag (desktop). Touch já funciona nativamente via overflow-x.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const el = ref.current; if (!el) return;
+    drag.current = { active: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false };
+    el.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current; if (!el || !drag.current.active) return;
+    const dx = e.clientX - drag.current.startX;
+    if (Math.abs(dx) > 4) drag.current.moved = true;
+    el.scrollLeft = drag.current.startLeft - dx;
+  };
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    drag.current.active = false;
+  };
+  // Evita que o clique seja disparado em um card após arrastar.
+  const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (drag.current.moved) { e.preventDefault(); e.stopPropagation(); drag.current.moved = false; }
+  };
+
   const items: Array<StorefrontProduct | null> = products.length > 0
     ? products
-    : Array.from({ length: 6 }, () => null);
+    : Array.from({ length: 8 }, () => null);
+
   return (
-    <div className="relative">
+    <div className="relative group/carousel">
       <button
         type="button" onClick={() => scroll(-1)} aria-label="Anterior"
-        className="hidden md:grid absolute -left-4 top-1/3 z-10 h-11 w-11 place-items-center bg-white border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] shadow-sm rounded-full"
+        className="hidden md:grid absolute -left-5 lg:-left-6 top-[38%] -translate-y-1/2 z-20 h-14 w-14 place-items-center bg-white border border-[#EAEAEA] text-[#111] hover:text-white hover:bg-[var(--brand-red)] hover:border-[var(--brand-red)] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.18)] rounded-full transition-colors"
       >
-        <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+        <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
       </button>
       <button
         type="button" onClick={() => scroll(1)} aria-label="Próximo"
-        className="hidden md:grid absolute -right-4 top-1/3 z-10 h-11 w-11 place-items-center bg-white border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] shadow-sm rounded-full"
+        className="hidden md:grid absolute -right-5 lg:-right-6 top-[38%] -translate-y-1/2 z-20 h-14 w-14 place-items-center bg-white border border-[#EAEAEA] text-[#111] hover:text-white hover:bg-[var(--brand-red)] hover:border-[var(--brand-red)] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.18)] rounded-full transition-colors"
       >
-        <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
+        <ChevronRight className="h-6 w-6" strokeWidth={1.75} />
       </button>
       <div
         ref={ref}
-        className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={onClickCapture}
+        className="flex gap-5 md:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 select-none cursor-grab active:cursor-grabbing [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
         {items.map((p, i) => (
-          <div key={p?.id ?? `sk-${i}`} className="snap-start shrink-0 w-[68%] sm:w-[44%] md:w-[31%] lg:w-[23%]">
+          <div
+            key={p?.id ?? `sk-${i}`}
+            className="snap-start shrink-0 w-[78%] sm:w-[48%] md:w-[32%] lg:w-[calc((100%-4*1.5rem)/4.4)]"
+          >
             {p ? <ProductCard p={p} /> : <ProductCardSkeleton />}
           </div>
         ))}
