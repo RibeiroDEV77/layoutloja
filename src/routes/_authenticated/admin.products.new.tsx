@@ -18,7 +18,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2, Sparkles, Library, Star, Save, Send,
-  Image as ImageIcon, Loader2, GripVertical,
+  Image as ImageIcon, Loader2, GripVertical, CheckCircle2, Circle, AlertTriangle, X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -132,124 +132,119 @@ function ProductNewWizardPage() {
   };
 
   const currentIdx = STEPS.findIndex((s) => s.key === step);
-  const stepperLabel = STEPS[currentIdx]?.label ?? "";
-  const stepperProgress = productId
-    ? Math.max(progress, Math.round(((currentIdx + 1) / STEPS.length) * 100))
-    : Math.round(((currentIdx + 1) / STEPS.length) * 100);
+  const issues = readinessQ.data?.issues ?? [];
+  const steps = readinessQ.data?.steps ?? [];
+
+  // Sticky footer actions
+  const fnPublish = useServerFn(publishProduct);
+  const fnUpdateForFooter = useServerFn(updateProduct);
+  const [footerBusy, setFooterBusy] = useState<"draft" | "publish" | null>(null);
+  const saveDraftFromFooter = async () => {
+    if (!productId) { notify.error("Preencha os dados básicos primeiro"); return; }
+    setFooterBusy("draft");
+    await runAction(
+      () => fnUpdateForFooter({ data: { id: productId, patch: {} } }),
+      { loading: "Salvando rascunho...", success: "Rascunho salvo" },
+    );
+    setFooterBusy(null);
+    refresh();
+  };
+  const publishFromFooter = async () => {
+    if (!productId) { notify.error("Preencha os dados básicos primeiro"); return; }
+    if (!canPublish) { notify.error("Produto incompleto — veja o checklist"); setStep("publish"); return; }
+    setFooterBusy("publish");
+    const ok = await runAction(
+      () => fnPublish({ data: { id: productId } }),
+      { loading: "Publicando...", success: "Produto publicado!" },
+    );
+    setFooterBusy(null);
+    if (ok) navigate({ to: "/admin/products" });
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/admin/products"><ArrowLeft className="h-4 w-4" /></Link>
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col min-h-[calc(100vh-3.5rem)]">
+      {/* Header compacto */}
+      <header className="sticky top-14 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link to="/admin/products" aria-label="Voltar"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight truncate">Novo Produto</h1>
-            <p className="text-sm text-muted-foreground">
-              Cadastro guiado — preencha em sequência ou pule entre as etapas.
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">Novo Produto</h1>
+            <p className="text-xs text-muted-foreground truncate">
+              Cadastro guiado · {STEPS[currentIdx]?.label}
             </p>
           </div>
+          <Badge variant={canPublish ? "default" : "secondary"} className="hidden sm:inline-flex shrink-0">
+            {canPublish ? "Pode publicar" : `${progress}% completo`}
+          </Badge>
         </div>
-        <div className="shrink-0 flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/admin/products">Cancelar</Link>
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      {/* Stepper */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
-              <p className="font-semibold truncate">{stepperLabel}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Progresso</p>
-              <p className="font-bold">{stepperProgress}%</p>
-            </div>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className={cn("h-full transition-all", canPublish ? "bg-emerald-500" : "bg-primary")}
-              style={{ width: `${stepperProgress}%` }}
-            />
-          </div>
-          <ol className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {STEPS.map((s, i) => {
-              const isActive = s.key === step;
-              const isDone = i < currentIdx;
-              const disabled = !productId && s.key !== "basic";
-              return (
-                <li key={s.key}>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setStep(s.key)}
-                    className={cn(
-                      "w-full flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition",
-                      isActive && "border-primary bg-primary/5 text-primary",
-                      !isActive && isDone && "bg-emerald-500/5 border-emerald-500/30",
-                      !isActive && !isDone && "hover:bg-muted",
-                      disabled && "opacity-50 cursor-not-allowed",
-                    )}
-                  >
-                    <span className={cn(
-                      "shrink-0 h-5 w-5 rounded-full grid place-items-center text-[10px] font-bold",
-                      isActive ? "bg-primary text-primary-foreground"
-                        : isDone ? "bg-emerald-500 text-white"
-                        : "bg-muted text-muted-foreground",
-                    )}>
-                      {isDone ? <Check className="h-3 w-3" /> : i + 1}
-                    </span>
-                    <span className="truncate font-medium">{s.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </CardContent>
-      </Card>
-
-      {/* Step content */}
-      {step === "basic" && (
-        <BasicBlock
-          storeId={storeId}
-          productId={productId}
-          onCreated={(id) => { setProductId(id); refresh(); setStep("photos"); }}
-          onUpdated={refresh}
-          onNext={goNext}
-        />
-      )}
-
-      {productId && step === "photos" && (
-        <PhotosBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "variations" && (
-        <VariationsBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "stockprice" && (
-        <StockPriceBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "organization" && (
-        <OrganizationBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "publish" && (
-        <PublishBlock
+      {/* Body grid */}
+      <div className="flex-1 grid gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 bg-muted/20
+        lg:grid-cols-[220px_minmax(0,1fr)_300px] xl:grid-cols-[240px_minmax(0,1fr)_320px]">
+        <WizardSidebar
+          step={step}
+          currentIdx={currentIdx}
           productId={productId}
           canPublish={canPublish}
-          issues={readinessQ.data?.issues ?? []}
-          onPrev={goPrev}
-          onDone={() => navigate({ to: "/admin/products" })}
+          onJump={setStep}
         />
-      )}
+
+        <main className="min-w-0 space-y-6 pb-24 lg:pb-6">
+          {step === "basic" && (
+            <BasicBlock
+              storeId={storeId}
+              productId={productId}
+              onCreated={(id) => { setProductId(id); refresh(); setStep("photos"); }}
+              onUpdated={refresh}
+              onNext={goNext}
+            />
+          )}
+          {productId && step === "photos" && (
+            <PhotosBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "variations" && (
+            <VariationsBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "stockprice" && (
+            <StockPriceBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "organization" && (
+            <OrganizationBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "publish" && (
+            <PublishBlock
+              productId={productId}
+              canPublish={canPublish}
+              issues={issues}
+              onPrev={goPrev}
+              onDone={() => navigate({ to: "/admin/products" })}
+            />
+          )}
+        </main>
+
+        <aside className="lg:sticky lg:top-32 lg:self-start space-y-4">
+          <ReadinessCard
+            enabled={!!productId}
+            loading={readinessQ.isLoading}
+            progress={progress}
+            canPublish={canPublish}
+            issues={issues}
+            steps={steps}
+          />
+        </aside>
+      </div>
+
+      <StickyFooter
+        productId={productId}
+        canPublish={canPublish}
+        busy={footerBusy}
+        updatedAt={readinessQ.dataUpdatedAt}
+        onSaveDraft={saveDraftFromFooter}
+        onPublish={publishFromFooter}
+      />
     </div>
   );
 }
@@ -279,6 +274,7 @@ function BasicBlock({
     short_description: "", description: "",
   });
   const [saving, setSaving] = useState(false);
+  const [skuTouched, setSkuTouched] = useState(false);
 
   const cats = useQuery({
     queryKey: ["wizard-cats", storeId], enabled: !!storeId,
@@ -366,13 +362,21 @@ function BasicBlock({
             value={form.name}
             onChange={(e) => patch({
               name: e.target.value,
-              sku_root: form.sku_root || sanitizeSku(e.target.value),
+              sku_root: skuTouched ? form.sku_root : sanitizeSku(e.target.value),
             })}
-            placeholder="Ex.: Camiseta Básica Premium"
+            placeholder="Ex.: Camiseta Oversized Premium"
           />
         </FormField>
-        <FormField label="SKU Root" required hint="Prefixo único usado nos SKUs das variantes.">
-          <Input value={form.sku_root} onChange={(e) => patch({ sku_root: sanitizeSku(e.target.value) })} />
+        <FormField
+          label="SKU Root"
+          required
+          hint={skuTouched ? "Sincronização automática desativada (você editou)." : "Gerado automaticamente a partir do nome — edite para personalizar."}
+        >
+          <Input
+            value={form.sku_root}
+            onChange={(e) => { setSkuTouched(true); patch({ sku_root: sanitizeSku(e.target.value) }); }}
+            placeholder="CAMISETA-OVERSIZED-PREMIUM"
+          />
         </FormField>
       </FormRow>
 
@@ -1005,6 +1009,26 @@ function StockPriceBlock({
   });
 
   const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
+
+  // Capa por cor — busca a galeria de cada cor e pega a mídia marcada como cover
+  const fnListMedia = useServerFn(listColorMedia);
+  const coversQ = useQuery({
+    queryKey: ["wizard-color-covers", productId, colors.map((c) => c.id).join(",")],
+    enabled: colors.length > 0,
+    queryFn: async () => {
+      const map = new Map<string, string>();
+      await Promise.all(colors.map(async (c) => {
+        const r = await fnListMedia({ data: { color_id: c.id } });
+        if (!r.ok) return;
+        const list = r.data as MediaRow[];
+        const cover = list.find((m) => m.is_cover) ?? list[0];
+        const src = cover?.thumbnail_url || cover?.external_url || cover?.storage_path || "";
+        if (src) map.set(c.id, src);
+      }));
+      return map;
+    },
+  });
+  const colorThumbById = coversQ.data ?? new Map<string, string>();
   const stockByVariant = useMemo(() => {
     const m = new Map<string, { id: string; qty: number }>();
     (stockQ.data ?? []).forEach((s) => m.set(s.variant_id, { id: s.id, qty: s.quantity_on_hand }));
@@ -1058,19 +1082,20 @@ function StockPriceBlock({
           Nenhuma variante. Volte à etapa <strong>Variações</strong> e clique em <strong>Gerar variantes</strong>.
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="rounded-lg border overflow-x-auto bg-background">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase">
+            <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Cor</th>
-                <th className="text-left p-2">Tamanho</th>
-                <th className="text-left p-2">SKU</th>
-                <th className="text-left p-2">Cód. Barras</th>
-                <th className="text-right p-2">Peso (g)</th>
-                <th className="text-right p-2">Estoque</th>
-                <th className="text-right p-2">Preço</th>
-                <th className="text-right p-2">Promo</th>
-                <th></th>
+                <th className="text-left p-3 w-16">Miniatura</th>
+                <th className="text-left p-3 min-w-[120px]">Cor</th>
+                <th className="text-left p-3 w-20">Tamanho</th>
+                <th className="text-left p-3 min-w-[140px]">SKU</th>
+                <th className="text-left p-3 min-w-[140px]">Cód. Barras</th>
+                <th className="text-right p-3 w-24">Peso (g)</th>
+                <th className="text-right p-3 w-24">Estoque</th>
+                <th className="text-right p-3 w-28">Preço</th>
+                <th className="text-right p-3 w-28">Promo</th>
+                <th className="w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -1080,10 +1105,12 @@ function StockPriceBlock({
                   (v.size_attribute_value_id && sizeLabelsQ.data?.get(v.size_attribute_value_id)) || "Único";
                 const stock = stockByVariant.get(v.id);
                 const price = priceByVariant.get(v.id);
+                const thumb = colorThumbById.get(v.product_color_id) ?? null;
                 return (
                   <MatrixRow
                     key={v.id}
                     variant={v}
+                    thumbnailUrl={thumb}
                     colorName={color?.name ?? "—"}
                     colorHex={color?.hex ?? null}
                     sizeLabel={sizeLabel}
@@ -1112,11 +1139,12 @@ function StockPriceBlock({
 }
 
 function MatrixRow({
-  variant, colorName, colorHex, sizeLabel,
+  variant, thumbnailUrl, colorName, colorHex, sizeLabel,
   stockLevelId, stockQty, price, compare,
   onChangeVariant, onChangeStock, onChangePrice, onDelete,
 }: {
   variant: VariantRow;
+  thumbnailUrl: string | null;
   colorName: string; colorHex: string | null; sizeLabel: string;
   stockLevelId: string | null; stockQty: number | null;
   price: number | null; compare: number | null;
@@ -1140,14 +1168,24 @@ function MatrixRow({
   useEffect(() => { setPc(compare != null ? String(compare) : ""); }, [compare]);
 
   return (
-    <tr>
-      <td className="p-2 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: colorHex }} />}
-          <span>{colorName}</span>
+    <tr className="hover:bg-muted/30 transition-colors">
+      <td className="p-3 w-16">
+        <div
+          className="h-10 w-10 rounded-md border bg-muted overflow-hidden grid place-items-center shrink-0"
+          style={!thumbnailUrl && colorHex ? { background: colorHex } : undefined}
+        >
+          {thumbnailUrl
+            ? <img src={thumbnailUrl} alt={colorName} className="w-full h-full object-cover" />
+            : !colorHex && <ImageIcon className="h-4 w-4 text-muted-foreground" />}
         </div>
       </td>
-      <td className="p-2 whitespace-nowrap">{sizeLabel}</td>
+      <td className="p-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border shrink-0" style={{ background: colorHex }} />}
+          <span className="font-medium">{colorName}</span>
+        </div>
+      </td>
+      <td className="p-3 whitespace-nowrap text-muted-foreground">{sizeLabel}</td>
       <td className="p-2">
         <Input value={sku} onChange={(e) => setSku(e.target.value)}
           onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
@@ -1451,21 +1489,248 @@ function BlockCard({ title, description, children }: {
   title: string; description?: string; children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="space-y-1.5 pb-4 border-b bg-muted/20 rounded-t-xl">
+        <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
+        {description && <CardDescription className="text-sm">{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="space-y-5">{children}</CardContent>
+      <CardContent className="space-y-6 p-6">{children}</CardContent>
     </Card>
   );
 }
 
 function BlockFooter({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-5 border-t mt-2">
       <div>{left}</div>
       <div>{right}</div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Wizard Sidebar — etapas verticais com status
+// =============================================================================
+function WizardSidebar({
+  step, currentIdx, productId, canPublish, onJump,
+}: {
+  step: StepKey;
+  currentIdx: number;
+  productId: string | null;
+  canPublish: boolean;
+  onJump: (k: StepKey) => void;
+}) {
+  return (
+    <aside className="lg:sticky lg:top-32 lg:self-start">
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Cadastro do Produto
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2">
+          <ol className="space-y-1">
+            {STEPS.map((s, i) => {
+              const isActive = s.key === step;
+              const isDone = i < currentIdx || (s.key === "publish" && canPublish);
+              const disabled = !productId && s.key !== "basic";
+              return (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onJump(s.key)}
+                    className={cn(
+                      "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                      isActive && "bg-primary/10 text-primary font-semibold",
+                      !isActive && isDone && "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/5",
+                      !isActive && !isDone && "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-bold transition",
+                        isActive ? "bg-primary text-primary-foreground shadow-sm"
+                          : isDone ? "bg-emerald-500 text-white"
+                          : "bg-muted text-muted-foreground border",
+                      )}
+                    >
+                      {isDone ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    </span>
+                    <span className="truncate flex-1">{s.label}</span>
+                    {isActive && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </CardContent>
+      </Card>
+    </aside>
+  );
+}
+
+// =============================================================================
+// Readiness Card — checklist em tempo real
+// =============================================================================
+type ReadinessStepLite = { key: string; label: string; complete: boolean; issues: string[] };
+function ReadinessCard({
+  enabled, loading, progress, canPublish, issues, steps,
+}: {
+  enabled: boolean;
+  loading: boolean;
+  progress: number;
+  canPublish: boolean;
+  issues: string[];
+  steps: ReadinessStepLite[];
+}) {
+  if (!enabled) {
+    return (
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Readiness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 text-xs text-muted-foreground">
+          Preencha os Dados Básicos para iniciar a verificação automática.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Readiness
+          </CardTitle>
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={cn("text-3xl font-black tabular-nums", canPublish ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+            {progress}%
+          </span>
+          <Badge variant={canPublish ? "default" : "secondary"} className={cn(canPublish && "bg-emerald-600 hover:bg-emerald-600")}>
+            {canPublish ? "Pode Publicar" : "Não Pode Publicar"}
+          </Badge>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full transition-all duration-500", canPublish ? "bg-emerald-500" : "bg-primary")}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 space-y-3">
+        <ul className="space-y-1.5">
+          {steps.map((s) => (
+            <li key={s.key} className="flex items-start gap-2 text-xs">
+              {s.complete ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className={cn("font-medium", s.complete ? "text-foreground" : "text-muted-foreground")}>
+                  {s.label}
+                </p>
+                {!s.complete && s.issues.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground truncate">{s.issues[0]}</p>
+                )}
+              </div>
+            </li>
+          ))}
+          {steps.length === 0 && !loading && (
+            <li className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Circle className="h-4 w-4" /> Aguardando dados...
+            </li>
+          )}
+        </ul>
+        {issues.length > 0 && (
+          <div className="rounded-md bg-amber-500/5 border border-amber-500/30 p-2.5">
+            <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mb-1">
+              {issues.length} pendência(s)
+            </p>
+            <ul className="text-[11px] text-amber-700 dark:text-amber-300 space-y-0.5 list-disc pl-4">
+              {issues.slice(0, 3).map((i, k) => <li key={k} className="truncate">{i}</li>)}
+              {issues.length > 3 && <li>+ {issues.length - 3} outras</li>}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Sticky Footer — ações primárias sempre visíveis
+// =============================================================================
+function StickyFooter({
+  productId, canPublish, busy, updatedAt, onSaveDraft, onPublish,
+}: {
+  productId: string | null;
+  canPublish: boolean;
+  busy: "draft" | "publish" | null;
+  updatedAt: number;
+  onSaveDraft: () => void;
+  onPublish: () => void;
+}) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!updatedAt) return;
+    const t = setInterval(() => force((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, [updatedAt]);
+
+  const since = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt) / 1000)) : null;
+  const sinceLabel = since == null
+    ? null
+    : since < 5 ? "agora mesmo"
+    : since < 60 ? `há ${since}s`
+    : since < 3600 ? `há ${Math.floor(since / 60)}min`
+    : `há ${Math.floor(since / 3600)}h`;
+
+  return (
+    <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex items-center gap-2 text-xs text-muted-foreground">
+          {productId && sinceLabel ? (
+            <>
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="truncate">Última verificação {sinceLabel}</span>
+            </>
+          ) : (
+            <span className="truncate">Cadastro guiado · alterações persistidas a cada etapa</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/admin/products" className="gap-2"><X className="h-4 w-4" /> Cancelar</Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSaveDraft}
+            disabled={!productId || busy !== null}
+            className="gap-2"
+          >
+            {busy === "draft" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Salvar Rascunho
+          </Button>
+          <Button
+            size="sm"
+            onClick={onPublish}
+            disabled={!productId || busy !== null}
+            className={cn("gap-2", canPublish && "bg-emerald-600 hover:bg-emerald-600/90")}
+          >
+            {busy === "publish" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Publicar Produto
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
