@@ -75,39 +75,70 @@ function HomePage() {
 
           {/* Novidades */}
           <Section id="novidades">
-            <SectionHeader title="Novidades" action={{ label: "Ver todos" }} />
+            <SectionHeader
+              eyebrow="Acabou de chegar"
+              title="Novidades"
+              description="Confira os lançamentos mais recentes da coleção."
+              action={{ label: "Ver todos" }}
+            />
             <ProductCarousel products={novidades.length ? novidades : todos.slice(0, 8)} />
           </Section>
 
           {/* Categorias */}
-          <Section tone="soft">
-            <SectionHeader title="Categorias" action={{ label: "Ver todas" }} />
+          <Section>
+            <SectionHeader
+              eyebrow="Coleções"
+              title="Categorias"
+              description="Navegue pelas coleções do catálogo."
+              action={{ label: "Ver todas" }}
+            />
             <CategoryGrid categories={categories} />
           </Section>
 
           {/* Mais vendidos */}
           <Section>
-            <SectionHeader title="Mais vendidos" action={{ label: "Ver todos" }} />
+            <SectionHeader
+              eyebrow="Destaques"
+              title="Mais vendidos"
+              description="As peças mais procuradas do momento."
+              action={{ label: "Ver todos" }}
+            />
             <ProductGrid products={(maisVendidos.length ? maisVendidos : todos).slice(0, 8)} />
           </Section>
 
           {/* Sport Fino */}
-          <Section tone="soft">
-            <SectionHeader title="Sport Fino" action={{ label: "Ver coleção" }} />
+          <Section>
+            <SectionHeader
+              eyebrow="Coleção"
+              title="Sport Fino"
+              description="Seleção da linha sport fino."
+              action={{ label: "Ver coleção" }}
+            />
             <ProductCarousel products={sportFino.length ? sportFino : destaques.slice(0, 8)} />
           </Section>
 
           {/* Country */}
           <Section>
-            <SectionHeader title="Country" action={{ label: "Ver coleção" }} />
+            <SectionHeader
+              eyebrow="Coleção"
+              title="Country"
+              description="Seleção da linha country."
+              action={{ label: "Ver coleção" }}
+            />
             <ProductCarousel products={country.length ? country : todos.slice(0, 8)} />
           </Section>
 
           {/* Social */}
-          <Section tone="soft">
-            <SectionHeader title="Social" action={{ label: "Ver coleção" }} />
+          <Section>
+            <SectionHeader
+              eyebrow="Coleção"
+              title="Social"
+              description="Seleção da linha social."
+              action={{ label: "Ver coleção" }}
+            />
             <ProductCarousel products={social.length ? social : todos.slice(0, 8)} />
           </Section>
+
 
 
           {/* Newsletter */}
