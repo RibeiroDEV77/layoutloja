@@ -77,7 +77,7 @@ function HomePage() {
   return (
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
-        <StorefrontNavbar categories={categories} brands={brands} />
+        <StorefrontNavbar categories={categories} brands={brands} products={todos} />
         <StorefrontLogoStrip />
         <main className="flex-1">
           <StorefrontHero banners={heroBanners} />

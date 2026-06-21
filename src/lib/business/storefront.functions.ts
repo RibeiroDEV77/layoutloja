@@ -24,10 +24,12 @@ export type StorefrontCategory = {
   id: string; name: string; slug: string;
   parent_id: string | null; image_url: string | null;
   level: number | null; sort_order: number;
+  seo_title?: string | null; seo_description?: string | null;
 };
 export type StorefrontProduct = {
   id: string; name: string; slug: string;
   short_description: string | null;
+  category_id: string | null; brand_id: string | null;
   on_sale: boolean; new_product: boolean;
   featured: boolean; best_seller: boolean;
 };
@@ -54,7 +56,7 @@ export const listStorefrontCategories = createServerFn({ method: 'POST' })
     const sb = publicClient();
     let q = sb
       .from('categories')
-      .select('id,name,slug,parent_id,image_url,level,sort_order')
+      .select('id,name,slug,parent_id,image_url,level,sort_order,seo_title,seo_description')
       .eq('is_active', true)
       .order('level', { ascending: true })
       .order('sort_order', { ascending: true })
@@ -75,7 +77,7 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     const sb = publicClient();
     let q = sb
       .from('products')
-      .select('id,name,slug,short_description,on_sale,new_product,featured,best_seller')
+      .select('id,name,slug,short_description,category_id,brand_id,on_sale,new_product,featured,best_seller')
       .order('updated_at', { ascending: false })
       .limit(Math.min(data.limit ?? 8, 24));
     if (data.store_id) q = q.eq('store_id', data.store_id);
