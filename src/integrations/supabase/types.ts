@@ -2995,6 +2995,7 @@ export type Database = {
           created_at: string
           id: string
           order_id: string
+          schema_version: number
           snapshot: Json
           store_id: string
         }
@@ -3005,6 +3006,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id: string
+          schema_version?: number
           snapshot: Json
           store_id: string
         }
@@ -3015,6 +3017,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string
+          schema_version?: number
           snapshot?: Json
           store_id?: string
         }
@@ -3034,6 +3037,7 @@ export type Database = {
           customer_id: string | null
           id: string
           order_id: string
+          schema_version: number
           snapshot: Json
           store_id: string
         }
@@ -3042,6 +3046,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           order_id: string
+          schema_version?: number
           snapshot: Json
           store_id: string
         }
@@ -3050,6 +3055,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           order_id?: string
+          schema_version?: number
           snapshot?: Json
           store_id?: string
         }
@@ -3565,6 +3571,7 @@ export type Database = {
           hash: string
           id: string
           order_id: string
+          schema_version: number
           snapshot: Json
           store_id: string
         }
@@ -3573,6 +3580,7 @@ export type Database = {
           hash: string
           id?: string
           order_id: string
+          schema_version?: number
           snapshot: Json
           store_id: string
         }
@@ -3581,6 +3589,7 @@ export type Database = {
           hash?: string
           id?: string
           order_id?: string
+          schema_version?: number
           snapshot?: Json
           store_id?: string
         }
@@ -3812,6 +3821,7 @@ export type Database = {
           id: string
           order_id: string
           price: number | null
+          schema_version: number
           service: string | null
           snapshot: Json
           store_id: string
@@ -3823,6 +3833,7 @@ export type Database = {
           id?: string
           order_id: string
           price?: number | null
+          schema_version?: number
           service?: string | null
           snapshot: Json
           store_id: string
@@ -3834,6 +3845,7 @@ export type Database = {
           id?: string
           order_id?: string
           price?: number | null
+          schema_version?: number
           service?: string | null
           snapshot?: Json
           store_id?: string
@@ -4027,6 +4039,7 @@ export type Database = {
           created_at: string
           id: string
           order_id: string
+          schema_version: number
           snapshot: Json
           store_id: string
           total_tax: number
@@ -4036,6 +4049,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id: string
+          schema_version?: number
           snapshot: Json
           store_id: string
           total_tax?: number
@@ -4045,6 +4059,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string
+          schema_version?: number
           snapshot?: Json
           store_id?: string
           total_tax?: number
@@ -4103,6 +4118,45 @@ export type Database = {
           },
         ]
       }
+      order_workflow_instances: {
+        Row: {
+          created_at: string
+          id: string
+          instance_id: string
+          order_id: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_id: string
+          order_id: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_id?: string
+          order_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_workflow_instances_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_workflow_instances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           cancellation_reason: string | null
@@ -4133,6 +4187,7 @@ export type Database = {
           tags: string[]
           tax_total: number
           total: number
+          trace_id: string | null
           updated_at: string
           version: number
         }
@@ -4165,6 +4220,7 @@ export type Database = {
           tags?: string[]
           tax_total?: number
           total?: number
+          trace_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -4197,6 +4253,7 @@ export type Database = {
           tags?: string[]
           tax_total?: number
           total?: number
+          trace_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -4220,6 +4277,71 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders_search: {
+        Row: {
+          channel: string | null
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          items_count: number
+          order_id: string
+          order_number: string
+          placed_at: string | null
+          search_tsv: unknown
+          skus: string[]
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: string
+          tags: string[]
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          channel?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          items_count?: number
+          order_id: string
+          order_number: string
+          placed_at?: string | null
+          search_tsv?: unknown
+          skus?: string[]
+          status: Database["public"]["Enums"]["order_status"]
+          store_id: string
+          tags?: string[]
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          channel?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          items_count?: number
+          order_id?: string
+          order_number?: string
+          placed_at?: string | null
+          search_tsv?: unknown
+          skus?: string[]
+          status?: Database["public"]["Enums"]["order_status"]
+          store_id?: string
+          tags?: string[]
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_search_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -6632,8 +6754,58 @@ export type Database = {
         }
         Relationships: []
       }
+      mv_orders_daily: {
+        Row: {
+          day: string | null
+          gross_total: number | null
+          net_total: number | null
+          orders_count: number | null
+          refunded_total: number | null
+          store_id: string | null
+          valid_orders_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders_daily_v: {
+        Row: {
+          day: string | null
+          gross_total: number | null
+          net_total: number | null
+          orders_count: number | null
+          refunded_total: number | null
+          store_id: string | null
+          valid_orders_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _seed_order_transition: {
+        Args: {
+          _code: string
+          _def_id: string
+          _from_code: string
+          _state_map: Json
+          _to_code: string
+        }
+        Returns: undefined
+      }
       acquire_order_lock: {
         Args: {
           _order_id: string
@@ -6836,6 +7008,17 @@ export type Database = {
         }
         Returns: string
       }
+      record_order_lock_contention: {
+        Args: {
+          _order_id: string
+          _reason?: string
+          _scope: string
+          _store_id: string
+        }
+        Returns: undefined
+      }
+      refresh_orders_daily: { Args: never; Returns: undefined }
+      refresh_orders_search: { Args: { _order_id: string }; Returns: undefined }
       release_order_lock: {
         Args: { _order_id: string; _owner_token: string; _scope: string }
         Returns: boolean
@@ -6853,6 +7036,7 @@ export type Database = {
         Args: { _cart_item_id: string; _ttl_seconds?: number }
         Returns: string
       }
+      seed_order_workflow: { Args: { _store_id: string }; Returns: string }
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
