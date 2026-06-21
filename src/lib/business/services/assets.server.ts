@@ -442,8 +442,13 @@ export async function deleteAsset(supabase: SbClient, userId: string, id: string
     throw Errors.rule('Asset vinculado — remova os vínculos ou arquive-o.', { asset_id: id });
   }
   // Remove do storage (se houver)
-  const driver = getStorageDriver();
-  await driver.remove({ bucket: asset.bucket, path: asset.storage_path });
+  if (asset.storage_driver === 'supabase' && asset.bucket && asset.storage_path) {
+    await supabase.storage.from(asset.bucket).remove([asset.storage_path]);
+  } else {
+    const driver = getStorageDriver();
+    await driver.remove({ bucket: asset.bucket, path: asset.storage_path });
+  }
+
   const { error } = await supabase.from('assets').delete().eq('id', id);
   if (error) throw Errors.internal('Falha ao excluir', { error: error.message });
   return { ok: true };
