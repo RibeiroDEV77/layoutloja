@@ -67,8 +67,10 @@ function HomePage() {
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
         <StorefrontNavbar categories={categories} brands={brands} />
+        <StorefrontLogoStrip />
         <main className="flex-1">
           <StorefrontHero banners={heroBanners} />
+
 
 
           {/* Novidades */}
