@@ -571,6 +571,352 @@ export type Database = {
           },
         ]
       }
+      cart_coupons: {
+        Row: {
+          applied_value: number
+          cart_id: string
+          coupon_id: string
+          created_at: string
+          id: string
+          snapshot: Json
+        }
+        Insert: {
+          applied_value?: number
+          cart_id: string
+          coupon_id: string
+          created_at?: string
+          id?: string
+          snapshot?: Json
+        }
+        Update: {
+          applied_value?: number
+          cart_id?: string
+          coupon_id?: string
+          created_at?: string
+          id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_coupons_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          discount_amount: number
+          id: string
+          line_total: number
+          list_price: number
+          metadata: Json
+          price_list_item_id: string | null
+          price_source: Database["public"]["Enums"]["cart_price_source"]
+          product_id: string
+          qty: number
+          snapshot: Json
+          unit_price: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          line_total?: number
+          list_price?: number
+          metadata?: Json
+          price_list_item_id?: string | null
+          price_source?: Database["public"]["Enums"]["cart_price_source"]
+          product_id: string
+          qty: number
+          snapshot?: Json
+          unit_price?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          line_total?: number
+          list_price?: number
+          metadata?: Json
+          price_list_item_id?: string | null
+          price_source?: Database["public"]["Enums"]["cart_price_source"]
+          product_id?: string
+          qty?: number
+          snapshot?: Json
+          unit_price?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_price_list_item_id_fkey"
+            columns: ["price_list_item_id"]
+            isOneToOne: false
+            referencedRelation: "price_list_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_snapshots: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          payload: Json
+          reason: string
+          store_id: string
+          totals: Json
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          payload: Json
+          reason: string
+          store_id: string
+          totals: Json
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          reason?: string
+          store_id?: string
+          totals?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_snapshots_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_snapshots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_timeline: {
+        Row: {
+          actor_user_id: string | null
+          cart_id: string
+          created_at: string
+          event_type: Database["public"]["Enums"]["cart_timeline_event"]
+          id: string
+          payload: Json
+          store_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          cart_id: string
+          created_at?: string
+          event_type: Database["public"]["Enums"]["cart_timeline_event"]
+          id?: string
+          payload?: Json
+          store_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          cart_id?: string
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["cart_timeline_event"]
+          id?: string
+          payload?: Json
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_timeline_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_timeline_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          billing_address_id: string | null
+          converted_order_id: string | null
+          created_at: string
+          currency: string
+          customer_group_id: string | null
+          customer_id: string | null
+          discount_total: number
+          expires_at: string | null
+          id: string
+          items_count: number
+          last_activity_at: string
+          merged_into_cart_id: string | null
+          metadata: Json
+          price_list_id: string | null
+          selected_shipping_quote_id: string | null
+          session_token: string | null
+          shipping_address_id: string | null
+          shipping_total: number
+          status: Database["public"]["Enums"]["cart_status"]
+          store_id: string
+          subtotal: number
+          tax_total: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          billing_address_id?: string | null
+          converted_order_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_group_id?: string | null
+          customer_id?: string | null
+          discount_total?: number
+          expires_at?: string | null
+          id?: string
+          items_count?: number
+          last_activity_at?: string
+          merged_into_cart_id?: string | null
+          metadata?: Json
+          price_list_id?: string | null
+          selected_shipping_quote_id?: string | null
+          session_token?: string | null
+          shipping_address_id?: string | null
+          shipping_total?: number
+          status?: Database["public"]["Enums"]["cart_status"]
+          store_id: string
+          subtotal?: number
+          tax_total?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_address_id?: string | null
+          converted_order_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_group_id?: string | null
+          customer_id?: string | null
+          discount_total?: number
+          expires_at?: string | null
+          id?: string
+          items_count?: number
+          last_activity_at?: string
+          merged_into_cart_id?: string | null
+          metadata?: Json
+          price_list_id?: string | null
+          selected_shipping_quote_id?: string | null
+          session_token?: string | null
+          shipping_address_id?: string | null
+          shipping_total?: number
+          status?: Database["public"]["Enums"]["cart_status"]
+          store_id?: string
+          subtotal?: number
+          tax_total?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carts_billing_address_id_fkey"
+            columns: ["billing_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_merged_into_cart_id_fkey"
+            columns: ["merged_into_cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_price_list_id_fkey"
+            columns: ["price_list_id"]
+            isOneToOne: false
+            referencedRelation: "price_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_shipping_address_id_fkey"
+            columns: ["shipping_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -788,6 +1134,229 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_ledger: {
+        Row: {
+          amount: number | null
+          cart_id: string | null
+          coupon_code: string | null
+          coupon_id: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["coupon_ledger_kind"]
+          metadata: Json
+          reason: string | null
+          store_id: string
+        }
+        Insert: {
+          amount?: number | null
+          cart_id?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["coupon_ledger_kind"]
+          metadata?: Json
+          reason?: string | null
+          store_id: string
+        }
+        Update: {
+          amount?: number | null
+          cart_id?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["coupon_ledger_kind"]
+          metadata?: Json
+          reason?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_ledger_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_ledger_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_ledger_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_redemptions: {
+        Row: {
+          amount: number
+          cart_id: string | null
+          coupon_id: string
+          customer_id: string | null
+          id: string
+          order_id: string | null
+          redeemed_at: string
+          store_id: string
+        }
+        Insert: {
+          amount?: number
+          cart_id?: string | null
+          coupon_id: string
+          customer_id?: string | null
+          id?: string
+          order_id?: string | null
+          redeemed_at?: string
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          cart_id?: string | null
+          coupon_id?: string
+          customer_id?: string | null
+          id?: string
+          order_id?: string | null
+          redeemed_at?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          active: boolean
+          applies_to_ids: string[]
+          code: string
+          created_at: string
+          customer_group_id: string | null
+          description: string | null
+          id: string
+          max_discount: number | null
+          metadata: Json
+          min_subtotal: number | null
+          name: string
+          scope: Database["public"]["Enums"]["coupon_scope"]
+          stackable: boolean
+          store_id: string
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at: string
+          usage_count: number
+          usage_limit_per_customer: number | null
+          usage_limit_total: number | null
+          valid_from: string | null
+          valid_until: string | null
+          value: number
+        }
+        Insert: {
+          active?: boolean
+          applies_to_ids?: string[]
+          code: string
+          created_at?: string
+          customer_group_id?: string | null
+          description?: string | null
+          id?: string
+          max_discount?: number | null
+          metadata?: Json
+          min_subtotal?: number | null
+          name: string
+          scope?: Database["public"]["Enums"]["coupon_scope"]
+          stackable?: boolean
+          store_id: string
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          usage_count?: number
+          usage_limit_per_customer?: number | null
+          usage_limit_total?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+          value?: number
+        }
+        Update: {
+          active?: boolean
+          applies_to_ids?: string[]
+          code?: string
+          created_at?: string
+          customer_group_id?: string | null
+          description?: string | null
+          id?: string
+          max_discount?: number | null
+          metadata?: Json
+          min_subtotal?: number | null
+          name?: string
+          scope?: Database["public"]["Enums"]["coupon_scope"]
+          stackable?: boolean
+          store_id?: string
+          type?: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          usage_count?: number
+          usage_limit_per_customer?: number | null
+          usage_limit_total?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -3018,6 +3587,333 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_methods: {
+        Row: {
+          active: boolean
+          carrier: string | null
+          code: string
+          config: Json
+          created_at: string
+          estimated_days_max: number | null
+          estimated_days_min: number | null
+          id: string
+          kind: Database["public"]["Enums"]["shipping_method_kind"]
+          name: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          carrier?: string | null
+          code: string
+          config?: Json
+          created_at?: string
+          estimated_days_max?: number | null
+          estimated_days_min?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["shipping_method_kind"]
+          name: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          carrier?: string | null
+          code?: string
+          config?: Json
+          created_at?: string
+          estimated_days_max?: number | null
+          estimated_days_min?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["shipping_method_kind"]
+          name?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_methods_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_quotes: {
+        Row: {
+          carrier: string | null
+          cart_id: string
+          created_at: string
+          estimated_days_max: number | null
+          estimated_days_min: number | null
+          expires_at: string | null
+          id: string
+          method_code: string
+          method_id: string | null
+          method_name: string
+          payload: Json
+          postal_code: string | null
+          price: number
+          selected: boolean
+          store_id: string
+          weight_g: number | null
+        }
+        Insert: {
+          carrier?: string | null
+          cart_id: string
+          created_at?: string
+          estimated_days_max?: number | null
+          estimated_days_min?: number | null
+          expires_at?: string | null
+          id?: string
+          method_code: string
+          method_id?: string | null
+          method_name: string
+          payload?: Json
+          postal_code?: string | null
+          price: number
+          selected?: boolean
+          store_id: string
+          weight_g?: number | null
+        }
+        Update: {
+          carrier?: string | null
+          cart_id?: string
+          created_at?: string
+          estimated_days_max?: number | null
+          estimated_days_min?: number | null
+          expires_at?: string | null
+          id?: string
+          method_code?: string
+          method_id?: string | null
+          method_name?: string
+          payload?: Json
+          postal_code?: string | null
+          price?: number
+          selected?: boolean
+          store_id?: string
+          weight_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_quotes_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_quotes_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_quotes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_rates: {
+        Row: {
+          active: boolean
+          created_at: string
+          free_above_subtotal: number | null
+          id: string
+          max_subtotal: number | null
+          max_weight_g: number | null
+          method_id: string
+          min_subtotal: number | null
+          min_weight_g: number
+          price: number
+          store_id: string
+          updated_at: string
+          zone_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          free_above_subtotal?: number | null
+          id?: string
+          max_subtotal?: number | null
+          max_weight_g?: number | null
+          method_id: string
+          min_subtotal?: number | null
+          min_weight_g?: number
+          price: number
+          store_id: string
+          updated_at?: string
+          zone_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          free_above_subtotal?: number | null
+          id?: string
+          max_subtotal?: number | null
+          max_weight_g?: number | null
+          method_id?: string
+          min_subtotal?: number | null
+          min_weight_g?: number
+          price?: number
+          store_id?: string
+          updated_at?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_rates_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_rates_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_rates_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_snapshots: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          payload: Json
+          quote_id: string | null
+          store_id: string
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          payload: Json
+          quote_id?: string | null
+          store_id: string
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          quote_id?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_snapshots_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_snapshots_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_snapshots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_zone_postal_ranges: {
+        Row: {
+          created_at: string
+          id: string
+          postal_from: string
+          postal_to: string
+          zone_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          postal_from: string
+          postal_to: string
+          zone_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          postal_from?: string
+          postal_to?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_zone_postal_ranges_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_zones: {
+        Row: {
+          active: boolean
+          country: string
+          created_at: string
+          id: string
+          metadata: Json
+          name: string
+          states: string[]
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          country?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name: string
+          states?: string[]
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          country?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          states?: string[]
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_zones_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_levels: {
         Row: {
           created_at: string
@@ -3148,6 +4044,147 @@ export type Database = {
           },
           {
             foreignKeyName: "stock_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_reservation_ledger: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["reservation_ledger_kind"]
+          metadata: Json
+          qty: number
+          reason: string | null
+          reservation_id: string
+          store_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["reservation_ledger_kind"]
+          metadata?: Json
+          qty: number
+          reason?: string | null
+          reservation_id: string
+          store_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["reservation_ledger_kind"]
+          metadata?: Json
+          qty?: number
+          reason?: string | null
+          reservation_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservation_ledger_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "stock_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservation_ledger_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_reservations: {
+        Row: {
+          cart_id: string | null
+          cart_item_id: string | null
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          metadata: Json
+          order_id: string | null
+          qty: number
+          released_at: string | null
+          status: Database["public"]["Enums"]["reservation_status"]
+          store_id: string
+          updated_at: string
+          variant_id: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          cart_id?: string | null
+          cart_item_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          metadata?: Json
+          order_id?: string | null
+          qty: number
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          store_id: string
+          updated_at?: string
+          variant_id: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          cart_id?: string | null
+          cart_item_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          metadata?: Json
+          order_id?: string | null
+          qty?: number
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          store_id?: string
+          updated_at?: string
+          variant_id?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservations_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_cart_item_id_fkey"
+            columns: ["cart_item_id"]
+            isOneToOne: false
+            referencedRelation: "cart_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
@@ -4139,8 +5176,49 @@ export type Database = {
       }
     }
     Functions: {
+      apply_coupon_to_cart: {
+        Args: { _cart_id: string; _coupon_code: string }
+        Returns: Json
+      }
       asset_store_id: { Args: { _asset_id: string }; Returns: string }
       assets_usage_count: { Args: { _asset_id: string }; Returns: number }
+      cart_apply_pricing: { Args: { _cart_id: string }; Returns: undefined }
+      cart_recalculate: {
+        Args: { _cart_id: string }
+        Returns: {
+          billing_address_id: string | null
+          converted_order_id: string | null
+          created_at: string
+          currency: string
+          customer_group_id: string | null
+          customer_id: string | null
+          discount_total: number
+          expires_at: string | null
+          id: string
+          items_count: number
+          last_activity_at: string
+          merged_into_cart_id: string | null
+          metadata: Json
+          price_list_id: string | null
+          selected_shipping_quote_id: string | null
+          session_token: string | null
+          shipping_address_id: string | null
+          shipping_total: number
+          status: Database["public"]["Enums"]["cart_status"]
+          store_id: string
+          subtotal: number
+          tax_total: number
+          total: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "carts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cart_store_id: { Args: { _cart_id: string }; Returns: string }
       claim_first_super_admin: { Args: never; Returns: Json }
       claim_outbox_batch: {
         Args: {
@@ -4209,6 +5287,7 @@ export type Database = {
         Args: { _key: string; _store_id?: string; _user_id?: string }
         Returns: Json
       }
+      expire_stale_cart_reservations: { Args: never; Returns: number }
       gr_store_id: { Args: { _gr_id: string }; Returns: string }
       has_permission: {
         Args: { _permission_code: string; _store_id?: string; _user_id: string }
@@ -4243,18 +5322,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_cart_owner: { Args: { _cart_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       mark_outbox_failed: {
         Args: { _error: string; _id: string }
         Returns: undefined
       }
       mark_outbox_published: { Args: { _id: string }; Returns: undefined }
+      merge_anonymous_cart: {
+        Args: { _anonymous_cart_id: string; _customer_id: string }
+        Returns: string
+      }
       po_store_id: { Args: { _po_id: string }; Returns: string }
       product_store_id: { Args: { _product_id: string }; Returns: string }
       purge_expired_idempotency_keys: { Args: never; Returns: number }
       recompute_customer_score: {
         Args: { _customer_id: string }
         Returns: number
+      }
+      record_cart_timeline_event: {
+        Args: {
+          _cart_id: string
+          _event_type: Database["public"]["Enums"]["cart_timeline_event"]
+          _payload?: Json
+        }
+        Returns: string
       }
       record_health_check: {
         Args: {
@@ -4277,10 +5369,26 @@ export type Database = {
         Returns: string
       }
       release_stale_outbox_locks: { Args: never; Returns: number }
+      release_stock_reservation: {
+        Args: { _reason?: string; _reservation_id: string }
+        Returns: undefined
+      }
+      remove_coupon_from_cart: {
+        Args: { _cart_coupon_id: string }
+        Returns: undefined
+      }
+      reserve_stock_for_cart_item: {
+        Args: { _cart_item_id: string; _ttl_seconds?: number }
+        Returns: string
+      }
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
       user_store_ids: { Args: { _user_id: string }; Returns: string[] }
+      validate_coupon: {
+        Args: { _cart_id: string; _coupon_id: string; _customer_id?: string }
+        Returns: Json
+      }
       variant_store_id: { Args: { _variant_id: string }; Returns: string }
       warehouse_store_id: { Args: { _warehouse_id: string }; Returns: string }
     }
@@ -4313,7 +5421,43 @@ export type Database = {
         | "other"
       asset_status: "active" | "archived"
       attribute_input_type: "select" | "text" | "number" | "boolean"
+      cart_price_source:
+        | "catalog"
+        | "price_list"
+        | "promo"
+        | "coupon"
+        | "manual"
+      cart_status: "active" | "merged" | "abandoned" | "converted" | "expired"
+      cart_timeline_event:
+        | "created"
+        | "item_added"
+        | "item_removed"
+        | "qty_changed"
+        | "price_changed"
+        | "coupon_applied"
+        | "coupon_removed"
+        | "shipping_calculated"
+        | "shipping_selected"
+        | "address_set"
+        | "merged"
+        | "abandoned"
+        | "recovered"
+        | "converted"
+        | "expired"
+        | "reservation_created"
+        | "reservation_released"
+        | "reservation_extended"
       collection_type: "manual" | "smart"
+      coupon_ledger_kind:
+        | "applied"
+        | "removed"
+        | "validated"
+        | "rejected"
+        | "expired"
+        | "limit_reached"
+        | "consumed"
+      coupon_scope: "cart" | "shipping" | "category" | "product" | "collection"
+      coupon_type: "percent" | "fixed" | "free_shipping"
       credit_ledger_kind:
         | "credit"
         | "debit"
@@ -4342,8 +5486,16 @@ export type Database = {
       outbox_status: "pending" | "processing" | "published" | "failed" | "dead"
       product_status: "draft" | "published" | "archived"
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
+      reservation_ledger_kind:
+        | "reserve"
+        | "release"
+        | "consume"
+        | "expire"
+        | "extend"
+      reservation_status: "active" | "released" | "consumed" | "expired"
       sale_channel: "varejo" | "atacado" | "ambos"
       setting_scope: "global" | "store"
+      shipping_method_kind: "carrier" | "flat" | "free" | "pickup" | "table"
       tax_regime: "mei" | "simples" | "presumido" | "real" | "isento"
       workflow_instance_status: "active" | "completed" | "cancelled" | "failed"
     }
@@ -4496,7 +5648,40 @@ export const Constants = {
       asset_kind: ["image", "video", "youtube", "vimeo", "pdf", "svg", "other"],
       asset_status: ["active", "archived"],
       attribute_input_type: ["select", "text", "number", "boolean"],
+      cart_price_source: ["catalog", "price_list", "promo", "coupon", "manual"],
+      cart_status: ["active", "merged", "abandoned", "converted", "expired"],
+      cart_timeline_event: [
+        "created",
+        "item_added",
+        "item_removed",
+        "qty_changed",
+        "price_changed",
+        "coupon_applied",
+        "coupon_removed",
+        "shipping_calculated",
+        "shipping_selected",
+        "address_set",
+        "merged",
+        "abandoned",
+        "recovered",
+        "converted",
+        "expired",
+        "reservation_created",
+        "reservation_released",
+        "reservation_extended",
+      ],
       collection_type: ["manual", "smart"],
+      coupon_ledger_kind: [
+        "applied",
+        "removed",
+        "validated",
+        "rejected",
+        "expired",
+        "limit_reached",
+        "consumed",
+      ],
+      coupon_scope: ["cart", "shipping", "category", "product", "collection"],
+      coupon_type: ["percent", "fixed", "free_shipping"],
       credit_ledger_kind: [
         "credit",
         "debit",
@@ -4528,8 +5713,17 @@ export const Constants = {
       outbox_status: ["pending", "processing", "published", "failed", "dead"],
       product_status: ["draft", "published", "archived"],
       product_visibility: ["published", "hidden", "private", "catalog_only"],
+      reservation_ledger_kind: [
+        "reserve",
+        "release",
+        "consume",
+        "expire",
+        "extend",
+      ],
+      reservation_status: ["active", "released", "consumed", "expired"],
       sale_channel: ["varejo", "atacado", "ambos"],
       setting_scope: ["global", "store"],
+      shipping_method_kind: ["carrier", "flat", "free", "pickup", "table"],
       tax_regime: ["mei", "simples", "presumido", "real", "isento"],
       workflow_instance_status: ["active", "completed", "cancelled", "failed"],
     },
