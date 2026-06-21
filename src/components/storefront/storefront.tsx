@@ -733,10 +733,12 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
 }
 
 export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
-  if (products.length === 0) return null;
+  const items: Array<StorefrontProduct | null> = products.length > 0
+    ? products
+    : Array.from({ length: 8 }, () => null);
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-7 md:gap-y-12">
-      {products.map((p) => <ProductCard key={p.id} p={p} />)}
+      {items.map((p, i) => p ? <ProductCard key={p.id} p={p} /> : <ProductCardSkeleton key={`sk-${i}`} />)}
     </div>
   );
 }
