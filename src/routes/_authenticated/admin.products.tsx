@@ -46,7 +46,7 @@ function ProductsPage() {
   const [status, setStatus] = useState<"all" | "draft" | "published" | "archived">("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  
 
   const query = useQuery({
     queryKey: ["products", storeId, q, status, page, pageSize],
