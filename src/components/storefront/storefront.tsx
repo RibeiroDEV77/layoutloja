@@ -10,6 +10,8 @@ import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
 import lookSocial from "@/assets/look-social.jpg";
 import logoAsset from "@/assets/layout-logo.png.asset.json";
+import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
+
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
 
 
@@ -379,16 +381,14 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             )}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55" />
+        <div className="absolute inset-0 bg-black/25" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-          <div className="bg-white/95 px-8 py-6 md:px-12 md:py-8 backdrop-blur-sm">
-            <img
-              src={logoAsset.url}
-              alt="Layout — Indústria do vestuário"
-              className="h-20 md:h-32 w-auto object-contain"
-            />
-          </div>
-          <p className="mt-7 text-sm md:text-base font-normal max-w-xl tracking-wide opacity-95">
+          <img
+            src={logoTransparent.url}
+            alt="Layout — Indústria do vestuário"
+            className="h-16 md:h-28 w-auto object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)]"
+          />
+          <p className="mt-7 text-sm md:text-base font-normal max-w-xl tracking-wide text-white/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
             {slides[active]?.title ?? "Coleção atual · Moda autoral com a qualidade da indústria Layout."}
           </p>
           <a
@@ -398,6 +398,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             Explorar coleção
           </a>
         </div>
+
 
         {/* Dots */}
         {slides.length > 1 && (
