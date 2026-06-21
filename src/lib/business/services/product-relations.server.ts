@@ -38,7 +38,7 @@ export async function listRelations(
 
   let q = supabase
     .from('product_relations')
-    .select('id, product_id, related_product_id, relation_type, position, created_at, products:related_product_id(id, name, sku_root, slug, status, visibility)')
+    .select('id, product_id, related_product_id, relation_type, position, created_at, related:products!product_relations_related_product_id_fkey(id, name, sku_root, slug, status, visibility)')
     .eq('product_id', productId);
   if (relationType) q = q.eq('relation_type', relationType);
   const { data, error } = await q.order('relation_type').order('position');
@@ -98,12 +98,12 @@ export async function removeRelation(
 ) {
   const { data: row, error: fetchErr } = await supabase
     .from('product_relations')
-    .select('id, product_id, related_product_id, relation_type, products!product_relations_product_id_fkey(store_id)')
+    .select('id, product_id, related_product_id, relation_type, product:products!product_relations_product_id_fkey(store_id)')
     .eq('id', relationId)
     .maybeSingle();
   if (fetchErr) throw Errors.internal('Falha ao localizar relação', { error: fetchErr.message });
   if (!row) throw Errors.notFound('product_relation', relationId);
-  const storeId = (row as { products: { store_id: string } }).products.store_id;
+  const storeId = (row as { product: { store_id: string } }).product.store_id;
   await requirePermission(supabase, userId, 'products.update', storeId);
 
   const { error } = await supabase.from('product_relations').delete().eq('id', relationId);

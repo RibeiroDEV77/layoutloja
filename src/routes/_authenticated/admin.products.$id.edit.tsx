@@ -972,12 +972,12 @@ function RelatedStep({ productId, storeId }: { productId: string; storeId: strin
     if (ok) invalidate();
   };
 
-  const rows = (relationsQ.data ?? []) as Array<{
+  const rows = (relationsQ.data ?? []) as unknown as Array<{
     id: string;
     related_product_id: string;
     relation_type: RelationType;
     position: number;
-    products: { id: string; name: string; sku_root: string; status: string } | null;
+    related: { id: string; name: string; sku_root: string; status: string } | null;
   }>;
 
   return (
@@ -990,7 +990,7 @@ function RelatedStep({ productId, storeId }: { productId: string; storeId: strin
           <SelectField
             label="Tipo de relação"
             value={type}
-            onValueChange={(v) => setType(v as RelationType)}
+            onChange={(v) => setType(v as RelationType)}
             options={[
               { value: "related", label: "Relacionado" },
               { value: "cross_sell", label: "Cross-sell" },
