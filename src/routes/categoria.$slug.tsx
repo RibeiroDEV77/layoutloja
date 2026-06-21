@@ -153,12 +153,13 @@ function CategoryPage() {
 
   const sort = search.sort ?? "relevance";
   const setSort = (s: string) =>
-    navigate({ search: (prev) => ({ ...prev, sort: s === "relevance" ? undefined : s }) });
+    navigate({ search: (prev: SearchParams) => ({ ...prev, sort: s === "relevance" ? undefined : s }) });
 
   const selected = useMemo(() => {
     const map: Record<string, Set<string>> = {};
-    for (const [code, csv] of Object.entries(search.attr ?? {})) {
-      map[code] = new Set(csv.split(",").filter(Boolean));
+    const attr = search.attr ?? {};
+    for (const [code, csv] of Object.entries(attr)) {
+      map[code] = new Set(String(csv).split(",").filter(Boolean));
     }
     return map;
   }, [search.attr]);
@@ -166,11 +167,10 @@ function CategoryPage() {
   const filtered = useMemo(() => {
     const activeCodes = Object.keys(selected).filter((c) => selected[c].size > 0);
     if (activeCodes.length === 0) return products;
-    return products.filter((p) => {
+    return products.filter((p: { id: string }) => {
       const owned = new Set(productAttrs[p.id] ?? []);
-      // AND between groups, OR within group.
       for (const code of activeCodes) {
-        const group = filters.find((g) => g.code === code);
+        const group = filters.find((g: StorefrontFilterGroup) => g.code === code);
         if (!group) continue;
         const required = selected[code];
         const has = group.values.some((v) => required.has(v.id) && owned.has(v.id));
@@ -191,10 +191,11 @@ function CategoryPage() {
 
   const toggleValue = (code: string, valueId: string) => {
     navigate({
-      search: (prev) => {
-        const cur = new Set((prev.attr?.[code] ?? "").split(",").filter(Boolean));
+      search: (prev: SearchParams) => {
+        const prevAttr = prev.attr ?? {};
+        const cur = new Set(String(prevAttr[code] ?? "").split(",").filter(Boolean));
         if (cur.has(valueId)) cur.delete(valueId); else cur.add(valueId);
-        const attr: Record<string, string> = { ...(prev.attr ?? {}) };
+        const attr: Record<string, string> = { ...prevAttr };
         if (cur.size === 0) delete attr[code];
         else attr[code] = Array.from(cur).join(",");
         return { ...prev, attr: Object.keys(attr).length ? attr : undefined };
