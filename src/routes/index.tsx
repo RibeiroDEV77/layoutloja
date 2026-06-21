@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  StorefrontNavbar, StorefrontHero, LooksSlider, CategoryCards,
-  ProductSection, StorefrontFooter,
+  StorefrontShell, StorefrontNavbar, StorefrontHero, LooksSlider,
+  CategoryCards, ProductSection, StorefrontFooter,
 } from "@/components/storefront/storefront";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
