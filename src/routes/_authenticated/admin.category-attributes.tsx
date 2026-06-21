@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/admin/category-attributes"
 type CAttr = {
   id: string; category_id: string; attribute_id: string;
   is_required: boolean; is_variant_axis: boolean; sort_order: number;
+  show_in_filters?: boolean; filter_order?: number;
   attribute?: { id: string; name: string; code: string };
 };
 type Cat = { id: string; name: string };
@@ -92,7 +93,7 @@ function CategoryAttributesPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ attribute_id: "", is_required: false, is_variant_axis: false, sort_order: 0 });
+    setForm({ attribute_id: "", is_required: false, is_variant_axis: false, sort_order: 0, show_in_filters: true, filter_order: 0 });
     setDrawerOpen(true);
   };
   const openEdit = (row: CAttr) => {
@@ -102,6 +103,8 @@ function CategoryAttributesPage() {
       is_required: row.is_required,
       is_variant_axis: row.is_variant_axis,
       sort_order: row.sort_order,
+      show_in_filters: row.show_in_filters ?? true,
+      filter_order: row.filter_order ?? 0,
     });
     setDrawerOpen(true);
   };
@@ -114,6 +117,8 @@ function CategoryAttributesPage() {
             is_required: form.is_required as boolean,
             is_variant_axis: form.is_variant_axis as boolean,
             sort_order: form.sort_order as number,
+            show_in_filters: form.show_in_filters as boolean,
+            filter_order: form.filter_order as number,
           } } }),
           { success: "Vínculo atualizado", loading: "Salvando..." },
         );
@@ -126,6 +131,8 @@ function CategoryAttributesPage() {
             is_required: form.is_required as boolean,
             is_variant_axis: form.is_variant_axis as boolean,
             sort_order: form.sort_order as number,
+            show_in_filters: form.show_in_filters as boolean,
+            filter_order: form.filter_order as number,
           } }),
           { success: "Atributo vinculado", loading: "Vinculando..." },
         );
@@ -223,7 +230,20 @@ function CategoryAttributesPage() {
               </div>
             </FormField>
           </FormRow>
-          <FormField label="Ordem">
+          <FormRow>
+            <FormField label="Exibir como filtro na Loja">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.show_in_filters !== false}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, show_in_filters: v }))} />
+                <span className="text-sm text-muted-foreground">Aparece na barra lateral</span>
+              </div>
+            </FormField>
+            <FormField label="Ordem do filtro">
+              <Input type="number" value={(form.filter_order as number) ?? 0}
+                onChange={(e) => setForm((p) => ({ ...p, filter_order: Number(e.target.value) }))} />
+            </FormField>
+          </FormRow>
+          <FormField label="Ordem (cadastro)">
             <Input type="number" value={(form.sort_order as number) ?? 0}
               onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))} />
           </FormField>

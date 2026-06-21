@@ -17,14 +17,15 @@ type Attribute = {
   id: string; store_id: string; code: string; name: string;
   input_type: "select" | "text" | "number" | "boolean";
   is_color: boolean; is_size: boolean; unit: string | null; description: string | null;
+  is_filterable: boolean; filter_ui: "checkbox" | "color" | "size" | "range"; filter_order: number;
 };
 
 function AttributesPage() {
   return (
     <MasterCrudPage<Attribute>
-      title="Atributos"
-      description="Características que definem variações ou propriedades de produtos."
-      breadcrumbs={[{ label: "Catálogo" }, { label: "Atributos" }]}
+      title="Atributos e Filtros"
+      description="Características que viram filtros na Loja Pública e podem gerar variações de produto."
+      breadcrumbs={[{ label: "Catálogo" }, { label: "Atributos e Filtros" }]}
       resourceName="atributo"
       queryKey="attributes"
       list={listAttributes} create={createAttribute} update={updateAttribute} remove={deleteAttribute}
@@ -33,6 +34,10 @@ function AttributesPage() {
         { key: "name", header: "Nome", accessor: (r) => <span className="font-medium">{r.name}</span> },
         { key: "code", header: "Código", accessor: (r) => <code className="text-xs text-muted-foreground">{r.code}</code> },
         { key: "input_type", header: "Tipo", accessor: (r) => <StatusBadge label={r.input_type} tone="info" /> },
+        { key: "filter", header: "Filtro",
+          accessor: (r) => r.is_filterable
+            ? <StatusBadge label={r.filter_ui} tone="success" />
+            : <span className="text-muted-foreground text-xs">Oculto</span> },
         { key: "axis", header: "Eixo",
           accessor: (r) => (
             <div className="flex gap-1">
@@ -40,10 +45,10 @@ function AttributesPage() {
               {r.is_size && <StatusBadge label="Tamanho" tone="warning" />}
             </div>
           ) },
-        { key: "unit", header: "Unidade", accessor: (r) => r.unit ?? "—" },
+        { key: "filter_order", header: "Ordem", align: "right", accessor: (r) => r.filter_order ?? 0 },
       ]}
       itemLabel={(r) => r.name}
-      emptyForm={() => ({ code: "", name: "", input_type: "select", is_color: false, is_size: false, unit: "", description: "" })}
+      emptyForm={() => ({ code: "", name: "", input_type: "select", is_color: false, is_size: false, unit: "", description: "", is_filterable: true, filter_ui: "checkbox", filter_order: 0 })}
       toForm={(r) => ({ ...r })}
       renderForm={(form, setForm) => (
         <>
@@ -82,6 +87,26 @@ function AttributesPage() {
               </div>
             </FormField>
           </FormRow>
+          <FormRow>
+            <FormField label="Exibir como filtro na Loja">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.is_filterable !== false} onCheckedChange={(v) => setForm({ is_filterable: v })} />
+                <span className="text-sm text-muted-foreground">Aparece na barra lateral</span>
+              </div>
+            </FormField>
+            <SelectField label="Interface do filtro" value={(form.filter_ui as string) ?? "checkbox"}
+              onChange={(v) => setForm({ filter_ui: v })}
+              options={[
+                { value: "checkbox", label: "Caixas (checkbox)" },
+                { value: "color", label: "Swatches de cor" },
+                { value: "size", label: "Chips de tamanho" },
+                { value: "range", label: "Faixa (slider)" },
+              ]} />
+          </FormRow>
+          <FormField label="Ordem do filtro" hint="Menor aparece primeiro.">
+            <Input type="number" value={(form.filter_order as number) ?? 0}
+              onChange={(e) => setForm({ filter_order: Number(e.target.value) })} />
+          </FormField>
           <FormField label="Descrição">
             <Textarea rows={3} value={(form.description as string) ?? ""}
               onChange={(e) => setForm({ description: e.target.value })} />

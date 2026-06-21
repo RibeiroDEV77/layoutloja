@@ -432,9 +432,12 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          filter_order: number
+          filter_ui: string
           id: string
           input_type: Database["public"]["Enums"]["attribute_input_type"]
           is_color: boolean
+          is_filterable: boolean
           is_public: boolean
           is_size: boolean
           name: string
@@ -446,9 +449,12 @@ export type Database = {
           code: string
           created_at?: string
           description?: string | null
+          filter_order?: number
+          filter_ui?: string
           id?: string
           input_type?: Database["public"]["Enums"]["attribute_input_type"]
           is_color?: boolean
+          is_filterable?: boolean
           is_public?: boolean
           is_size?: boolean
           name: string
@@ -460,9 +466,12 @@ export type Database = {
           code?: string
           created_at?: string
           description?: string | null
+          filter_order?: number
+          filter_ui?: string
           id?: string
           input_type?: Database["public"]["Enums"]["attribute_input_type"]
           is_color?: boolean
+          is_filterable?: boolean
           is_public?: boolean
           is_size?: boolean
           name?: string
@@ -1014,27 +1023,33 @@ export type Database = {
           attribute_id: string
           category_id: string
           created_at: string
+          filter_order: number
           id: string
           is_required: boolean
           is_variant_axis: boolean
+          show_in_filters: boolean
           sort_order: number
         }
         Insert: {
           attribute_id: string
           category_id: string
           created_at?: string
+          filter_order?: number
           id?: string
           is_required?: boolean
           is_variant_axis?: boolean
+          show_in_filters?: boolean
           sort_order?: number
         }
         Update: {
           attribute_id?: string
           category_id?: string
           created_at?: string
+          filter_order?: number
           id?: string
           is_required?: boolean
           is_variant_axis?: boolean
+          show_in_filters?: boolean
           sort_order?: number
         }
         Relationships: [
