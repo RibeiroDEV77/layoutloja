@@ -475,9 +475,11 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
 export function Section({ children, tone = "white", id }: {
   children: ReactNode; tone?: "white" | "soft"; id?: string;
 }) {
+  // Tone "soft" mantido por compatibilidade — toda a Loja Pública usa fundo branco.
+  void tone;
   return (
-    <section id={id} className={cn(tone === "soft" ? "bg-[#F8F8F8]" : "bg-white")}>
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20">{children}</div>
+    <section id={id} className="bg-white">
+      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-20 md:py-24">{children}</div>
     </section>
   );
 }
