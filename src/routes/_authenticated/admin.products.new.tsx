@@ -945,6 +945,36 @@ function VariationsBlock({
             )}
           </section>
 
+          <AlertDialog open={!!migration} onOpenChange={(o) => { if (!o && !migrating) setMigration(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  As imagens existentes pertencem à cor {migration?.pendingName}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Você cadastrou {migration?.media.length ?? 0} imagem(ns) na cor temporária "Padrão".
+                  Escolha o que fazer ao criar a cor <strong>{migration?.pendingName}</strong>:
+                  <br /><br />
+                  • <strong>Mover</strong>: transfere todas as imagens para {migration?.pendingName} e remove a cor "Padrão".<br />
+                  • <strong>Duplicar</strong>: copia as imagens para {migration?.pendingName} e mantém a cor "Padrão".<br />
+                  • <strong>Cancelar</strong>: não cria a cor agora.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={migrating}>Cancelar</AlertDialogCancel>
+                <Button variant="outline" disabled={migrating} onClick={() => runMigration("duplicate")} className="gap-2">
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Duplicar imagens
+                </Button>
+                <AlertDialogAction disabled={migrating} onClick={(e) => { e.preventDefault(); runMigration("move"); }}>
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Mover imagens
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+
           <section className="space-y-3 pt-2 border-t">
             <h3 className="font-medium text-sm">
               Tamanhos
