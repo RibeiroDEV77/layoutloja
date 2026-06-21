@@ -343,7 +343,6 @@ function BasicBlock({
               name: form.name.trim(),
               category_id: form.category_id || null,
               brand_id: form.brand_id || null,
-              collection_id: form.collection_id || null,
               short_description: form.short_description || null,
               description: form.description || null,
             },
