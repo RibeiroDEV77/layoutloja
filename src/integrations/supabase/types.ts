@@ -8779,6 +8779,95 @@ export type Database = {
           },
         ]
       }
+      shipping_carrier_accounts: {
+        Row: {
+          capabilities: Json
+          config: Json
+          created_at: string
+          created_by: string | null
+          credentials_encrypted: string | null
+          credentials_fingerprint: string | null
+          credentials_set_at: string | null
+          credentials_set_by: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_ok: boolean | null
+          provider_code: string
+          sandbox: boolean
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          provider_code: string
+          sandbox?: boolean
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
+          provider_code?: string
+          sandbox?: boolean
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_carrier_accounts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_credentials_keyring: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          key: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          key?: string
+        }
+        Relationships: []
+      }
       shipping_labels: {
         Row: {
           asset_id: string | null
@@ -12531,6 +12620,11 @@ export type Database = {
           p_tracking_url: string
         }
         Returns: string
+      }
+      shipping_get_credentials: { Args: { _account_id: string }; Returns: Json }
+      shipping_set_credentials: {
+        Args: { _account_id: string; _creds: Json }
+        Returns: undefined
       }
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
