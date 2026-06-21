@@ -51,11 +51,18 @@ function HomePage() {
   const { store, categories, brands, novidades, maisVendidos, destaques, todos } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
 
-  // Banners do Hero: derivados das categorias raiz com imagem (admin-driven)
-  const heroBanners: HeroBanner[] = categories
-    .filter((c: { parent_id: string | null; image_url: string | null }) => !c.parent_id && c.image_url)
-    .slice(0, 5)
-    .map((c: { image_url: string | null; name: string; slug: string }) => ({ image: c.image_url as string, tag: c.name, ctaSlug: c.slug }));
+  // Banners do Hero: imagens premium de campanha por coleção (sem textos sobrepostos).
+  // Sem fallback de placeholder — clique abre a categoria quando o slug existir no catálogo.
+  const findSlug = (...candidates: string[]) => {
+    const set = new Set(categories.map((c: { slug: string }) => c.slug));
+    return candidates.find((s) => set.has(s));
+  };
+  const heroBanners: HeroBanner[] = [
+    { image: "/__hero/banner-country.jpg", ctaSlug: findSlug("country") },
+    { image: "/__hero/banner-masculino.jpg", ctaSlug: findSlug("masculino", "homem") },
+    { image: "/__hero/banner-feminino.jpg", ctaSlug: findSlug("feminino", "mulher") },
+    { image: "/__hero/banner-sport-fino.jpg", ctaSlug: findSlug("sport-fino", "social") },
+  ];
 
 
   // Divide o pool em "estilos" diferentes para preencher as seções temáticas
