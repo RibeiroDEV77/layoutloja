@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/admin/category-attributes"
 type CAttr = {
   id: string; category_id: string; attribute_id: string;
   is_required: boolean; is_variant_axis: boolean; sort_order: number;
+  show_in_filters?: boolean; filter_order?: number;
   attribute?: { id: string; name: string; code: string };
 };
 type Cat = { id: string; name: string };
