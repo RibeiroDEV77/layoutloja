@@ -89,20 +89,29 @@ export async function listAssets(supabase: SbClient, userId: string, p: ListAsse
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar assets', { error: error.message });
 
-  // Resolve URLs via driver
+  // Resolve URLs via driver (com fallback inline para storage_driver='supabase')
   const driver = getStorageDriver();
   const rows = await Promise.all(
     (data ?? []).map(async (a) => ({
       ...a,
-      preview_url: await driver.resolveUrl({
-        bucket: a.bucket,
-        path: a.thumb_path ?? a.storage_path,
-        externalUrl: a.external_url,
-      }),
+      preview_url: await resolvePreviewUrl(supabase, a),
     })),
   );
 
   return { rows, page, page_size: size, total: count ?? 0 };
+}
+
+async function resolvePreviewUrl(
+  supabase: SbClient,
+  a: { storage_driver: AssetDriver; bucket: string | null; storage_path: string | null; thumb_path: string | null; external_url: string | null },
+): Promise<string | null> {
+  const path = a.thumb_path ?? a.storage_path;
+  if (a.storage_driver === 'supabase' && a.bucket && path) {
+    const { data } = await supabase.storage.from(a.bucket).createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  }
+  const driver = getStorageDriver();
+  return driver.resolveUrl({ bucket: a.bucket, path, externalUrl: a.external_url });
 }
 
 export async function getAsset(supabase: SbClient, userId: string, id: string) {
@@ -110,10 +119,10 @@ export async function getAsset(supabase: SbClient, userId: string, id: string) {
   if (error) throw Errors.internal('Falha ao carregar asset', { error: error.message });
   if (!data) throw Errors.notFound('Asset', id);
   await ensureRead(supabase, userId, data.store_id);
-  const driver = getStorageDriver();
-  const url = await driver.resolveUrl({ bucket: data.bucket, path: data.storage_path, externalUrl: data.external_url });
+  const url = await resolvePreviewUrl(supabase, data);
   return { ...data, preview_url: url };
 }
+
 
 export async function getAssetUsage(supabase: SbClient, userId: string, id: string) {
   const asset = await getAsset(supabase, userId, id);
@@ -214,7 +223,127 @@ export async function createUploadJob(
   return { job_id: data.id, target };
 }
 
+/* ----------- upload binário direto ao bucket `dam` (Supabase Storage) ----------- */
+
+const DAM_BUCKET = 'dam';
+
+function buildStoragePath(storeId: string, jobId: string, filename: string) {
+  const safe = (filename || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 180);
+  return `${storeId}/${jobId}/${safe}`;
+}
+
+export async function signUploadJob(supabase: SbClient, userId: string, jobId: string) {
+  const { data: job, error } = await supabase
+    .from('asset_upload_jobs')
+    .select('id, store_id, filename, status')
+    .eq('id', jobId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw Errors.internal('Falha ao carregar job', { error: error.message });
+  if (!job) throw Errors.notFound('Upload job', jobId);
+  await requirePermission(supabase, userId, 'dam.upload', job.store_id);
+  const path = buildStoragePath(job.store_id, job.id, job.filename);
+  const { data: signed, error: signErr } = await supabase
+    .storage.from(DAM_BUCKET)
+    .createSignedUploadUrl(path, { upsert: true });
+  if (signErr || !signed) {
+    throw Errors.internal(
+      'Falha ao gerar URL de upload — verifique se o bucket "dam" existe (Supabase → Storage)',
+      { error: signErr?.message },
+    );
+  }
+  await supabase.from('asset_upload_jobs').update({ status: 'uploading' }).eq('id', jobId);
+  return { url: signed.signedUrl, token: signed.token, bucket: DAM_BUCKET, path };
+}
+
+export interface CompleteUploadJobParams {
+  job_id: string;
+  size_bytes?: number;
+  mime?: string;
+  width?: number;
+  height?: number;
+  title?: string;
+  alt_text?: string;
+  folder_id?: string | null;
+}
+
+export async function completeUploadJob(
+  supabase: SbClient,
+  userId: string,
+  p: CompleteUploadJobParams,
+) {
+  const { data: job, error } = await supabase
+    .from('asset_upload_jobs')
+    .select('id, store_id, context, filename, mime, size_bytes, status, asset_id')
+    .eq('id', p.job_id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw Errors.internal('Falha ao carregar job', { error: error.message });
+  if (!job) throw Errors.notFound('Upload job', p.job_id);
+
+  if (job.status === 'done' && job.asset_id) {
+    const { data: existing } = await supabase.from('assets').select('*').eq('id', job.asset_id).maybeSingle();
+    if (existing) return existing;
+  }
+
+  await requirePermission(supabase, userId, 'dam.upload', job.store_id);
+
+  const mime = p.mime ?? job.mime ?? 'application/octet-stream';
+  const kind: AssetKind =
+    mime.startsWith('image/svg') ? 'svg'
+    : mime.startsWith('image/') ? 'image'
+    : mime.startsWith('video/') ? 'video'
+    : mime === 'application/pdf' ? 'pdf'
+    : 'other';
+
+  const path = buildStoragePath(job.store_id, job.id, job.filename);
+
+  const { data: asset, error: insErr } = await supabase
+    .from('assets')
+    .insert({
+      store_id: job.store_id,
+      context: job.context as AssetContext,
+      kind,
+      storage_driver: 'supabase' as AssetDriver,
+      bucket: DAM_BUCKET,
+      storage_path: path,
+      mime,
+      size_bytes: p.size_bytes ?? job.size_bytes ?? null,
+      width: p.width ?? null,
+      height: p.height ?? null,
+      original_filename: job.filename,
+      title: p.title ?? null,
+      alt_text: p.alt_text ?? null,
+      folder_id: p.folder_id ?? null,
+      created_by: userId,
+    })
+    .select('*')
+    .single();
+  if (insErr) throw Errors.internal('Falha ao registrar asset', { error: insErr.message });
+
+  await supabase
+    .from('asset_upload_jobs')
+    .update({
+      status: 'done',
+      asset_id: asset.id,
+      bytes_uploaded: p.size_bytes ?? job.size_bytes ?? 0,
+    })
+    .eq('id', p.job_id);
+
+  await dispatchEvent(supabase, {
+    event_type: 'asset.registered',
+    aggregate_type: 'asset',
+    aggregate_id: asset.id,
+    store_id: job.store_id,
+    payload: { kind: asset.kind, driver: 'supabase', bucket: DAM_BUCKET, path },
+  });
+
+  const preview_url = await resolvePreviewUrl(supabase, asset);
+  return { ...asset, preview_url };
+}
+
 export async function cancelUploadJob(supabase: SbClient, userId: string, jobId: string) {
+
   const { data, error } = await supabase
     .from('asset_upload_jobs')
     .update({ status: 'canceled' })
@@ -313,8 +442,13 @@ export async function deleteAsset(supabase: SbClient, userId: string, id: string
     throw Errors.rule('Asset vinculado — remova os vínculos ou arquive-o.', { asset_id: id });
   }
   // Remove do storage (se houver)
-  const driver = getStorageDriver();
-  await driver.remove({ bucket: asset.bucket, path: asset.storage_path });
+  if (asset.storage_driver === 'supabase' && asset.bucket && asset.storage_path) {
+    await supabase.storage.from(asset.bucket).remove([asset.storage_path]);
+  } else {
+    const driver = getStorageDriver();
+    await driver.remove({ bucket: asset.bucket, path: asset.storage_path });
+  }
+
   const { error } = await supabase.from('assets').delete().eq('id', id);
   if (error) throw Errors.internal('Falha ao excluir', { error: error.message });
   return { ok: true };
