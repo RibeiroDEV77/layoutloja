@@ -713,33 +713,8 @@ export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
 // ---------------------------------------------------------------------------
 
 export function InstitutionalBanner() {
-  return (
-    <section className="bg-white">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20">
-        <div className="relative overflow-hidden bg-[#111] text-white">
-          <div className="grid md:grid-cols-2">
-            <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]">
-              <img src={lookCowboy} alt="Indústria Layout" className="absolute inset-0 h-full w-full object-cover opacity-80" />
-            </div>
-            <div className="p-10 md:p-16 flex flex-col justify-center gap-5">
-              <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Indústria Layout</p>
-              <h3 className="text-[32px] md:text-[40px] font-semibold leading-tight">
-                Confecção própria, qualidade que veste gerações.
-              </h3>
-              <p className="text-[15px] text-neutral-300 max-w-md">
-                Há décadas produzindo moda autoral. Cada peça nasce da nossa indústria, com matéria-prima selecionada e acabamento impecável.
-              </p>
-              <div>
-                <a href="#" className="inline-flex bg-white text-[#111] px-7 py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] hover:text-white transition-colors">
-                  Conheça nossa história
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  // Sem dados institucionais reais cadastrados — não renderiza conteúdo fictício.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
