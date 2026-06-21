@@ -522,7 +522,7 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
     const el = ref.current; if (!el) return;
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 900), behavior: "smooth" });
   };
-  if (products.length === 0) return <EmptyState message="Em breve, novas peças." />;
+  if (products.length === 0) return null;
   return (
     <div className="relative">
       <button
