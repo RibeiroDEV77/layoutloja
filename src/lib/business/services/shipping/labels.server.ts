@@ -103,12 +103,12 @@ export async function purchaseShippingLabel(
   const shipment = await loadShipment(supabase, input.shipment_id);
   const providerCode = shipment.carrier_code ?? '';
   const adapter = getShippingAdapter(providerCode);
-  if (!adapter) throw Errors.invalidInput(`Provider "${providerCode}" não registrado`);
+  if (!adapter) throw Errors.validation(`Provider "${providerCode}" não registrado`);
   if (!adapter.capabilities.label || !adapter.createLabel) {
     throw new AdapterCapabilityError(providerCode, 'label');
   }
   const account = await resolveAccount(supabase, shipment.store_id, providerCode);
-  if (!account) throw Errors.invalidInput(`Nenhuma carrier account ativa para ${providerCode}`);
+  if (!account) throw Errors.validation(`Nenhuma carrier account ativa para ${providerCode}`);
 
   const credentials = await decryptCredentials(account.id);
   if (!credentials) throw new AdapterNotConfiguredError(providerCode);
@@ -220,7 +220,7 @@ export async function cancelShippingLabel(
     throw new AdapterCapabilityError(providerCode, 'label');
   }
   const account = await resolveAccount(supabase, shipment.store_id, providerCode);
-  if (!account) throw Errors.invalidInput(`Sem carrier account para ${providerCode}`);
+  if (!account) throw Errors.validation(`Sem carrier account para ${providerCode}`);
   const credentials = await decryptCredentials(account.id);
 
   const ctx: AdapterContext = {
