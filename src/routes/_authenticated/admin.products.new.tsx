@@ -761,18 +761,91 @@ function VariationsBlock({
     if (colors.some((c) => c.name !== "Padrão")) setHasVariations("yes");
   }, [colors]);
 
+  const fnListMediaForMigration = useServerFn(listColorMedia);
+  const fnAddMediaForMigration = useServerFn(addColorMedia);
+  const fnDelMediaForMigration = useServerFn(deleteColorMedia);
+
   const [newColor, setNewColor] = useState({ name: "", hex: "#000000" });
-  const addColor = async () => {
-    if (!newColor.name.trim()) return;
-    const ok = await runAction(
-      () => fnCreateColor({ data: {
-        product_id: productId, name: newColor.name.trim(), hex: newColor.hex,
-        is_default: colors.length === 0,
-      } }),
+  const [migration, setMigration] = useState<null | {
+    padraoId: string;
+    media: MediaRow[];
+    pendingName: string;
+    pendingHex: string;
+  }>(null);
+  const [migrating, setMigrating] = useState(false);
+
+  const createColorRaw = async (name: string, hex: string, isDefault: boolean) => {
+    return runAction(
+      () => fnCreateColor({ data: { product_id: productId, name, hex, is_default: isDefault } }),
       { success: "Cor adicionada" },
     );
+  };
+
+  const addColor = async () => {
+    const name = newColor.name.trim();
+    if (!name) return;
+    // Padrão-only migration: única cor existente é "Padrão" e tem mídias.
+    const onlyPadrao = colors.length === 1 && colors[0].name === "Padrão";
+    if (onlyPadrao) {
+      const padrao = colors[0];
+      try {
+        const media = (await fnListMediaForMigration({ data: { color_id: padrao.id } })) as MediaRow[];
+        if (Array.isArray(media) && media.length > 0) {
+          setMigration({ padraoId: padrao.id, media, pendingName: name, pendingHex: newColor.hex });
+          return;
+        }
+      } catch { /* ignore — segue fluxo padrão */ }
+    }
+    const ok = await createColorRaw(name, newColor.hex, colors.length === 0);
     if (ok) { setNewColor({ name: "", hex: "#000000" }); colorsQ.refetch(); onChange(); }
   };
+
+  const runMigration = async (mode: "move" | "duplicate") => {
+    if (!migration) return;
+    setMigrating(true);
+    try {
+      const created = await fnCreateColor({ data: {
+        product_id: productId, name: migration.pendingName, hex: migration.pendingHex, is_default: mode === "move",
+      } }) as ColorRow;
+      if (!created?.id) throw new Error("Falha ao criar cor");
+
+      for (const m of migration.media) {
+        await fnAddMediaForMigration({ data: {
+          color_id: created.id,
+          media_type: m.media_type as 'image'|'video'|'youtube'|'vimeo',
+          storage_path: m.storage_path,
+          external_url: m.external_url,
+          external_id: m.external_id,
+          thumbnail_url: m.thumbnail_url,
+          alt: m.alt,
+          title: m.title,
+          sort_order: m.sort_order ?? 0,
+          is_cover: !!m.is_cover,
+          is_hover_media: !!m.is_hover_media,
+        } });
+      }
+
+      if (mode === "move") {
+        for (const m of migration.media) {
+          await fnDelMediaForMigration({ data: { id: m.id } });
+        }
+        await fnDelColor({ data: { id: migration.padraoId } });
+        notify.success("Imagens movidas para " + migration.pendingName);
+      } else {
+        notify.success("Imagens duplicadas em " + migration.pendingName);
+      }
+
+      setMigration(null);
+      setNewColor({ name: "", hex: "#000000" });
+      colorsQ.refetch();
+      onChange();
+    } catch (e) {
+      notify.error((e as Error).message || "Falha ao migrar imagens");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   const removeColor = async (id: string) => {
     const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
     if (ok) { colorsQ.refetch(); onChange(); }
