@@ -32,6 +32,7 @@ import { Route as AuthenticatedAdminCategoryAttributesRouteImport } from './rout
 import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin.categories'
 import { Route as AuthenticatedAdminCartsRouteImport } from './routes/_authenticated/admin.carts'
 import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenticated/admin.brands'
+import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin.audit'
 import { Route as AuthenticatedAdminAttributesRouteImport } from './routes/_authenticated/admin.attributes'
 import { Route as AuthenticatedAdminAttributeValuesRouteImport } from './routes/_authenticated/admin.attribute-values'
 import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes/api/public/hooks/shipping-tracking-sync'
@@ -170,6 +171,11 @@ const AuthenticatedAdminBrandsRoute =
     path: '/brands',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminAuditRoute = AuthenticatedAdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminAttributesRoute =
   AuthenticatedAdminAttributesRouteImport.update({
     id: '/attributes',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
+  '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/carts': typeof AuthenticatedAdminCartsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
+  '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/carts': typeof AuthenticatedAdminCartsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/_authenticated/admin/attributes': typeof AuthenticatedAdminAttributesRoute
+  '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/_authenticated/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/_authenticated/admin/carts': typeof AuthenticatedAdminCartsRoute
   '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/attribute-values'
     | '/admin/attributes'
+    | '/admin/audit'
     | '/admin/brands'
     | '/admin/carts'
     | '/admin/categories'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/attribute-values'
     | '/admin/attributes'
+    | '/admin/audit'
     | '/admin/brands'
     | '/admin/carts'
     | '/admin/categories'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/admin/attribute-values'
     | '/_authenticated/admin/attributes'
+    | '/_authenticated/admin/audit'
     | '/_authenticated/admin/brands'
     | '/_authenticated/admin/carts'
     | '/_authenticated/admin/categories'
@@ -600,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBrandsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/audit': {
+      id: '/_authenticated/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AuthenticatedAdminAuditRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/attributes': {
       id: '/_authenticated/admin/attributes'
       path: '/attributes'
@@ -728,6 +747,7 @@ const AuthenticatedAdminProductsRouteWithChildren =
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAttributeValuesRoute: typeof AuthenticatedAdminAttributeValuesRoute
   AuthenticatedAdminAttributesRoute: typeof AuthenticatedAdminAttributesRoute
+  AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
   AuthenticatedAdminBrandsRoute: typeof AuthenticatedAdminBrandsRoute
   AuthenticatedAdminCartsRoute: typeof AuthenticatedAdminCartsRoute
   AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
@@ -752,6 +772,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAttributeValuesRoute:
     AuthenticatedAdminAttributeValuesRoute,
   AuthenticatedAdminAttributesRoute: AuthenticatedAdminAttributesRoute,
+  AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
   AuthenticatedAdminBrandsRoute: AuthenticatedAdminBrandsRoute,
   AuthenticatedAdminCartsRoute: AuthenticatedAdminCartsRoute,
   AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
