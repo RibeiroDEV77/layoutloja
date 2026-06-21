@@ -79,7 +79,6 @@ function HomePage() {
               title="Novidades"
               description="Os lançamentos mais recentes da nossa coleção."
               action={{ label: "Ver todos" }}
-              align="left"
             />
             <ProductCarousel products={novidades.length ? novidades : todos.slice(0, 8)} />
           </Section>
@@ -89,7 +88,7 @@ function HomePage() {
             <SectionHeader
               title="Categorias"
               description="Encontre o estilo que combina com você."
-              align="center"
+              action={{ label: "Ver todas" }}
             />
             <CategoryGrid categories={categories} />
           </Section>
@@ -103,7 +102,6 @@ function HomePage() {
               title="Mais vendidos"
               description="As peças preferidas pelos nossos clientes."
               action={{ label: "Ver todos" }}
-              align="left"
             />
             <ProductGrid products={(maisVendidos.length ? maisVendidos : todos).slice(0, 8)} />
           </Section>
@@ -114,7 +112,6 @@ function HomePage() {
               title="Sport Fino"
               description="Conforto e elegância para o dia a dia."
               action={{ label: "Ver coleção" }}
-              align="center"
             />
             <ProductCarousel products={sportFino.length ? sportFino : destaques.slice(0, 8)} />
           </Section>
@@ -125,7 +122,6 @@ function HomePage() {
               title="Country"
               description="Tradição e atitude no melhor estilo country."
               action={{ label: "Ver coleção" }}
-              align="left"
             />
             <ProductCarousel products={country.length ? country : todos.slice(0, 8)} />
           </Section>
@@ -136,10 +132,10 @@ function HomePage() {
               title="Social"
               description="Alfaiataria moderna para momentos especiais."
               action={{ label: "Ver coleção" }}
-              align="center"
             />
             <ProductCarousel products={social.length ? social : todos.slice(0, 8)} />
           </Section>
+
 
           {/* Newsletter */}
           <NewsletterSection />
