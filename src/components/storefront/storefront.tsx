@@ -946,18 +946,4 @@ export function StorefrontFooter({
   );
 }
 
-function FooterCol({ title, items, className }: { title: string; items: string[]; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">{title}</p>
-      <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-        {items.map((i) => (
-          <li key={i}>
-            <a href="#" className="hover:text-[var(--brand-red)] transition-colors">{i}</a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
