@@ -52,6 +52,20 @@ export const cancelUploadJob = createServerFn({ method: 'POST' })
     S.cancelUploadJob(context.supabase, context.userId, data.job_id),
   ));
 
+export const signUploadJob = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { job_id: string }) => input)
+  .handler(withBusiness(async ({ data, context }) =>
+    S.signUploadJob(context.supabase, context.userId, data.job_id),
+  ));
+
+export const completeUploadJob = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: S.CompleteUploadJobParams) => input)
+  .handler(withBusiness(async ({ data, context }) =>
+    S.completeUploadJob(context.supabase, context.userId, data),
+  ));
+
 export const failUploadJob = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { job_id: string; error: string }) => input)
