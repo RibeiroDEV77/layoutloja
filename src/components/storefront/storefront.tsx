@@ -1007,29 +1007,32 @@ export function StorefrontFooter({
   categories = [],
 }: { storeName?: string; categories?: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id).slice(0, 6);
+  const hasCategories = roots.length > 0;
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className="md:col-span-4">
+        <div className={hasCategories ? "md:col-span-4" : "md:col-span-12"}>
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
         </div>
 
-        <div className="md:col-span-8">
-          <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-          <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
-            {roots.map((c) => (
-              <li key={c.id}>
-                <Link
-                  to="/categoria/$slug"
-                  params={{ slug: c.slug }}
-                  className="hover:text-[var(--brand-red)] transition-colors"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {hasCategories && (
+          <div className="md:col-span-8">
+            <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
+            <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
+              {roots.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    to="/categoria/$slug"
+                    params={{ slug: c.slug }}
+                    className="hover:text-[var(--brand-red)] transition-colors"
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
         <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
