@@ -916,30 +916,14 @@ export function StorefrontFooter({
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
-          <p className="mt-5 text-[14px] text-[#666] leading-relaxed max-w-xs">
-            Indústria do vestuário com tradição em moda autoral, qualidade e atenção aos detalhes.
-          </p>
-          <div className="mt-5 flex gap-3">
-            <a href="#" aria-label="Instagram" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Instagram className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="Facebook" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Facebook className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="YouTube" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Youtube className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-          </div>
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-8">
           <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-            {roots.length === 0 ? (
-              <li className="text-[#999]">—</li>
-            ) : roots.map((c) => (
+          <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
+            {roots.map((c) => (
               <li key={c.id}>
                 <Link
                   to="/categoria/$slug"
@@ -952,14 +936,10 @@ export function StorefrontFooter({
             ))}
           </ul>
         </div>
-        <FooterCol className="md:col-span-2" title="Ajuda" items={["Central de ajuda", "Trocas e devoluções", "Entregas", "Formas de pagamento", "Fale conosco"]} />
-        <FooterCol className="md:col-span-2" title="Minha Conta" items={["Acessar", "Meus pedidos", "Endereços", "Favoritos", "Cadastro"]} />
-        <FooterCol className="md:col-span-3" title="Políticas" items={["Política de privacidade", "Termos de uso", "Política de cookies", "Trocas e devoluções"]} />
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-[12px] text-[#666]">
-          <span>© {new Date().getFullYear()} {storeName} — Indústria do Vestuário Ltda. Todos os direitos reservados.</span>
-          <span>CNPJ 00.000.000/0001-00 · Atendimento (00) 0000-0000</span>
+        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
+          <span>© {new Date().getFullYear()} {storeName}</span>
         </div>
       </div>
     </footer>
