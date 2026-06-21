@@ -142,15 +142,7 @@ function CategoryPage() {
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-10 lg:gap-14">
             <SidebarFilter groups={FILTER_GROUPS} onClear={() => setSort("relevance")} />
             <div>
-              {sorted.length === 0 ? (
-                <div className="py-24 text-center">
-                  <p className="text-sm font-light text-neutral-500">
-                    Nenhum produto encontrado nesta categoria por enquanto.
-                  </p>
-                </div>
-              ) : (
-                <ProductGrid products={sorted} />
-              )}
+              <ProductGrid products={sorted} />
             </div>
           </div>
         </main>
