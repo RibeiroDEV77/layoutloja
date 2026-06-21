@@ -143,7 +143,7 @@ function HomePage() {
           {/* Trust strip */}
           <TrustStrip />
         </main>
-        <StorefrontFooter storeName={storeName} />
+        <StorefrontFooter storeName={storeName} categories={categories} />
       </div>
     </StorefrontShell>
   );
