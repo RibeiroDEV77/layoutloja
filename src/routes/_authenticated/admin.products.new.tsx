@@ -1009,6 +1009,26 @@ function StockPriceBlock({
   });
 
   const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
+
+  // Capa por cor — busca a galeria de cada cor e pega a mídia marcada como cover
+  const fnListMedia = useServerFn(listColorMedia);
+  const coversQ = useQuery({
+    queryKey: ["wizard-color-covers", productId, colors.map((c) => c.id).join(",")],
+    enabled: colors.length > 0,
+    queryFn: async () => {
+      const map = new Map<string, string>();
+      await Promise.all(colors.map(async (c) => {
+        const r = await fnListMedia({ data: { color_id: c.id } });
+        if (!r.ok) return;
+        const list = r.data as MediaRow[];
+        const cover = list.find((m) => m.is_cover) ?? list[0];
+        const src = cover?.thumbnail_url || cover?.external_url || cover?.storage_path || "";
+        if (src) map.set(c.id, src);
+      }));
+      return map;
+    },
+  });
+  const colorThumbById = coversQ.data ?? new Map<string, string>();
   const stockByVariant = useMemo(() => {
     const m = new Map<string, { id: string; qty: number }>();
     (stockQ.data ?? []).forEach((s) => m.set(s.variant_id, { id: s.id, qty: s.quantity_on_hand }));
