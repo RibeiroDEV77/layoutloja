@@ -132,124 +132,119 @@ function ProductNewWizardPage() {
   };
 
   const currentIdx = STEPS.findIndex((s) => s.key === step);
-  const stepperLabel = STEPS[currentIdx]?.label ?? "";
-  const stepperProgress = productId
-    ? Math.max(progress, Math.round(((currentIdx + 1) / STEPS.length) * 100))
-    : Math.round(((currentIdx + 1) / STEPS.length) * 100);
+  const issues = readinessQ.data?.issues ?? [];
+  const checks = readinessQ.data?.checks as Record<string, boolean> | undefined;
+
+  // Sticky footer actions
+  const fnPublish = useServerFn(publishProduct);
+  const fnUpdateForFooter = useServerFn(updateProduct);
+  const [footerBusy, setFooterBusy] = useState<"draft" | "publish" | null>(null);
+  const saveDraftFromFooter = async () => {
+    if (!productId) { notify.error("Preencha os dados básicos primeiro"); return; }
+    setFooterBusy("draft");
+    await runAction(
+      () => fnUpdateForFooter({ data: { id: productId, patch: {} } }),
+      { loading: "Salvando rascunho...", success: "Rascunho salvo" },
+    );
+    setFooterBusy(null);
+    refresh();
+  };
+  const publishFromFooter = async () => {
+    if (!productId) { notify.error("Preencha os dados básicos primeiro"); return; }
+    if (!canPublish) { notify.error("Produto incompleto — veja o checklist"); setStep("publish"); return; }
+    setFooterBusy("publish");
+    const ok = await runAction(
+      () => fnPublish({ data: { id: productId } }),
+      { loading: "Publicando...", success: "Produto publicado!" },
+    );
+    setFooterBusy(null);
+    if (ok) navigate({ to: "/admin/products" });
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/admin/products"><ArrowLeft className="h-4 w-4" /></Link>
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col min-h-[calc(100vh-3.5rem)]">
+      {/* Header compacto */}
+      <header className="sticky top-14 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link to="/admin/products" aria-label="Voltar"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight truncate">Novo Produto</h1>
-            <p className="text-sm text-muted-foreground">
-              Cadastro guiado — preencha em sequência ou pule entre as etapas.
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">Novo Produto</h1>
+            <p className="text-xs text-muted-foreground truncate">
+              Cadastro guiado · {STEPS[currentIdx]?.label}
             </p>
           </div>
+          <Badge variant={canPublish ? "default" : "secondary"} className="hidden sm:inline-flex shrink-0">
+            {canPublish ? "Pode publicar" : `${progress}% completo`}
+          </Badge>
         </div>
-        <div className="shrink-0 flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/admin/products">Cancelar</Link>
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      {/* Stepper */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
-              <p className="font-semibold truncate">{stepperLabel}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Progresso</p>
-              <p className="font-bold">{stepperProgress}%</p>
-            </div>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className={cn("h-full transition-all", canPublish ? "bg-emerald-500" : "bg-primary")}
-              style={{ width: `${stepperProgress}%` }}
-            />
-          </div>
-          <ol className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {STEPS.map((s, i) => {
-              const isActive = s.key === step;
-              const isDone = i < currentIdx;
-              const disabled = !productId && s.key !== "basic";
-              return (
-                <li key={s.key}>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setStep(s.key)}
-                    className={cn(
-                      "w-full flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition",
-                      isActive && "border-primary bg-primary/5 text-primary",
-                      !isActive && isDone && "bg-emerald-500/5 border-emerald-500/30",
-                      !isActive && !isDone && "hover:bg-muted",
-                      disabled && "opacity-50 cursor-not-allowed",
-                    )}
-                  >
-                    <span className={cn(
-                      "shrink-0 h-5 w-5 rounded-full grid place-items-center text-[10px] font-bold",
-                      isActive ? "bg-primary text-primary-foreground"
-                        : isDone ? "bg-emerald-500 text-white"
-                        : "bg-muted text-muted-foreground",
-                    )}>
-                      {isDone ? <Check className="h-3 w-3" /> : i + 1}
-                    </span>
-                    <span className="truncate font-medium">{s.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </CardContent>
-      </Card>
-
-      {/* Step content */}
-      {step === "basic" && (
-        <BasicBlock
-          storeId={storeId}
-          productId={productId}
-          onCreated={(id) => { setProductId(id); refresh(); setStep("photos"); }}
-          onUpdated={refresh}
-          onNext={goNext}
-        />
-      )}
-
-      {productId && step === "photos" && (
-        <PhotosBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "variations" && (
-        <VariationsBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "stockprice" && (
-        <StockPriceBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "organization" && (
-        <OrganizationBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-      )}
-
-      {productId && step === "publish" && (
-        <PublishBlock
+      {/* Body grid */}
+      <div className="flex-1 grid gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 bg-muted/20
+        lg:grid-cols-[220px_minmax(0,1fr)_300px] xl:grid-cols-[240px_minmax(0,1fr)_320px]">
+        <WizardSidebar
+          step={step}
+          currentIdx={currentIdx}
           productId={productId}
           canPublish={canPublish}
-          issues={readinessQ.data?.issues ?? []}
-          onPrev={goPrev}
-          onDone={() => navigate({ to: "/admin/products" })}
+          onJump={setStep}
         />
-      )}
+
+        <main className="min-w-0 space-y-6 pb-24 lg:pb-6">
+          {step === "basic" && (
+            <BasicBlock
+              storeId={storeId}
+              productId={productId}
+              onCreated={(id) => { setProductId(id); refresh(); setStep("photos"); }}
+              onUpdated={refresh}
+              onNext={goNext}
+            />
+          )}
+          {productId && step === "photos" && (
+            <PhotosBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "variations" && (
+            <VariationsBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "stockprice" && (
+            <StockPriceBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "organization" && (
+            <OrganizationBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
+          )}
+          {productId && step === "publish" && (
+            <PublishBlock
+              productId={productId}
+              canPublish={canPublish}
+              issues={issues}
+              onPrev={goPrev}
+              onDone={() => navigate({ to: "/admin/products" })}
+            />
+          )}
+        </main>
+
+        <aside className="lg:sticky lg:top-32 lg:self-start space-y-4">
+          <ReadinessCard
+            enabled={!!productId}
+            loading={readinessQ.isLoading}
+            progress={progress}
+            canPublish={canPublish}
+            issues={issues}
+            checks={checks}
+          />
+        </aside>
+      </div>
+
+      <StickyFooter
+        productId={productId}
+        canPublish={canPublish}
+        busy={footerBusy}
+        updatedAt={readinessQ.dataUpdatedAt}
+        onSaveDraft={saveDraftFromFooter}
+        onPublish={publishFromFooter}
+      />
     </div>
   );
 }
