@@ -7,6 +7,7 @@ import {
 } from "@/components/storefront/storefront";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
+  type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -101,7 +102,7 @@ function CategoryPage() {
           <Breadcrumb
             items={[
               { label: "Início", to: "/" },
-              ...parents.map((p) => ({ label: p.name, to: `/categoria/${p.slug}` })),
+              ...parents.map((p: StorefrontCategory) => ({ label: p.name, to: `/categoria/${p.slug}` })),
               { label: category.name },
             ]}
           />
@@ -119,7 +120,7 @@ function CategoryPage() {
           {/* Subcategorias */}
           {subcategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-8">
-              {subcategories.map((s) => (
+              {subcategories.map((s: StorefrontCategory) => (
                 <Link
                   key={s.id}
                   to="/categoria/$slug"
