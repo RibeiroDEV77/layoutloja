@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Search, Heart, User, ShoppingBag, Menu, X, Instagram, Facebook, Youtube,
-  Star, ChevronDown, ChevronLeft, ChevronRight, Truck, MessageCircle, Tag,
-  Mail, ShieldCheck, RotateCcw,
+  Search, Heart, User, ShoppingBag, Menu, X,
+  Star, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
