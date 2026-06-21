@@ -8868,35 +8868,67 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          blocked_reason: string | null
           created_at: string
+          default_store_id: string | null
+          email: string | null
           full_name: string | null
           id: string
+          is_active: boolean
+          is_blocked: boolean
+          job_title: string | null
+          last_login_at: string | null
           locale: string
+          must_change_password: boolean
           phone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          blocked_reason?: string | null
           created_at?: string
+          default_store_id?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean
+          is_blocked?: boolean
+          job_title?: string | null
+          last_login_at?: string | null
           locale?: string
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          blocked_reason?: string | null
           created_at?: string
+          default_store_id?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean
+          is_blocked?: boolean
+          job_title?: string | null
+          last_login_at?: string | null
           locale?: string
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_default_store_id_fkey"
+            columns: ["default_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_tracking_access_log: {
         Row: {
