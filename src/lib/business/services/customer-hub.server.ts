@@ -192,17 +192,19 @@ export async function updateConsents(
       actor_user_id: userId,
     });
   }
-  const { error: e1 } = await supabase.from('customers').update(patch).eq('id', input.customer_id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: e1 } = await (supabase as any).from('customers').update(patch).eq('id', input.customer_id);
   if (e1) throw Errors.internal('Falha ao atualizar consentimentos', { error: e1.message });
   if (logRows.length) {
-    const { error: e2 } = await supabase.from('customer_consents_log').insert(logRows);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: e2 } = await (supabase as any).from('customer_consents_log').insert(logRows);
     if (e2) throw Errors.internal('Falha ao registrar log de consentimento', { error: e2.message });
   }
-  await enqueueOutbox({
+  await enqueueOutbox(supabase, {
     store_id: c.store_id, aggregate_type: 'customer', aggregate_id: input.customer_id,
     event_type: 'customer.consents.updated', payload: input.consents,
   });
-  await recordMetric('customers', 'customer.consents.updated', logRows.length, 'count', {}, c.store_id);
+  await recordMetric(supabase, { scope: 'customers', name: 'consents_updated', value: logRows.length, storeId: c.store_id });
   return { ok: true };
 }
 
