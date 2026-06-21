@@ -88,20 +88,48 @@ export async function quoteShippingForCart(
   await supabase.from('shipping_quotes').delete().eq('cart_id', input.cart_id).eq('selected', false);
 
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  const inserts = candidates.map((c) => ({
+  const quotedAt = new Date().toISOString();
+  const inserts: Array<Record<string, unknown>> = candidates.map((c) => ({
     cart_id: input.cart_id, store_id: cart.store_id,
     method_id: c.method_id, method_code: c.method_code, method_name: c.method_name, carrier: c.carrier,
     price: c.price, estimated_days_min: c.estimated_days_min, estimated_days_max: c.estimated_days_max,
     postal_code: digits(input.postal_code), weight_g, expires_at: expiresAt,
-    payload: { zone_id: zoneId },
+    provider_code: null, carrier_account_id: null, quoted_at: quotedAt,
+    payload: { zone_id: zoneId, source: 'internal_rates' },
   }));
+
+  // Mescla cotações de carrier accounts ativas (ex.: Correios).
+  try {
+    const carrierQuotes = await quoteFromActiveCarriers(supabase, {
+      store_id: cart.store_id,
+      origin_postal_code: null,
+      destination_postal_code: input.postal_code,
+      weight_g,
+      declared_value: Number(cart.subtotal ?? 0) || undefined,
+    });
+    for (const cq of carrierQuotes) {
+      inserts.push({
+        cart_id: input.cart_id, store_id: cart.store_id,
+        method_id: null, method_code: cq.service_code,
+        method_name: cq.service_name, carrier: cq.carrier_name,
+        price: cq.price, estimated_days_min: cq.estimated_days_min, estimated_days_max: cq.estimated_days_max,
+        postal_code: digits(input.postal_code), weight_g, expires_at: expiresAt,
+        provider_code: cq.provider_code, carrier_account_id: cq.carrier_account_id, quoted_at: quotedAt,
+        payload: { source: 'carrier_adapter', raw: cq.raw ?? null },
+      });
+    }
+  } catch (err) {
+    console.error('[shipping] cotação via adapter falhou', err);
+    await recordMetric(supabase, { scope: 'cart', name: 'shipping.adapter_error', value: 1, storeId: cart.store_id });
+  }
+
   if (inserts.length === 0) {
     await supabase.rpc('record_cart_timeline_event', {
       _cart_id: input.cart_id, _event_type: 'shipping_calculated', _payload: { count: 0 } as never,
     });
     return [];
   }
-  const { data: created, error } = await supabase.from('shipping_quotes').insert(inserts).select('*');
+  const { data: created, error } = await supabase.from('shipping_quotes').insert(inserts as never).select('*');
   if (error) throw Errors.internal('Falha ao criar cotações', { error: error.message });
   await supabase.rpc('record_cart_timeline_event', {
     _cart_id: input.cart_id, _event_type: 'shipping_calculated', _payload: { count: inserts.length } as never,
@@ -109,6 +137,7 @@ export async function quoteShippingForCart(
   await recordMetric(supabase, { scope: 'cart', name: 'shipping.quotes', value: inserts.length, storeId: cart.store_id });
   return created ?? [];
 }
+
 
 export async function selectShippingQuote(
   supabase: SbClient,
