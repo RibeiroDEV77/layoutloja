@@ -344,19 +344,44 @@ function IconBtn({ label, children, badge }: { label: string; children: ReactNod
 }
 
 // ---------------------------------------------------------------------------
-// Hero — slider em fade com logo centralizada
+// LogoStrip — faixa branca institucional (apenas a logo)
 // ---------------------------------------------------------------------------
 
-export type HeroBanner = { image: string; tag?: string; title?: string; ctaSlug?: string };
+export function StorefrontLogoStrip() {
+  return (
+    <section className="bg-white">
+      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-[120px] flex items-center justify-center">
+        <img
+          src={logoTransparent.url}
+          alt="Layout — Indústria do vestuário"
+          className="h-12 md:h-14 w-auto object-contain"
+        />
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hero — slider em tela cheia, conteúdo de campanha alinhado à esquerda
+// ---------------------------------------------------------------------------
+
+export type HeroBanner = {
+  image: string;
+  tag?: string;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaSlug?: string;
+};
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const slides: HeroBanner[] = useMemo(() => {
     const list = (banners ?? []).filter((b) => !!b.image);
     if (list.length > 0) return list.slice(0, 6);
     return [
-      { image: lookSocial, tag: "Coleção Social" },
-      { image: lookFeminino, tag: "Coleção Feminina" },
-      { image: lookCowboy, tag: "Coleção Country" },
+      { image: lookSocial, tag: "Coleção Social", title: "Alfaiataria em movimento", subtitle: "Peças que acompanham seu tempo." },
+      { image: lookFeminino, tag: "Coleção Feminina", title: "Novo capítulo feminino", subtitle: "Silhuetas autorais para a estação." },
+      { image: lookCowboy, tag: "Coleção Country", title: "Estilo country atemporal", subtitle: "Tradição e atitude em cada peça." },
     ];
   }, [banners]);
 
@@ -367,9 +392,11 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     return () => clearInterval(id);
   }, [slides.length]);
 
+  const current = slides[active];
+
   return (
     <section className="relative w-full overflow-hidden bg-[#111]">
-      <div className="relative aspect-[16/8] md:aspect-[21/9] min-h-[420px] md:min-h-[560px]">
+      <div className="relative aspect-[16/9] md:aspect-[21/9] min-h-[460px] md:min-h-[600px]">
         {slides.map((s, i) => (
           <img
             key={`${s.image}-${i}`}
@@ -381,28 +408,40 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             )}
           />
         ))}
+        {/* Overlay escuro suave + degradê lateral para suportar texto à esquerda */}
         <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-          <img
-            src={logoTransparent.url}
-            alt="Layout — Indústria do vestuário"
-            className="h-16 md:h-28 w-auto object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)]"
-          />
-          <p className="mt-7 text-sm md:text-base font-normal max-w-xl tracking-wide text-white/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-            {slides[active]?.title ?? "Coleção atual · Moda autoral com a qualidade da indústria Layout."}
-          </p>
-          <a
-            href="#novidades"
-            className="mt-7 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
-          >
-            Explorar coleção
-          </a>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
 
+        {/* Conteúdo alinhado à esquerda */}
+        <div className="absolute inset-0 flex items-center">
+          <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
+            <div className="max-w-xl text-white">
+              {current?.tag && (
+                <p className="text-[11px] md:text-[12px] uppercase tracking-[0.32em] font-medium text-white/90">
+                  {current.tag}
+                </p>
+              )}
+              <h1 className="mt-4 text-[40px] md:text-[60px] leading-[1.05] font-semibold tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+                {current?.title ?? "Coleção atual"}
+              </h1>
+              {current?.subtitle && (
+                <p className="mt-5 text-[15px] md:text-[17px] font-normal text-white/95 max-w-md leading-relaxed">
+                  {current.subtitle}
+                </p>
+              )}
+              <a
+                href="#novidades"
+                className="mt-8 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
+              >
+                {current?.ctaLabel ?? "Explorar coleção"}
+              </a>
+            </div>
+          </div>
+        </div>
 
         {/* Dots */}
         {slides.length > 1 && (
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
             {slides.map((_, i) => (
               <button
                 key={i}
@@ -421,6 +460,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     </section>
   );
 }
+
 
 
 // ---------------------------------------------------------------------------

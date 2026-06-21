@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  StorefrontShell, StorefrontNavbar, StorefrontHero, StorefrontFooter,
+  StorefrontShell, StorefrontNavbar, StorefrontLogoStrip, StorefrontHero, StorefrontFooter,
   Section, SectionHeader, ProductCarousel, CategoryGrid,
   InstitutionalBanner, NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
+
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
@@ -66,8 +67,10 @@ function HomePage() {
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
         <StorefrontNavbar categories={categories} brands={brands} />
+        <StorefrontLogoStrip />
         <main className="flex-1">
           <StorefrontHero banners={heroBanners} />
+
 
 
           {/* Novidades */}
