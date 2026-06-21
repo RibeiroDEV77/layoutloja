@@ -2,10 +2,19 @@
  * Service: Stores — gestão de lojas (escopo global; somente super_admin pode criar/excluir).
  */
 import type { SbClient } from '../events/dispatcher.server';
-import { dispatchEvent } from '../events/dispatcher.server';
-import { DomainEvent } from '../events/types';
 import { Errors } from '../errors';
 import { isSuperAdmin } from './permissions.server';
+
+async function audit(supabase: SbClient, userId: string, storeId: string | null, action: string, entityId: string | null, diff?: Record<string, unknown>) {
+  await supabase.from('audit_log').insert({
+    store_id: storeId,
+    actor_user_id: userId,
+    entity_type: 'store',
+    entity_id: entityId,
+    action,
+    diff: (diff ?? {}) as never,
+  });
+}
 
 export interface ListStoresInput {
   q?: string;
@@ -15,8 +24,6 @@ export interface ListStoresInput {
 }
 
 export async function listStores(supabase: SbClient, userId: string, input: ListStoresInput) {
-  // Qualquer usuário autenticado vê as lojas a que tem acesso (RLS filtra).
-  // Super admin vê todas.
   const page = Math.max(1, input.page ?? 1);
   const size = Math.min(100, Math.max(1, input.pageSize ?? 25));
   const from = (page - 1) * size;
@@ -32,7 +39,6 @@ export async function listStores(supabase: SbClient, userId: string, input: List
 
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar lojas', { error: error.message });
-  // marcador opcional
   void userId;
   return { rows: data ?? [], total: count ?? 0, page, pageSize: size };
 }
@@ -66,14 +72,7 @@ export async function createStore(supabase: SbClient, userId: string, input: Cre
   }).select().single();
   if (error) throw Errors.internal('Falha ao criar loja', { error: error.message });
 
-  await dispatchEvent(supabase, {
-    event_type: DomainEvent.AuditLog,
-    aggregate_type: 'store',
-    aggregate_id: data.id,
-    store_id: data.id,
-    payload: { action: 'store.created', name: data.name },
-  });
-
+  await audit(supabase, userId, data.id, 'store.created', data.id, { name: data.name, slug: data.slug });
   return data;
 }
 
@@ -88,16 +87,9 @@ export async function updateStore(supabase: SbClient, userId: string, id: string
     if (v === undefined) continue;
     clean[k] = typeof v === 'string' ? v.trim() || null : v;
   }
-  const { data, error } = await supabase.from('stores').update(clean).eq('id', id).select().single();
+  const { data, error } = await supabase.from('stores').update(clean as never).eq('id', id).select().single();
   if (error) throw Errors.internal('Falha ao atualizar loja', { error: error.message });
-
-  await dispatchEvent(supabase, {
-    event_type: DomainEvent.AuditLog,
-    aggregate_type: 'store',
-    aggregate_id: id,
-    store_id: id,
-    payload: { action: 'store.updated', changed: Object.keys(clean) },
-  });
+  await audit(supabase, userId, id, 'store.updated', id, { changed: Object.keys(clean) });
   return data;
 }
 
@@ -110,13 +102,27 @@ export async function archiveStore(supabase: SbClient, userId: string, id: strin
     status: 'archived',
   }).eq('id', id);
   if (error) throw Errors.internal('Falha ao arquivar loja', { error: error.message });
-
-  await dispatchEvent(supabase, {
-    event_type: DomainEvent.AuditLog,
-    aggregate_type: 'store',
-    aggregate_id: id,
-    store_id: id,
-    payload: { action: 'store.archived' },
-  });
+  await audit(supabase, userId, id, 'store.archived', id);
   return { ok: true, id };
+}
+
+// ===== Settings =====
+export async function listStoreSettings(supabase: SbClient, _userId: string, storeId: string) {
+  const { data, error } = await supabase.from('store_settings').select('*').eq('store_id', storeId).order('key');
+  if (error) throw Errors.internal('Falha ao listar configurações', { error: error.message });
+  void _userId;
+  return data ?? [];
+}
+
+export async function upsertStoreSetting(supabase: SbClient, userId: string, storeId: string, key: string, value: unknown) {
+  if (!(await isSuperAdmin(supabase, userId))) {
+    throw Errors.forbidden('Apenas super administradores podem alterar configurações');
+  }
+  const { data, error } = await supabase.from('store_settings').upsert(
+    { store_id: storeId, key, value: value as never },
+    { onConflict: 'store_id,key' },
+  ).select().single();
+  if (error) throw Errors.internal('Falha ao salvar configuração', { error: error.message });
+  await audit(supabase, userId, storeId, 'store.setting_updated', storeId, { key });
+  return data;
 }
