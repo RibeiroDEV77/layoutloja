@@ -106,6 +106,7 @@ export async function quoteShippingForCart(
       destination_postal_code: input.postal_code,
       weight_g,
       declared_value: Number(cart.subtotal ?? 0) || undefined,
+      cart_id: input.cart_id,
     });
     for (const cq of carrierQuotes) {
       inserts.push({
