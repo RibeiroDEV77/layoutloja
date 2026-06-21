@@ -9,7 +9,7 @@ import {
 import { StatusBadge, type StatusTone } from "@/components/admin/status-badge";
 import { ErrorState } from "@/components/admin/error-state";
 import { EmptyState } from "@/components/admin/empty-state";
-import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+// ConfirmDialog replaced by inline Dialog for capturing the reason field
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
