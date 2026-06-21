@@ -42,8 +42,8 @@ export interface ResolvedGateway {
   display_name: string;
   sandbox: boolean;
   priority: number;
-  config: Record<string, unknown>;
-  capabilities: Record<string, unknown>;
+  config: Record<string, any>;
+  capabilities: Record<string, any>;
   adapter: PaymentAdapter;
 }
 
@@ -70,8 +70,8 @@ export async function resolveActiveGateways(
       display_name: r.display_name,
       sandbox: ((r.config as { sandbox?: boolean } | null)?.sandbox) ?? false,
       priority: r.priority ?? 100,
-      config: (r.config ?? {}) as Record<string, unknown>,
-      capabilities: (r.capabilities ?? {}) as Record<string, unknown>,
+      config: (r.config ?? {}) as Record<string, any>,
+      capabilities: (r.capabilities ?? {}) as Record<string, any>,
       adapter,
     });
   }
@@ -117,8 +117,8 @@ export async function resolveGatewayById(
     display_name: r.display_name,
     sandbox: ((r.config as { sandbox?: boolean } | null)?.sandbox) ?? false,
     priority: r.priority ?? 100,
-    config: (r.config ?? {}) as Record<string, unknown>,
-    capabilities: (r.capabilities ?? {}) as Record<string, unknown>,
+    config: (r.config ?? {}) as Record<string, any>,
+    capabilities: (r.capabilities ?? {}) as Record<string, any>,
     adapter,
   };
 }
@@ -156,7 +156,7 @@ export function buildAdapterContext(
       display_name: g.display_name,
       sandbox: g.sandbox,
       config: g.config,
-      capabilities: g.adapter.capabilities as unknown as Record<string, unknown>,
+      capabilities: g.adapter.capabilities as unknown as Record<string, any>,
     },
     credentials,
     traceId: extra.traceId,

@@ -77,7 +77,7 @@ export interface AuthorizePaymentInput {
   expires_at?: string;
   description?: string;
   statement_descriptor?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
   /** Chave fornecida pelo caller para idempotência cross-retry. */
   idempotency_key?: string;
   trace_id?: string;
@@ -194,7 +194,7 @@ export async function authorizePayment(supabase: SbClient, input: AuthorizePayme
 function finishAuthorize(out: {
   payment_id: string; gateway_id: string; provider_code: string;
   status: string; external_id: string;
-  method_details?: AdapterAuthorizeRequest extends never ? never : Record<string, unknown> | undefined;
+  method_details?: AdapterAuthorizeRequest extends never ? never : Record<string, any> | undefined;
   amount_authorized: number; expires_at?: string;
 }) {
   return out;

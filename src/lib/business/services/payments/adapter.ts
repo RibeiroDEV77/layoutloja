@@ -31,8 +31,8 @@ export interface AdapterPaymentGateway {
   adapter: PaymentProviderCode;
   display_name: string;
   sandbox: boolean;
-  config: Record<string, unknown>;
-  capabilities: Record<string, unknown>;
+  config: Record<string, any>;
+  capabilities: Record<string, any>;
 }
 
 export interface AdapterContext {
@@ -70,7 +70,7 @@ export interface AdapterAuthorizeRequest {
   /** URL para o usuário voltar (caso o gateway faça redirect). */
   return_url?: string;
   /** Metadados livres — preservados no DB. */
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
 }
 
 export type AdapterPaymentStatus =
@@ -106,7 +106,7 @@ export interface AdapterAuthorizeResult {
     redirect_url?: string;      // alguns fluxos pedem redirect
   };
   expires_at?: string;          // ISO
-  raw?: Record<string, unknown>;
+  raw?: Record<string, any>;
 }
 
 export interface AdapterCaptureRequest {
@@ -119,7 +119,7 @@ export interface AdapterCaptureResult {
   external_id: string;
   amount_captured: number;
   capture_id?: string;
-  raw?: Record<string, unknown>;
+  raw?: Record<string, any>;
 }
 
 export interface AdapterCancelRequest {
@@ -130,7 +130,7 @@ export interface AdapterCancelRequest {
 export interface AdapterCancelResult {
   status: AdapterPaymentStatus;
   external_id: string;
-  raw?: Record<string, unknown>;
+  raw?: Record<string, any>;
 }
 
 // --------------------------------- Refund ----------------------------------
@@ -147,7 +147,7 @@ export interface AdapterRefundResult {
   external_refund_id: string;
   status: 'pending' | 'succeeded' | 'failed';
   amount: number;
-  raw?: Record<string, unknown>;
+  raw?: Record<string, any>;
 }
 
 // --------------------------------- Status ----------------------------------
@@ -161,7 +161,7 @@ export interface AdapterStatusResult {
   paid_at?: string;
   failure_code?: string;
   failure_message?: string;
-  raw?: Record<string, unknown>;
+  raw?: Record<string, any>;
 }
 
 // -------------------------------- Webhook ----------------------------------
@@ -185,7 +185,7 @@ export interface AdapterWebhookEvent {
   amount?: number;
   status?: AdapterPaymentStatus;
   occurred_at?: string;         // ISO
-  raw: Record<string, unknown>;
+  raw: Record<string, any>;
 }
 
 export interface AdapterWebhookInput {
@@ -233,7 +233,7 @@ export interface CredentialFieldDef {
 }
 
 export type AdapterTestResult =
-  | { ok: true; details?: Record<string, unknown> }
+  | { ok: true; details?: Record<string, any> }
   | { ok: false; error: string };
 
 export interface PaymentAdapter {

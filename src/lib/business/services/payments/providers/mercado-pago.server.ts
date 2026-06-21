@@ -121,8 +121,8 @@ function buildPayerBody(req: AdapterAuthorizeRequest) {
   };
 }
 
-function buildAuthorizeBody(req: AdapterAuthorizeRequest): Record<string, unknown> {
-  const base: Record<string, unknown> = {
+function buildAuthorizeBody(req: AdapterAuthorizeRequest): Record<string, any> {
+  const base: Record<string, any> = {
     transaction_amount: Number(req.amount.toFixed(2)),
     description: req.description ?? `Pagamento ${req.payment_id}`,
     statement_descriptor: req.statement_descriptor,
@@ -199,7 +199,7 @@ export const mercadoPagoAdapter: PaymentAdapter = {
       token,
       body,
       idempotencyKey: ctx.idempotencyKey ?? req.payment_id,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
 
     const id = String((json as { id?: string | number }).id ?? '');
     const status = mapMpStatus(
@@ -245,12 +245,12 @@ export const mercadoPagoAdapter: PaymentAdapter = {
 
   async capturePayment(ctx, req) {
     const token = getAccessToken(ctx);
-    const body: Record<string, unknown> = { capture: true };
+    const body: Record<string, any> = { capture: true };
     if (req.amount) body.transaction_amount = Number(req.amount.toFixed(2));
     const json = (await mpFetch({
       method: 'PUT', path: `/v1/payments/${encodeURIComponent(req.external_id)}`,
       token, body,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
     return {
       status: mapMpStatus((json as { status?: string }).status),
       external_id: String((json as { id?: string | number }).id ?? req.external_id),
@@ -268,7 +268,7 @@ export const mercadoPagoAdapter: PaymentAdapter = {
     const json = (await mpFetch({
       method: 'PUT', path: `/v1/payments/${encodeURIComponent(req.external_id)}`,
       token, body: { status: 'cancelled' },
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
     return {
       status: mapMpStatus((json as { status?: string }).status),
       external_id: String((json as { id?: string | number }).id ?? req.external_id),
@@ -283,7 +283,7 @@ export const mercadoPagoAdapter: PaymentAdapter = {
       method: 'POST',
       path: `/v1/payments/${encodeURIComponent(req.external_id)}/refunds`,
       token, body, idempotencyKey: req.idempotency_key,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
     const status = (json as { status?: string }).status;
     return {
       external_refund_id: String((json as { id?: string | number }).id ?? ''),
@@ -297,7 +297,7 @@ export const mercadoPagoAdapter: PaymentAdapter = {
     const token = getAccessToken(ctx);
     const json = (await mpFetch({
       method: 'GET', path: `/v1/payments/${encodeURIComponent(externalId)}`, token,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
     const td = (json as { transaction_details?: { total_paid_amount?: number } }).transaction_details;
     return {
       external_id: String((json as { id?: string | number }).id ?? externalId),
@@ -344,7 +344,7 @@ export const mercadoPagoAdapter: PaymentAdapter = {
     }
 
     // 2) Normalizar evento.
-    const body = (safeJson(input.rawBody) ?? {}) as Record<string, unknown>;
+    const body = (safeJson(input.rawBody) ?? {}) as Record<string, any>;
     const type = (body.type as string) ?? input.query['type'] ?? 'payment';
     const action = (body.action as string) ?? '';
     const externalEventId = String(
