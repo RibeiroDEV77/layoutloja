@@ -31,6 +31,10 @@ export type StorefrontProduct = {
   on_sale: boolean; new_product: boolean;
   featured: boolean; best_seller: boolean;
 };
+export type StorefrontBrand = {
+  id: string; name: string; slug: string; logo_url: string | null;
+};
+
 
 export const getStorefrontStore = createServerFn({ method: 'GET' })
   .handler(async (): Promise<{ store: StorefrontStore | null }> => {
