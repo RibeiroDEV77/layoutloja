@@ -137,6 +137,14 @@ export async function getUser(supabase: SbClient, userId: string, targetUserId: 
       .order('last_seen_at', { ascending: false })
       .limit(20),
   ]);
+  const sessionsClean = (sessions ?? []).map((s) => ({
+    id: s.id,
+    ip: s.ip == null ? null : String(s.ip),
+    user_agent: s.user_agent,
+    last_seen_at: s.last_seen_at,
+    revoked_at: s.revoked_at,
+    created_at: s.created_at,
+  }));
 
   return {
     profile,
@@ -150,7 +158,7 @@ export async function getUser(supabase: SbClient, userId: string, targetUserId: 
       granted_at: r.created_at,
     })),
     permissions: perms,
-    sessions: sessions ?? [],
+    sessions: sessionsClean,
   };
 }
 
@@ -255,7 +263,7 @@ export async function updateProfile(supabase: SbClient, userId: string, input: U
   });
   const { data, error } = await supabase
     .from('profiles')
-    .update(patch)
+    .update(patch as never)
     .eq('user_id', input.user_id)
     .select()
     .single();
