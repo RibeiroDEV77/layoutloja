@@ -73,11 +73,11 @@ export async function resolveCustomerGroupId(
   if (!customerId) return null;
   const { data } = await supabase
     .from('customer_groups_map')
-    .select('group_id, customer_groups!inner(id, priority)')
+    .select('customer_group_id, customer_groups!inner(id, priority)')
     .eq('customer_id', customerId);
-  const rows = (data ?? [])
-    .map((r) => r.customer_groups as { id: string; priority: number })
-    .filter(Boolean)
+  const rows = ((data ?? []) as unknown as Array<{ customer_groups: { id: string; priority: number } | null }>)
+    .map((r) => r.customer_groups)
+    .filter((g): g is { id: string; priority: number } => !!g)
     .sort((a, b) => b.priority - a.priority);
   return rows[0]?.id ?? null;
 }

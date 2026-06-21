@@ -23,10 +23,10 @@ async function getReservationTtl(supabase: SbClient): Promise<number> {
 export async function availableStock(supabase: SbClient, variantId: string): Promise<number> {
   const { data: levels } = await supabase
     .from('stock_levels')
-    .select('on_hand, reserved')
+    .select('quantity_on_hand, quantity_reserved')
     .eq('variant_id', variantId);
   const total = (levels ?? []).reduce(
-    (acc, l) => acc + (Number(l.on_hand ?? 0) - Number(l.reserved ?? 0)),
+    (acc, l) => acc + (Number(l.quantity_on_hand ?? 0) - Number(l.quantity_reserved ?? 0)),
     0,
   );
   const { data: active } = await supabase
@@ -50,7 +50,7 @@ export async function reserveForCartItem(supabase: SbClient, cartItemId: string)
 
 export async function releaseReservation(supabase: SbClient, reservationId: string, reason?: string): Promise<void> {
   const { error } = await supabase.rpc('release_stock_reservation', {
-    _reservation_id: reservationId, _reason: reason ?? null,
+    _reservation_id: reservationId, _reason: reason ?? undefined,
   });
   if (error) throw Errors.internal('Falha ao liberar reserva', { error: error.message });
   await recordMetric(supabase, { scope: 'cart', name: 'stock.released', value: 1 });
