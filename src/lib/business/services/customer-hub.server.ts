@@ -147,7 +147,7 @@ export async function updateNote(
   const { data: note } = await supabase.from('customer_notes').select('customer_id').eq('id', input.id).maybeSingle();
   if (!note) throw Errors.notFound('Nota', input.id);
   await assertWrite(supabase, userId, note.customer_id);
-  const patch: Record<string, unknown> = {};
+  const patch: { body?: string; pinned?: boolean } = {};
   if (input.body !== undefined) patch.body = input.body;
   if (input.pinned !== undefined) patch.pinned = input.pinned;
   const { data, error } = await supabase.from('customer_notes').update(patch).eq('id', input.id).select().single();
