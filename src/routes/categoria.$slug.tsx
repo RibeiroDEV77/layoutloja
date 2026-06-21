@@ -7,6 +7,7 @@ import {
 } from "@/components/storefront/storefront";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
+  listStorefrontBrands,
   type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
 import { Link } from "@tanstack/react-router";
@@ -16,8 +17,9 @@ export const Route = createFileRoute("/categoria/$slug")({
   loader: async ({ params }) => {
     const { store } = await getStorefrontStore();
     const store_id = store?.id;
-    const [cats, prods] = await Promise.all([
+    const [cats, brands, prods] = await Promise.all([
       listStorefrontCategories({ data: { store_id } }),
+      listStorefrontBrands({ data: { store_id } }),
       listStorefrontProducts({ data: { store_id, limit: 24 } }),
     ]);
     const category = cats.rows.find((c) => c.slug === params.slug);
@@ -31,8 +33,9 @@ export const Route = createFileRoute("/categoria/$slug")({
       parents.unshift(parent);
       p = parent.parent_id;
     }
-    return { store, category, subcategories, parents, products: prods.rows };
+    return { store, category, subcategories, parents, products: prods.rows, categories: cats.rows, brands: brands.rows };
   },
+
   head: ({ loaderData }) => {
     const name = loaderData?.category.name ?? "Categoria";
     return {
@@ -83,7 +86,7 @@ const FILTER_GROUPS: FilterGroup[] = [
 ];
 
 function CategoryPage() {
-  const { store, category, subcategories, parents, products } = Route.useLoaderData();
+  const { store, category, subcategories, parents, products, categories, brands } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
   const [sort, setSort] = useState("relevance");
 
@@ -97,7 +100,8 @@ function CategoryPage() {
   return (
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
-        <StorefrontNavbar />
+        <StorefrontNavbar categories={categories} brands={brands} />
+
         <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 lg:px-10 pt-8 pb-24">
           <Breadcrumb
             items={[
@@ -153,7 +157,7 @@ function CategoryPage() {
             </div>
           </div>
         </main>
-        <StorefrontFooter storeName={storeName} />
+        <StorefrontFooter storeName={storeName} categories={categories} />
       </div>
     </StorefrontShell>
   );
