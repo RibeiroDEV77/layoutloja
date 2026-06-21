@@ -554,37 +554,38 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
 // Grid de categorias (cards largos)
 // ---------------------------------------------------------------------------
 
-const CATEGORY_FALLBACK_IMAGES = [lookSocial, lookFeminino, lookCowboy, lookSocial, lookFeminino, lookCowboy];
-
 export function CategoryGrid({ categories }: { categories: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id);
-  const list = (roots.length > 0 ? roots : []).slice(0, 6);
-  if (list.length === 0) return null;
+  if (roots.length === 0) return null;
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {list.map((c, i) => (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      {roots.map((c) => (
         <Link
           key={c.id}
           to="/categoria/$slug"
           params={{ slug: c.slug }}
-          className="group relative block overflow-hidden bg-[#F8F8F8] aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5]"
+          className="group relative block overflow-hidden bg-[#F4F4F4] aspect-[4/5] cursor-pointer"
         >
-          <img
-            src={c.image_url ?? CATEGORY_FALLBACK_IMAGES[i % CATEGORY_FALLBACK_IMAGES.length]}
-            alt={c.name}
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 flex items-end justify-between gap-4 text-white">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] opacity-85">Categoria</p>
-              <h3 className="mt-1 text-2xl md:text-3xl font-semibold">{c.name}</h3>
+          {c.image_url ? (
+            <>
+              <img
+                src={c.image_url}
+                alt={c.name}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/65" />
+              <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                <h3 className="text-xl md:text-2xl font-semibold">{c.name}</h3>
+              </div>
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-5 bg-[#F4F4F4] group-hover:bg-[#EFEFEF] transition-colors duration-300">
+              <h3 className="text-center text-lg md:text-xl font-semibold text-[#111] uppercase tracking-[0.08em]">
+                {c.name}
+              </h3>
             </div>
-            <span className="text-[12px] uppercase tracking-[0.16em] border-b border-white/0 group-hover:border-white pb-0.5 transition-all duration-300">
-              Comprar →
-            </span>
-          </div>
+          )}
         </Link>
       ))}
     </div>
