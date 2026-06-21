@@ -1,118 +1,139 @@
-## Situação atual (auditoria do existente)
+## Premissas (não-negociáveis)
 
-A tela `/admin/users` e o service `users.server.ts` já existem com fluxo mínimo (listar, convidar, atribuir papel). Porém o RBAC chamado pelo código **não está completo no banco**:
+- **Zero novas tabelas.** O esquema atual já comporta o modelo pedido:
+  - `products` (engine principal)
+  - `product_colors` (cor com `hex`, `is_default`, ligada a `attribute_values`)
+  - `product_color_media` (imagens **por cor**, com `is_cover`, `is_hover_media`, `sort_order`)
+  - `product_variants` (SKU, barcode, peso, dimensões, `product_color_id` + `size_attribute_value_id`)
+  - `variant_attribute_values` (mapa genérico cor/tamanho/qualquer atributo → variante)
+  - `stock_levels`, `price_lists`/`price_list_items`, `product_relations`, `audit_log`, `event_outbox`
+- **Zero novos server functions de domínio.** Tudo passa pelos existentes: `products.functions.ts`, `inventory.functions.ts`, `dam.functions.ts`, `price-lists.functions.ts`, `product-relations.functions.ts`, `audit.functions.ts`.
+- **Zero migrations.** Só refactor de UI + thin wrappers de orquestração quando faltar uma operação CRUD pontual sobre tabelas já existentes (ex.: `product_colors`, `product_variants`, `variant_attribute_values`, `product_color_media`).
+- **RLS/RBAC intactos.** Permissões continuam `products.read` / `products.update` / `products.write` escopadas por `store_id` (já corrigidas no commit de segurança anterior).
+- **SKU permanece a única chave operacional** para estoque, pedidos, pagamento, NF e frete. Nada disso é tocado.
 
-| Recurso citado | Existe? | Observação |
-|---|---|---|
-| Tabelas `profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`, `user_sessions` | Sim | OK |
-| RPC `is_super_admin` | **Não** | usado em `permissions.server.ts` → toda chamada de `requireUserManage` falha |
-| RPC `has_permission` | **Não** | usado em `requirePermission` |
-| RPC `user_store_ids` | **Não** | usado em `requireStoreAccess` |
-| RPC `current_user_context` / `claim_first_super_admin` | **Não** | citados no pedido |
-| Tabela `audit_log` colunas `actor_user_id`, `entity_type`, `entity_id`, `action`, `diff` | Existe (10 cols) | Confirmar nomes antes de gravar |
-| Hook `usePermissions`, componente `<Can>` | Existem (`src/hooks/use-permissions.tsx`) | OK |
-| `AuthProvider` / `useAuth` | Assumido existir; verificar | |
+## Arquitetura das 9 abas
 
-Sem essas RPCs, o módulo atual já está quebrado em produção — qualquer ação responde "Falha ao verificar super admin". A Fase 6.3.5 (homologação) deveria ter pego isso.
+A tela `admin.products.$id.edit.tsx` (hoje 1235 linhas, monolítica) é quebrada em uma **shell** + 9 abas isoladas, cada uma em seu próprio arquivo:
 
-## Escopo da entrega
+```text
+src/components/admin/products/edit/
+  product-edit-shell.tsx          # tabs, breadcrumb, readiness, save bar
+  tabs/
+    general-tab.tsx               # nome, descrição, tipo, marca, sale_channel
+    organization-tab.tsx          # categorias, coleções, tags, atributos do produto-pai
+    variants-tab.tsx              # ⭐ centro do sistema (ver abaixo)
+    gallery-tab.tsx               # galeria por COR (não por variante)
+    pricing-tab.tsx               # preço base, listas de preço, promoção
+    seo-tab.tsx                   # slug, meta title/desc, OG image
+    relations-tab.tsx             # cross-sell / up-sell / acessórios
+    publish-tab.tsx               # status, visibilidade, canais, agenda
+    history-tab.tsx               # audit_log + product_history (já existe drawer)
+  variants/
+    variant-generator.tsx         # seletor de atributos + botão "Gerar Variantes"
+    variant-matrix-table.tsx      # tabela editável: cor × tamanho × SKU/EAN/estoque/peso/preço
+    color-row-editor.tsx          # cor: nome, hex, swatch, default
+    color-gallery-panel.tsx       # galeria filtrada pela cor selecionada
+```
 
-Vou completar o módulo em duas frentes, **em uma migration única + código**.
+A rota `admin.products.$id.edit.tsx` passa a ser um arquivo curto que monta o shell. O conteúdo monolítico antigo é movido para os arquivos acima — não há lógica nova de negócio.
 
-### Frente A — Backend RBAC (migration)
+## Aba Variantes — fluxo
 
-1. **Funções SECURITY DEFINER** (`search_path=public`):
-   - `is_super_admin(_user_id uuid) → bool`
-   - `has_role(_user_id uuid, _role_code text, _store_id uuid default null) → bool`
-   - `has_permission(_user_id uuid, _permission_code text, _store_id uuid default null) → bool`
-   - `user_store_ids(_user_id uuid) → setof uuid`
-   - `current_user_context() → jsonb` (roles + permissions + stores do `auth.uid()`)
-   - `claim_first_super_admin()` — concede `super_admin` ao primeiro `auth.uid()` se não existir nenhum
-   - `admin_invite_user`, `admin_set_user_active`, `admin_unlock_user`, `admin_force_password_change`, `admin_reset_password` — wrappers SECURITY DEFINER que verificam `is_super_admin(auth.uid())` e gravam em `audit_log`
-2. **Seed mínimo** de papéis/permissões padrão (super_admin, admin, manager, operator, viewer) com `is_system=true` — idempotente (`ON CONFLICT DO NOTHING`).
-3. **Campos faltantes** em `profiles`: `email text`, `is_active bool default true`, `is_blocked bool default false`, `must_change_password bool default false`, `last_login_at timestamptz` + trigger para sincronizar `email` com `auth.users` no signup.
-4. **Outbox**: usar tabela `event_outbox` existente — gatilho em `user_roles` (insert/delete) e em `profiles` (update de `is_active`/`is_blocked`) emite eventos `user.role_assigned`, `user.role_revoked`, `user.blocked`, `user.unblocked`.
+1. **Seleção de atributos** (reusa `attributes.functions.ts` + `attribute-values.functions.ts`):
+   - Atributo "Cor" obrigatório (mapeia para `product_colors`).
+   - Atributo "Tamanho" opcional (mapeia para `product_variants.size_attribute_value_id`).
+   - Atributos extras opcionais (mapeados via `variant_attribute_values`).
+2. **Gerar Variantes** (botão): produz o produto cartesiano das opções selecionadas.
+   - Para cada cor nova: insert em `product_colors` (com `attribute_value_id`, `hex`, `is_default` na primeira).
+   - Para cada combinação cor × tamanho × extras: insert em `product_variants` (SKU autogerado `${product.slug}-${color.code}-${size.code}`, editável) + linhas em `variant_attribute_values`.
+   - Combinações já existentes são preservadas (idempotente, casa pela tupla de attribute_value_ids).
+3. **Tabela editável** com colunas:
+   - Cor (read-only, lookup) · Tamanho (read-only) · SKU · Código de barras · Estoque (lê `stock_levels` agregado da loja ativa, edita via `inventory.functions.ts`) · Peso · Preço · Preço promocional · Status (is_active).
+   - Edição inline com debounce; salva variante a variante via wrapper de update.
+4. **Galeria por cor**: ao clicar numa linha/cor, abre painel lateral mostrando `product_color_media` daquela cor. Upload usa `dam.functions.ts` (cria asset + link `product_color`); a tabela `product_color_media` recebe `storage_path`/`external_url` espelhados a partir do asset (já é o padrão atual). Reordenação por drag-and-drop atualiza `sort_order`.
 
-### Frente B — Service + Server Functions + UI
+## Aba Galeria
 
-Reaproveita `CrudPage`, `DataTable`, `CrudDrawer`, `StatusBadge`, `Can`, `usePermissions`, `Admin Shell`.
+- View consolidada de todas as cores. Cada cor mostra suas mídias. Não há "imagens do produto" soltas — toda imagem pertence a uma cor (regra do usuário).
+- Botão "definir como capa" grava `is_cover=true` (único por cor).
 
-**Service (`services/users.server.ts`)** — expandido:
-- `listUsers({ q, page, pageSize, status, role_code, store_id })` — filtros + total
-- `getUser(user_id)` — perfil + papéis + permissões efetivas (origem) + lojas + sessões
-- `createUser` (via convite, redireciona para `inviteUser`)
-- `updateProfile(user_id, { full_name, phone, avatar_url, locale, email })`
-- `setUserActive(user_id, active)`
-- `blockUser(user_id, reason)` / `unblockUser(user_id)`
-- `forcePasswordChange(user_id)`
-- `resetPassword(user_id)` — Auth admin API gera link
-- `assignRole`, `revokeRole(user_role_id)`, `setDefaultStore(user_id, store_id)`
-- `listEffectivePermissions(user_id)` — JOIN role_permissions → mostra origem (qual role concedeu)
-- `usersDashboard()` — `{ active, super_admins, pending_invites, blocked }`
+## Loja pública (preparação, não escopo desta entrega de UI admin)
 
-Todas as mutações chamam `requireUserManage` (→ `is_super_admin`) e gravam `audit_log` com `actor_user_id`, `entity_type='user'`, `entity_id`, `action`, `diff`.
+- Os dados ficam prontos para a vitrine: `product_colors` + `product_color_media` + `product_variants` + `variant_attribute_values` já modelam:
+  - Troca de galeria ao selecionar cor.
+  - Recalcular tamanhos disponíveis: filtrar `product_variants WHERE product_color_id = X AND is_active AND stock>0`.
+  - Habilitar "Adicionar ao Carrinho" só com (cor, tamanho) válidos: a variante resultante tem um SKU único.
+- Esta entrega **não** mexe na storefront pública — só garante o cadastro correto.
 
-**Server Functions (`users.functions.ts`)** — wraps com `requireSupabaseAuth` + `withBusiness`.
+## Server functions reutilizadas (sem alterações)
 
-**UI (`/admin/users`)**:
-- Dashboard topo: 4 widgets (Ativos / Admins / Convites Pendentes / Bloqueados).
-- Toolbar: busca + filtro de status + filtro de papel + filtro de loja.
-- Tabela: avatar, nome, e-mail, papéis (chips), lojas, status, último login.
-- Drawer de detalhe (clicar na linha) com abas:
-  - **Perfil** — editar nome, telefone, avatar, locale, e-mail
-  - **Papéis** — atribuir/revogar (com `user_role_id`); botão "definir loja padrão"
-  - **Permissões** — lista efetiva read-only com badge da role de origem
-  - **Lojas** — vincular/desvincular (atalho que cria/remove um papel `viewer` na loja)
-  - **Segurança** — ativar/desativar, bloquear/desbloquear, forçar troca de senha, enviar reset
-  - **Sessões** — listar `user_sessions` ativas + botão revogar
-  - **Auditoria** — `audit_log` filtrado por `entity_type='user' AND entity_id=user_id`
-- Botão "Convidar usuário" no header (drawer existente, expandido com cargo/telefone).
+| Capability | Função existente |
+|---|---|
+| CRUD produto | `products.functions.ts` (list/get/create/update/publish/unpublish/archive/duplicate/readiness/history/audit) |
+| Estoque por SKU | `inventory.functions.ts` |
+| Preços / listas | `price-lists.functions.ts` |
+| Mídia / upload | `dam.functions.ts` (`createUploadJob`, `signUploadJob`, `completeUploadJob`, `linkAsset`) |
+| Relacionados | `product-relations.functions.ts` |
+| Auditoria | `audit.functions.ts` + `listProductAudit` |
+| Filhos / variantes existentes | `product-children.functions.ts` |
+| Atributos / valores | `attributes.functions.ts`, `attribute-values.functions.ts`, `category-attributes.functions.ts` |
 
-Todas as ações usam `runAction` (toast loading/success/error), `<Can permission="users.manage">` para ocultar botões, e invalidam `["admin-users"]` no React Query.
+## Wrappers thin (apenas se ainda não existirem)
 
-### Frente C — Bootstrap de acesso
+Onde já houver função, **não criar**. Onde faltar, adicionar mínimo necessário em `src/lib/business/services/products.server.ts` + `products.functions.ts`:
 
-- Banner no topo de `/admin/users` quando `current_user_context().roles` está vazio **e** não há super admin no sistema → botão "Tornar-me super admin" chama `claim_first_super_admin()`. Some após o primeiro uso.
+- `listProductColors(productId)` / `upsertProductColor(...)` / `deleteProductColor(id)`
+- `listProductVariants(productId)` / `upsertProductVariants(rows[])` (bulk para o "Gerar Variantes") / `updateVariant(...)` / `deleteVariant(id)`
+- `listColorMedia(colorId)` / `attachAssetToColor(colorId, assetId)` / `reorderColorMedia(items)` / `setColorCover(colorId, mediaId)`
+
+Cada wrapper:
+- Resolve `store_id` via `product_store_id(product_id)`.
+- Aplica `has_permission(userId, 'products.update', store_id)`.
+- Grava `audit_log` (entity `product_variant` / `product_color`) reutilizando o helper de auditoria já existente.
+- Emite `event_outbox` (`product.variant.created/updated/deleted`, `product.color.media.attached`) usando o dispatcher já existente — sem nova tabela.
+
+Total esperado: ~250 linhas em `services/products.server.ts`, ~80 em `products.functions.ts`.
+
+## Histórico (aba 9)
+
+Reusa `listProductHistory` + `listProductAudit` (já existem) e o componente `product-history-drawer.tsx` (vira o conteúdo da aba em vez de drawer).
+
+## Telemetria
+
+Eventos de UX via `useTelemetry()` existente: `product.tab.viewed`, `product.variants.generated` (`{combinations, colors, sizes}`), `product.variant.edited`, `product.color.media.uploaded`, `product.published`.
 
 ## Detalhes técnicos
 
-- **RLS** mantida em `user_roles`, `profiles`, `audit_log`; novas policies usam `is_super_admin(auth.uid())` para leituras/escritas de admin.
-- **GRANTs** completos em novas funções (`GRANT EXECUTE ... TO authenticated`) e tabelas alteradas.
-- **Audit**: toda mutação → `audit_log` (já existente). Não duplica em outbox; outbox emite eventos para integração externa (e-mail, webhooks).
-- **Performance**: índices em `user_roles(user_id)`, `user_roles(store_id)`, `audit_log(entity_type, entity_id, created_at desc)`.
-- **Segurança**: nenhum `service_role_key` no client; `inviteUser`/`resetPassword` carregam `supabaseAdmin` via `await import` dentro do handler.
+- TanStack Query: cada aba tem seu `queryOptions` próprio, invalida só o que mudou (`['product', id, 'variants']`, `['product', id, 'colors']`, etc.). Save bar do shell escuta `isDirty` agregado.
+- Tabela de variantes: `@tanstack/react-table` (já é dependência), edição inline com Zod por linha, salvamento otimista e rollback em erro.
+- Geração de combinações: util puro `generateVariantCombinations(colors[], sizes[], extras[][])` testável isoladamente.
+- Validações de SKU único por loja: tratamento de violação de constraint do banco (já existe `UNIQUE (store_id, sku)` no esquema), com mensagem amigável.
+- Acessibilidade: tabs com aria-roles, foco gerenciado ao trocar aba, atalhos `Ctrl/Cmd+S`.
 
-## Arquivos
+## Arquivos alterados (resumo)
 
-**Criar**
-- migration única com tudo da Frente A
-- `src/components/admin/users/profile-tab.tsx`
-- `src/components/admin/users/roles-tab.tsx`
-- `src/components/admin/users/permissions-tab.tsx`
-- `src/components/admin/users/stores-tab.tsx`
-- `src/components/admin/users/security-tab.tsx`
-- `src/components/admin/users/sessions-tab.tsx`
-- `src/components/admin/users/audit-tab.tsx`
-- `src/components/admin/users/user-detail-drawer.tsx`
-- `src/components/admin/users/invite-drawer.tsx`
-- `src/components/admin/users/dashboard-widgets.tsx`
+**Refatorados / quebrados:**
+- `src/routes/_authenticated/admin.products.$id.edit.tsx` — reduzido a ~80 linhas (shell + tabs router).
+- `src/components/admin/products/product-history-drawer.tsx` — adaptado para uso embarcado na aba.
 
-**Alterar**
-- `src/lib/business/services/users.server.ts` — expandir
-- `src/lib/business/services/permissions.server.ts` — manter (passa a funcionar)
-- `src/lib/business/users.functions.ts` — adicionar funções
-- `src/routes/_authenticated/admin.users.tsx` — reescrever com abas/widgets
+**Novos componentes de UI** (sem nova lógica de negócio):
+- 9 arquivos em `src/components/admin/products/edit/tabs/`
+- `src/components/admin/products/edit/product-edit-shell.tsx`
+- 4 arquivos em `src/components/admin/products/edit/variants/`
+- `src/lib/products/variant-combinations.ts` (util puro + testes)
 
-## Fora de escopo (não vou fazer)
+**Backend (apenas wrappers thin)**:
+- `src/lib/business/services/products.server.ts` — adiciona seções `colors`, `variants`, `colorMedia`.
+- `src/lib/business/products.functions.ts` — adiciona os server fns correspondentes.
 
-- SSO/MFA (não pedido)
-- Criação de novos papéis/permissões pela UI (apenas atribuição) — pode virar Fase B
-- Edição de `role_permissions` (essa matriz fica como seed do sistema)
+**Não tocados** (reuso integral): `inventory.*`, `dam.*`, `price-lists.*`, `product-relations.*`, `audit.*`, `product-children.*`, `attributes*.*`, integração de checkout, pagamento, NF, frete.
 
-## Ordem de execução
+## Entrega final
 
-1. **Migration** (Frente A) — aguarda aprovação.
-2. Após migration aprovada e types regenerados: services + functions + UI (Frente B) em paralelo.
-3. Smoke test: claim super admin → convidar usuário → atribuir papel → bloquear/desbloquear → ver auditoria.
-
-Posso prosseguir com a migration?
+Ao concluir, gero relatório de auditoria técnica listando:
+- Diff por arquivo (linhas alteradas/adicionadas/removidas)
+- Componentes/services reutilizados (com link)
+- Confirmação de zero migrations, zero novas tabelas, zero novos engines
+- Mapa "operação UI → server fn existente"
+- Checklist de RLS/RBAC validados por aba.
