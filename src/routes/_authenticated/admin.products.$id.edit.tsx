@@ -9,8 +9,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Plus, Trash2, Sparkles, ImagePlus, Star, Save, Send,
+  ArrowLeft, Plus, Trash2, Sparkles, ImagePlus, Star, Save, Send, GripVertical, Library,
 } from "lucide-react";
+import { AssetPicker } from "@/components/dam/asset-picker";
+import type { AssetLike } from "@/components/dam/asset-thumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
