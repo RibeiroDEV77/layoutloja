@@ -401,7 +401,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
 
   return (
     <section className="relative w-full overflow-hidden bg-[#111]">
-      <div className="relative aspect-[16/9] md:aspect-[21/9] min-h-[460px] md:min-h-[600px]">
+      <div className="relative aspect-[16/9] sm:aspect-[16/8] md:aspect-[16/7] min-h-[260px] md:min-h-[360px] max-h-[560px]">
         {slides.map((s, i) => (
           <img
             key={`${s.image}-${i}`}
