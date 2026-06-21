@@ -6,7 +6,7 @@ import { type ReactNode } from "react";
 import { CrudPage } from "./crud-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "@tanstack/react-router";
+// nota: usamos <a href> para evitar tipagem estrita de rotas do TanStack neste utilitário genérico
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { type Crumb } from "./breadcrumb-context";
 
