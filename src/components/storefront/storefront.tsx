@@ -94,19 +94,19 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
       }));
       return {
         tag: root.name,
-        cta: `Ver tudo de ${root.name}`,
+        cta: root.name,
         ctaSlug: root.slug,
-        image: root.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(root.name.length) % FALLBACK_MEGA_IMAGES.length],
+        image: root.image_url ?? null,
         groups,
       };
     }
     if (item.kind === "brands") {
       const cols = chunkColumns(brands, 4);
       return {
-        tag: "Nossas marcas",
-        cta: "Ver todas as marcas",
+        tag: "Marcas",
+        cta: "Marcas",
         ctaSlug: undefined,
-        image: FALLBACK_MEGA_IMAGES[0],
+        image: null,
         groups: cols.map((col, i) => ({
           title: i === 0 ? "Marcas" : "\u00A0",
           slug: undefined,
@@ -114,6 +114,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
         })),
       };
     }
+
     return null;
   }, [hover, navItems, roots, childrenOf, brands]);
 
