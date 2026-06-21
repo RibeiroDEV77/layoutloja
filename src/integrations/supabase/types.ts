@@ -1715,6 +1715,117 @@ export type Database = {
           },
         ]
       }
+      customer_notification_preferences: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          customer_id: string
+          enabled: boolean
+          event_type: string
+          id: string
+          metadata: Json
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          customer_id: string
+          enabled?: boolean
+          event_type: string
+          id?: string
+          metadata?: Json
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          customer_id?: string
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          metadata?: Json
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notification_preferences_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notification_preferences_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_sessions: {
+        Row: {
+          created_at: string
+          customer_id: string
+          device_fingerprint: string | null
+          ended_at: string | null
+          id: string
+          ip_address: unknown
+          last_seen_at: string
+          metadata: Json
+          started_at: string
+          status: Database["public"]["Enums"]["portal_session_status"]
+          store_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          device_fingerprint?: string | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: unknown
+          last_seen_at?: string
+          metadata?: Json
+          started_at?: string
+          status?: Database["public"]["Enums"]["portal_session_status"]
+          store_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          device_fingerprint?: string | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: unknown
+          last_seen_at?: string
+          metadata?: Json
+          started_at?: string
+          status?: Database["public"]["Enums"]["portal_session_status"]
+          store_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portal_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_portal_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_score_factors: {
         Row: {
           computed_at: string
@@ -6997,6 +7108,209 @@ export type Database = {
           },
         ]
       }
+      product_review_helpful_votes: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          review_id: string
+          vote: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          review_id: string
+          vote: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          review_id?: string
+          vote?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_review_helpful_votes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_review_helpful_votes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "product_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_review_media: {
+        Row: {
+          asset_id: string
+          created_at: string
+          id: string
+          review_id: string
+          sort_order: number
+          store_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          id?: string
+          review_id: string
+          sort_order?: number
+          store_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          id?: string
+          review_id?: string
+          sort_order?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_review_media_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_review_media_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "product_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_review_media_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_reviews: {
+        Row: {
+          body: string | null
+          created_at: string
+          customer_id: string
+          helpful_count: number
+          id: string
+          language: string
+          metadata: Json
+          moderated_at: string | null
+          moderated_by: string | null
+          moderation_notes: string | null
+          order_id: string | null
+          order_item_id: string | null
+          product_id: string
+          rating: number
+          status: Database["public"]["Enums"]["review_status"]
+          store_id: string
+          title: string | null
+          unhelpful_count: number
+          updated_at: string
+          variant_id: string | null
+          verified_purchase: boolean
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          customer_id: string
+          helpful_count?: number
+          id?: string
+          language?: string
+          metadata?: Json
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_notes?: string | null
+          order_id?: string | null
+          order_item_id?: string | null
+          product_id: string
+          rating: number
+          status?: Database["public"]["Enums"]["review_status"]
+          store_id: string
+          title?: string | null
+          unhelpful_count?: number
+          updated_at?: string
+          variant_id?: string | null
+          verified_purchase?: boolean
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          customer_id?: string
+          helpful_count?: number
+          id?: string
+          language?: string
+          metadata?: Json
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_notes?: string | null
+          order_id?: string | null
+          order_item_id?: string | null
+          product_id?: string
+          rating?: number
+          status?: Database["public"]["Enums"]["review_status"]
+          store_id?: string
+          title?: string | null
+          unhelpful_count?: number
+          updated_at?: string
+          variant_id?: string | null
+          verified_purchase?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_tags: {
         Row: {
           product_id: string
@@ -9029,6 +9343,125 @@ export type Database = {
           },
         ]
       }
+      wishlist_items: {
+        Row: {
+          added_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          sort_order: number
+          store_id: string
+          variant_id: string | null
+          wishlist_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          sort_order?: number
+          store_id: string
+          variant_id?: string | null
+          wishlist_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          sort_order?: number
+          store_id?: string
+          variant_id?: string | null
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          is_default: boolean
+          is_public: boolean
+          items_count: number
+          metadata: Json
+          name: string
+          share_token: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_default?: boolean
+          is_public?: boolean
+          items_count?: number
+          metadata?: Json
+          name?: string
+          share_token?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_default?: boolean
+          is_public?: boolean
+          items_count?: number
+          metadata?: Json
+          name?: string
+          share_token?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlists_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_definitions: {
         Row: {
           aggregate_type: string
@@ -9397,6 +9830,7 @@ export type Database = {
         Args: { p_permission: string; p_store_id: string; p_user_id: string }
         Returns: undefined
       }
+      _is_customer_owner: { Args: { p_customer_id: string }; Returns: boolean }
       _seed_order_transition: {
         Args: {
           _code: string
@@ -10388,6 +10822,7 @@ export type Database = {
       health_status: "ok" | "degraded" | "down" | "unknown"
       idempotency_status: "in_flight" | "succeeded" | "failed"
       media_type: "image" | "video" | "youtube" | "vimeo"
+      notification_channel: "email" | "in_app" | "whatsapp" | "push" | "sms"
       order_address_kind: "billing" | "shipping"
       order_allocation_scope: "item" | "shipping" | "tax" | "fee" | "total"
       order_assignment_role:
@@ -10672,6 +11107,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       picking_strategy: "single_order" | "batch" | "wave" | "zone"
+      portal_session_status: "active" | "ended" | "revoked"
       product_status: "draft" | "published" | "archived"
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
       reservation_ledger_kind:
@@ -10681,6 +11117,7 @@ export type Database = {
         | "expire"
         | "extend"
       reservation_status: "active" | "released" | "consumed" | "expired"
+      review_status: "pending" | "approved" | "rejected" | "flagged" | "removed"
       sale_channel: "varejo" | "atacado" | "ambos"
       setting_scope: "global" | "store"
       shipment_status:
@@ -10960,6 +11397,7 @@ export const Constants = {
       health_status: ["ok", "degraded", "down", "unknown"],
       idempotency_status: ["in_flight", "succeeded", "failed"],
       media_type: ["image", "video", "youtube", "vimeo"],
+      notification_channel: ["email", "in_app", "whatsapp", "push", "sms"],
       order_address_kind: ["billing", "shipping"],
       order_allocation_scope: ["item", "shipping", "tax", "fee", "total"],
       order_assignment_role: [
@@ -11269,6 +11707,7 @@ export const Constants = {
         "cancelled",
       ],
       picking_strategy: ["single_order", "batch", "wave", "zone"],
+      portal_session_status: ["active", "ended", "revoked"],
       product_status: ["draft", "published", "archived"],
       product_visibility: ["published", "hidden", "private", "catalog_only"],
       reservation_ledger_kind: [
@@ -11279,6 +11718,7 @@ export const Constants = {
         "extend",
       ],
       reservation_status: ["active", "released", "consumed", "expired"],
+      review_status: ["pending", "approved", "rejected", "flagged", "removed"],
       sale_channel: ["varejo", "atacado", "ambos"],
       setting_scope: ["global", "store"],
       shipment_status: [
