@@ -120,17 +120,44 @@ export interface CredentialFieldDef {
   helper?: string;
 }
 
+/**
+ * Capability Discovery — matriz canônica usada pelo ShippingProviderRegistry
+ * para decidir QUE provider pode atender QUE operação. O Registry filtra
+ * exclusivamente por essas flags; nenhuma camada superior deve verificar o
+ * código do provider (`code === 'xxx'`). Para introduzir um novo provider
+ * basta declarar o adapter aqui — todas as demais camadas são agnósticas.
+ */
+export interface ShippingCapabilities {
+  quote: boolean;
+  tracking: boolean;
+  label: boolean;
+  pickup: boolean;
+  reverseLogistics: boolean;
+  /** Indica se o adapter possui ambiente sandbox/homologação. */
+  sandbox: boolean;
+}
+
+export type ShippingCapability =
+  | 'quote' | 'tracking' | 'label' | 'pickup' | 'reverseLogistics';
+
+export interface AdapterLabelCancelRequest {
+  shipment_id: string;
+  carrier_label_id?: string;
+  reason?: string;
+}
+
+export interface AdapterLabelCancelResult {
+  ok: boolean;
+  refunded?: boolean;
+  raw?: Record<string, unknown>;
+}
+
 export interface ShippingAdapter {
   /** Identificador único — bate com `shipping_carrier_accounts.provider_code`. */
   readonly code: ShippingProviderCode;
   readonly displayName: string;
-  /** Capabilities estáticas (rate/label/tracking). */
-  readonly capabilities: {
-    quote: boolean;
-    label: boolean;
-    tracking: boolean;
-    sandbox: boolean;
-  };
+  /** Capabilities estáticas (quote/tracking/label/pickup/reverseLogistics/sandbox). */
+  readonly capabilities: ShippingCapabilities;
   /** Esquema de credenciais usado pela UI admin. */
   readonly credentialSchema: CredentialFieldDef[];
   /** Esquema de configuração não-secreta (contrato, código admin, etc.). */
@@ -146,6 +173,8 @@ export interface ShippingAdapter {
 
   /** Opcional: emissão de etiqueta. */
   createLabel?(ctx: AdapterContext, req: AdapterLabelRequest): Promise<AdapterLabelResult>;
+  /** Opcional: cancelamento/voiding de etiqueta. */
+  cancelLabel?(ctx: AdapterContext, req: AdapterLabelCancelRequest): Promise<AdapterLabelCancelResult>;
 
   /** Opcional: rastreamento. */
   track?(ctx: AdapterContext, tracking_code: string): Promise<AdapterTrackingResult>;

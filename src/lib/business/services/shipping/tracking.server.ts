@@ -133,8 +133,14 @@ export async function syncShipmentTracking(
   };
 
   let tracking: AdapterTrackingResult;
+  const startedTrack = Date.now();
   try {
     tracking = await adapter.track(ctx, shipment.tracking_number);
+    await recordMetric(supabase, {
+      scope: 'shipping', name: 'shipping.provider.latency',
+      value: Date.now() - startedTrack, storeId: shipment.store_id,
+      tags: { provider: providerCode, op: 'tracking' },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await recordMetric(supabase, {
@@ -146,6 +152,10 @@ export async function syncShipmentTracking(
     });
     return { shipment_id: shipment.id, ok: false, error: msg };
   }
+  await recordMetric(supabase, {
+    scope: 'shipping', name: 'shipping.tracking.sync', value: 1,
+    storeId: shipment.store_id, tags: { provider: providerCode, events: String(tracking.events.length) },
+  });
 
   // Aplica via RPC (única origem autorizada de escrita em shipments/fulfillments)
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');

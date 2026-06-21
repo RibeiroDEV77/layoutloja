@@ -168,7 +168,14 @@ interface SroObjeto {
 export const correiosAdapter: ShippingAdapter = {
   code: 'correios',
   displayName: 'Correios',
-  capabilities: { quote: true, label: false, tracking: true, sandbox: true },
+  capabilities: {
+    quote: true,
+    tracking: true,
+    label: false,           // CWS expedição não está habilitado nesta fase.
+    pickup: false,
+    reverseLogistics: false,
+    sandbox: true,
+  },
   credentialSchema: CREDENTIAL_SCHEMA,
   configSchema: CONFIG_SCHEMA,
 
