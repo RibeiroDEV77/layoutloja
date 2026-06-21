@@ -249,7 +249,42 @@ export const correiosAdapter: ShippingAdapter = {
   async createLabel(_ctx, _req) {
     throw new AdapterCapabilityError('correios', 'label');
   },
-  async track(_ctx, _code) {
-    throw new AdapterCapabilityError('correios', 'tracking');
+  async track(ctx, code) {
+    assertCredentials(ctx);
+    const cleaned = String(code ?? '').trim().toUpperCase();
+    if (!cleaned) throw new Error('Código de rastreio vazio');
+    const token = await authenticate(ctx);
+    const body = await fetchJson(
+      `${host(ctx.account.sandbox)}/srorastro/v1/objetos/${encodeURIComponent(cleaned)}?resultado=T`,
+      {
+        method: 'GET',
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: 'application/json',
+        },
+      },
+    );
+    const objetos = ((body as { objetos?: SroObjeto[] }).objetos ?? []) as SroObjeto[];
+    const obj = objetos.find((o) => (o.codObjeto ?? '').toUpperCase() === cleaned) ?? objetos[0] ?? null;
+    const eventos = obj?.eventos ?? [];
+    const events = eventos
+      .map((e) => {
+        const tipo = String(e.tipo ?? '');
+        const status = String(e.codigo ?? '');
+        const desc = String(e.descricao ?? '');
+        const cidade = e.unidade?.endereco?.cidade ?? '';
+        const uf = e.unidade?.endereco?.uf ?? '';
+        const location = [cidade, uf].filter(Boolean).join(' / ');
+        return {
+          occurred_at: e.dtHrCriado ? new Date(e.dtHrCriado).toISOString() : new Date().toISOString(),
+          status: mapCorreiosEventKind(tipo, status, desc),
+          description: desc,
+          location: location || undefined,
+          raw: e as unknown as Record<string, unknown>,
+        };
+      })
+      .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+    const delivered = events.some((ev) => ev.status === 'delivered');
+    return { tracking_code: cleaned, delivered, events };
   },
 };
