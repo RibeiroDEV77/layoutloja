@@ -208,7 +208,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
             {/* Categorias centralizadas — desktop sempre visíveis */}
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[15px] font-normal text-[#111]">
               {navItems.map((i) => {
-                const LinkOrA = i.kind === "cat" && i.slug ? (
+                const LinkOrA = (i.kind === "cat" || i.kind === "link") && i.slug ? (
                   <Link
                     to="/categoria/$slug"
                     params={{ slug: i.slug }}
