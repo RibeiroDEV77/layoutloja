@@ -8389,6 +8389,51 @@ export type Database = {
           },
         ]
       }
+      product_relations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          position: number
+          product_id: string
+          related_product_id: string
+          relation_type: Database["public"]["Enums"]["product_relation_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          position?: number
+          product_id: string
+          related_product_id: string
+          relation_type?: Database["public"]["Enums"]["product_relation_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          position?: number
+          product_id?: string
+          related_product_id?: string
+          relation_type?: Database["public"]["Enums"]["product_relation_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_relations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_relations_related_product_id_fkey"
+            columns: ["related_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_review_helpful_votes: {
         Row: {
           created_at: string
@@ -14023,6 +14068,7 @@ export type Database = {
         | "cancelled"
       picking_strategy: "single_order" | "batch" | "wave" | "zone"
       portal_session_status: "active" | "ended" | "revoked"
+      product_relation_type: "related" | "cross_sell" | "up_sell"
       product_status: "draft" | "published" | "archived"
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
       reservation_ledger_kind:
@@ -14674,6 +14720,7 @@ export const Constants = {
       ],
       picking_strategy: ["single_order", "batch", "wave", "zone"],
       portal_session_status: ["active", "ended", "revoked"],
+      product_relation_type: ["related", "cross_sell", "up_sell"],
       product_status: ["draft", "published", "archived"],
       product_visibility: ["published", "hidden", "private", "catalog_only"],
       reservation_ledger_kind: [
