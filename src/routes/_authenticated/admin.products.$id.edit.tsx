@@ -1046,10 +1046,10 @@ function RelatedStep({ productId, storeId }: { productId: string; storeId: strin
                       <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2">
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {r.products?.name ?? "(produto removido)"}
+                            {r.related?.name ?? "(produto removido)"}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {r.products?.sku_root} · {r.products?.status}
+                            {r.related?.sku_root} · {r.related?.status}
                           </p>
                         </div>
                         <Button size="sm" variant="ghost" onClick={() => handleRemove(r.id)}>
