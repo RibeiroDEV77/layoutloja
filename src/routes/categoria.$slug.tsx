@@ -157,7 +157,7 @@ function CategoryPage() {
             </div>
           </div>
         </main>
-        <StorefrontFooter storeName={storeName} />
+        <StorefrontFooter storeName={storeName} categories={categories} />
       </div>
     </StorefrontShell>
   );
