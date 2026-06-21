@@ -5,6 +5,10 @@ import {
   NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
+import bannerCountry from "@/assets/banner-country.jpg";
+import bannerMasculino from "@/assets/banner-masculino.jpg";
+import bannerFeminino from "@/assets/banner-feminino.jpg";
+import bannerSportFino from "@/assets/banner-sport-fino.jpg";
 
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
