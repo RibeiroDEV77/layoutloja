@@ -133,7 +133,7 @@ export async function authorizePayment(supabase: SbClient, input: AuthorizePayme
   );
 
   // 5) Registra attempt + persiste transição via RPCs do Payment Engine.
-  await supabase.rpc('payment_record_attempt', {
+  await (supabase as any).rpc('payment_record_attempt', {
     _payment_id: p.id,
     _operation: 'authorize',
     _gateway_id: gateway.gateway_id,
@@ -148,7 +148,7 @@ export async function authorizePayment(supabase: SbClient, input: AuthorizePayme
   });
 
   if (result.status === 'authorized') {
-    await supabase.rpc('payment_authorize', {
+    await (supabase as any).rpc('payment_authorize', {
       _payment_id: p.id, _gateway_id: gateway.gateway_id,
       _authorization_id: result.authorization_id ?? result.external_id,
       _authorized_amount: result.amount_authorized,
@@ -157,20 +157,20 @@ export async function authorizePayment(supabase: SbClient, input: AuthorizePayme
     });
   } else if (result.status === 'captured') {
     // auth+capture imediato (cartão com capture:true, PIX/boleto já pago)
-    await supabase.rpc('payment_authorize', {
+    await (supabase as any).rpc('payment_authorize', {
       _payment_id: p.id, _gateway_id: gateway.gateway_id,
       _authorization_id: result.authorization_id ?? result.external_id,
       _authorized_amount: result.amount_authorized,
       _expires_at: null, _metadata: { external_id: result.external_id } as never,
     });
-    await supabase.rpc('payment_capture', {
+    await (supabase as any).rpc('payment_capture', {
       _payment_id: p.id,
       _amount: result.amount_captured ?? result.amount_authorized,
       _capture_id: result.external_id,
       _metadata: {} as never,
     });
   } else if (result.status === 'failed') {
-    await supabase.rpc('payment_fail', {
+    await (supabase as any).rpc('payment_fail', {
       _payment_id: p.id, _failure_code: 'gateway_rejected', _failure_message: 'rejected',
     });
   } else {
@@ -207,7 +207,7 @@ export async function capturePayment(
 ) {
   const { data: p } = await supabase
     .from('payments')
-    .select('id, store_id, external_id, gateway_id, amount_authorized, amount_captured')
+    .select('id, store_id, external_id, gateway_id, amount_captured')
     .eq('id', input.payment_id).maybeSingle();
   if (!p?.gateway_id) throw new Error('Pagamento sem gateway associado');
   const gateway = await resolveGatewayById(supabase, p.gateway_id);
@@ -221,7 +221,7 @@ export async function capturePayment(
       amount: input.amount,
     }),
   );
-  await supabase.rpc('payment_capture', {
+  await (supabase as any).rpc('payment_capture', {
     _payment_id: p.id,
     _amount: result.amount_captured,
     _capture_id: result.capture_id ?? result.external_id,
@@ -244,7 +244,7 @@ export async function cancelPayment(
   const result = await runAdapterOp(supabase, gateway, 'cancel', () =>
     gateway.adapter.cancelPayment(ctx, { external_id: p.external_id!, reason: input.reason }),
   );
-  await supabase.rpc('payment_cancel', { _payment_id: p.id, _reason: input.reason ?? null });
+  await (supabase as any).rpc('payment_cancel', { _payment_id: p.id, _reason: input.reason ?? null });
   return result;
 }
 
@@ -262,7 +262,7 @@ export async function refundPayment(
   const idem = input.idempotency_key ?? `refund:${p.id}:${input.amount ?? 'full'}:${Date.now()}`;
 
   // RPC cria o registro local em payment_refunds (status=pending).
-  const { data: refund, error: errRPC } = await supabase.rpc('payment_refund_request', {
+  const { data: refund, error: errRPC } = await (supabase as any).rpc('payment_refund_request', {
     _payment_id: p.id,
     _amount: input.amount ?? Number(p.amount_captured) - Number(p.amount_refunded ?? 0),
     _reason: 'customer_request',
@@ -283,19 +283,19 @@ export async function refundPayment(
       }),
     );
     if (result.status === 'succeeded') {
-      await supabase.rpc('payment_refund_mark_succeeded', {
+      await (supabase as any).rpc('payment_refund_mark_succeeded', {
         _refund_id: (refund as { id: string }).id,
         _gateway_refund_id: result.external_refund_id,
       });
     } else if (result.status === 'failed') {
-      await supabase.rpc('payment_refund_mark_failed', {
+      await (supabase as any).rpc('payment_refund_mark_failed', {
         _refund_id: (refund as { id: string }).id,
         _failure_code: 'gateway_failed', _failure_message: 'failed',
       });
     }
     return { refund, gateway_result: result };
   } catch (err) {
-    await supabase.rpc('payment_refund_mark_failed', {
+    await (supabase as any).rpc('payment_refund_mark_failed', {
       _refund_id: (refund as { id: string }).id,
       _failure_code: 'gateway_exception',
       _failure_message: err instanceof Error ? err.message : String(err),
@@ -380,7 +380,7 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
   const out: Array<{ webhook_id: string; action: string }> = [];
   for (const ev of parsed.events) {
     // 1) Inbox/idempotência via RPC SECURITY DEFINER (única escrita permitida).
-    const { data: ingest } = await supabase.rpc('payment_webhook_ingest', {
+    const { data: ingest } = await (supabase as any).rpc('payment_webhook_ingest', {
       _provider: input.provider_code,
       _external_event_id: ev.external_event_id,
       _event_type: ev.event_type,
@@ -404,7 +404,7 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
     // 2) Aplica efeito do evento via RPCs do Payment Engine.
     try {
       await applyWebhookEffect(supabase, gateway, ev);
-      await supabase.rpc('payment_webhook_mark_processed', {
+      await (supabase as any).rpc('payment_webhook_mark_processed', {
         _webhook_id: ingestObj.id, _duration_ms: null,
       });
       await recordMetric(supabase, {
@@ -413,7 +413,7 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await supabase.rpc('payment_webhook_mark_failed', {
+      await (supabase as any).rpc('payment_webhook_mark_failed', {
         _webhook_id: ingestObj.id, _error: msg, _duration_ms: null,
       });
       await recordMetric(supabase, {
@@ -431,7 +431,7 @@ async function applyWebhookEffect(
   if (!ev.external_payment_id) return;
   // Resolve payment_id local a partir do external_id (uniq por gateway).
   const { data: p } = await supabase.from('payments')
-    .select('id, status, amount_authorized, amount_gross')
+    .select('id, status, amount_gross')
     .eq('gateway_id', gateway.gateway_id)
     .eq('external_id', ev.external_payment_id)
     .maybeSingle();
@@ -444,28 +444,28 @@ async function applyWebhookEffect(
 
   if (status.status === 'captured' && p.status !== 'captured') {
     if (p.status === 'pending') {
-      await supabase.rpc('payment_authorize', {
+      await (supabase as any).rpc('payment_authorize', {
         _payment_id: p.id, _gateway_id: gateway.gateway_id,
         _authorization_id: ev.external_payment_id,
         _authorized_amount: status.amount_authorized ?? status.amount_captured ?? p.amount_gross,
         _expires_at: null, _metadata: {} as never,
       });
     }
-    await supabase.rpc('payment_capture', {
+    await (supabase as any).rpc('payment_capture', {
       _payment_id: p.id,
       _amount: status.amount_captured ?? p.amount_gross,
       _capture_id: ev.external_payment_id, _metadata: {} as never,
     });
   } else if (status.status === 'failed' && !['failed', 'cancelled', 'captured'].includes(p.status)) {
-    await supabase.rpc('payment_fail', {
+    await (supabase as any).rpc('payment_fail', {
       _payment_id: p.id,
       _failure_code: status.failure_code ?? 'gateway_failed',
       _failure_message: status.failure_message ?? 'failed',
     });
   } else if (status.status === 'cancelled' && !['cancelled', 'captured'].includes(p.status)) {
-    await supabase.rpc('payment_cancel', { _payment_id: p.id, _reason: 'gateway_cancelled' });
+    await (supabase as any).rpc('payment_cancel', { _payment_id: p.id, _reason: 'gateway_cancelled' });
   } else if (status.status === 'chargedback') {
-    await supabase.rpc('payment_chargeback_open', {
+    await (supabase as any).rpc('payment_chargeback_open', {
       _payment_id: p.id,
       _amount: status.amount_captured ?? p.amount_gross,
       _reason: 'general',
