@@ -914,7 +914,161 @@ function SeoStep({ product, onSaved }: { product: ProductRow; onSaved: () => voi
   );
 }
 
-// ============== Step 8: Publicação ==============
+// ============== Step 8: Produtos Relacionados ==============
+
+type RelationType = "related" | "cross_sell" | "up_sell";
+const RELATION_LABEL: Record<RelationType, string> = {
+  related: "Relacionado",
+  cross_sell: "Cross-sell",
+  up_sell: "Up-sell",
+};
+
+function RelatedStep({ productId, storeId }: { productId: string; storeId: string | null }) {
+  const qc = useQueryClient();
+  const fnList = useServerFn(listProductRelations);
+  const fnAdd = useServerFn(addProductRelation);
+  const fnRemove = useServerFn(removeProductRelation);
+  const fnSearch = useServerFn(listProducts);
+
+  const [type, setType] = useState<RelationType>("related");
+  const [search, setSearch] = useState("");
+
+  const relationsQ = useQuery({
+    queryKey: ["product-relations", productId],
+    queryFn: async () => {
+      const r = await fnList({ data: { product_id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data;
+    },
+  });
+
+  const searchQ = useQuery({
+    queryKey: ["product-relations-search", storeId, search],
+    enabled: !!storeId && search.trim().length >= 2,
+    queryFn: async () => {
+      const r = await fnSearch({
+        data: { store_id: storeId!, q: search.trim(), status: "all", page: 1, pageSize: 10 },
+      });
+      if (!r.ok) throw new Error(r.error.message);
+      return (r.data?.rows ?? []).filter((p: { id: string }) => p.id !== productId);
+    },
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["product-relations", productId] });
+
+  const handleAdd = async (relatedId: string) => {
+    const ok = await runAction(
+      () => fnAdd({ data: { product_id: productId, related_product_id: relatedId, relation_type: type } }),
+      { success: "Produto relacionado adicionado" },
+    );
+    if (ok) { setSearch(""); invalidate(); }
+  };
+
+  const handleRemove = async (id: string) => {
+    const ok = await runAction(
+      () => fnRemove({ data: { id } }),
+      { success: "Relação removida" },
+    );
+    if (ok) invalidate();
+  };
+
+  const rows = (relationsQ.data ?? []) as Array<{
+    id: string;
+    related_product_id: string;
+    relation_type: RelationType;
+    position: number;
+    products: { id: string; name: string; sku_root: string; status: string } | null;
+  }>;
+
+  return (
+    <StepShell
+      title="Produtos Relacionados"
+      description="Vincule produtos para recomendações, cross-sell e up-sell. Etapa opcional."
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-3">
+          <SelectField
+            label="Tipo de relação"
+            value={type}
+            onValueChange={(v) => setType(v as RelationType)}
+            options={[
+              { value: "related", label: "Relacionado" },
+              { value: "cross_sell", label: "Cross-sell" },
+              { value: "up_sell", label: "Up-sell" },
+            ]}
+          />
+          <FormField label="Buscar produto" hint="Digite ao menos 2 caracteres (nome, SKU ou slug)">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar para adicionar..."
+            />
+          </FormField>
+        </div>
+
+        {search.trim().length >= 2 && (
+          <Card>
+            <CardContent className="p-3 space-y-2">
+              {searchQ.isLoading && <p className="text-sm text-muted-foreground">Buscando...</p>}
+              {searchQ.data && searchQ.data.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum produto encontrado.</p>
+              )}
+              {(searchQ.data ?? []).map((p: { id: string; name: string; sku_root: string; status: string }) => (
+                <div key={p.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.sku_root} · {p.status}</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => handleAdd(p.id)} className="gap-1">
+                    <Plus className="h-3.5 w-3.5" /> Adicionar
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-3">
+          {(["related", "cross_sell", "up_sell"] as RelationType[]).map((t) => {
+            const items = rows.filter((r) => r.relation_type === t);
+            return (
+              <div key={t}>
+                <p className="text-xs uppercase font-medium text-muted-foreground mb-2">
+                  {RELATION_LABEL[t]} <span className="text-muted-foreground/60">({items.length})</span>
+                </p>
+                {items.length === 0 ? (
+                  <p className="text-sm text-muted-foreground border border-dashed rounded-md p-3">
+                    Nenhum produto {RELATION_LABEL[t].toLowerCase()} vinculado.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {items.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {r.products?.name ?? "(produto removido)"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {r.products?.sku_root} · {r.products?.status}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => handleRemove(r.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </StepShell>
+  );
+}
+
+// ============== Step 9: Publicação ==============
 
 function PublishStep({ canPublish, issues, onPublish, status }: { canPublish: boolean; issues: string[]; onPublish: () => void; status: string }) {
   return (
