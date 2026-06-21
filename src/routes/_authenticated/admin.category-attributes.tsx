@@ -230,7 +230,20 @@ function CategoryAttributesPage() {
               </div>
             </FormField>
           </FormRow>
-          <FormField label="Ordem">
+          <FormRow>
+            <FormField label="Exibir como filtro na Loja">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.show_in_filters !== false}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, show_in_filters: v }))} />
+                <span className="text-sm text-muted-foreground">Aparece na barra lateral</span>
+              </div>
+            </FormField>
+            <FormField label="Ordem do filtro">
+              <Input type="number" value={(form.filter_order as number) ?? 0}
+                onChange={(e) => setForm((p) => ({ ...p, filter_order: Number(e.target.value) }))} />
+            </FormField>
+          </FormRow>
+          <FormField label="Ordem (cadastro)">
             <Input type="number" value={(form.sort_order as number) ?? 0}
               onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))} />
           </FormField>
