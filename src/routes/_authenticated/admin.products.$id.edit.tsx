@@ -542,31 +542,54 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
     },
   });
 
-  const [url, setUrl] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["color-media", activeColorId] });
 
-  const addImage = async () => {
-    if (!activeColorId || !url.trim()) return;
-    const isYoutube = /youtube\.com|youtu\.be/.test(url);
-    const isVimeo = /vimeo\.com/.test(url);
-    const isCover = (media.data?.length ?? 0) === 0;
+  // ---- DAM: receber assets selecionados (1..N) e persistir como product_color_media ----
+  const onAssetsPicked = async (assets: AssetLike[]) => {
+    if (!activeColorId || assets.length === 0) return;
+    const baseOrder = media.data?.length ?? 0;
+    const hasCover = (media.data ?? []).some((m) => m.is_cover);
+
     const ok = await runAction(
-      () => fnAdd({ data: {
-        color_id: activeColorId,
-        media_type: isYoutube ? "youtube" : isVimeo ? "vimeo" : "image",
-        external_url: isYoutube || isVimeo ? url : url,
-        external_id: isYoutube ? extractYoutubeId(url) : isVimeo ? extractVimeoId(url) : null,
-        storage_path: isYoutube || isVimeo ? null : url,
-        is_cover: isCover,
-        sort_order: media.data?.length ?? 0,
-      } }),
-      { success: "Mídia adicionada" },
+      async () => {
+        let i = 0;
+        for (const a of assets) {
+          const kind = a.kind;
+          const mediaType: "image" | "video" | "youtube" | "vimeo" =
+            kind === "youtube" ? "youtube"
+            : kind === "vimeo" ? "vimeo"
+            : kind === "video" ? "video"
+            : "image";
+          const previewUrl = a.preview_url ?? a.external_url ?? null;
+          const res = await fnAdd({
+            data: {
+              color_id: activeColorId,
+              media_type: mediaType,
+              // Para o renderer do step (`thumbnail_url || external_url || storage_path`),
+              // gravamos a URL pública resolvida no DAM em external_url.
+              external_url: previewUrl,
+              external_id: a.external_id ?? null,
+              storage_path: null,
+              thumbnail_url: previewUrl,
+              alt: a.alt_text ?? null,
+              title: a.title ?? a.original_filename ?? null,
+              is_cover: !hasCover && i === 0,
+              sort_order: baseOrder + i,
+            },
+          });
+          if (!res.ok) throw new Error(res.error.message);
+          i++;
+        }
+        return { ok: true as const, data: { added: assets.length } };
+      },
+      { loading: "Vinculando mídia ao produto…", success: `${assets.length} mídia(s) adicionada(s)` },
     );
-    if (ok) { setUrl(""); qc.invalidateQueries({ queryKey: ["color-media", activeColorId] }); onSaved(); }
+    if (ok) { invalidate(); onSaved(); }
   };
 
   const remove = async (id: string) => {
     const ok = await runAction(() => fnDel({ data: { id } }), { success: "Mídia removida" });
-    if (ok) { qc.invalidateQueries({ queryKey: ["color-media", activeColorId] }); onSaved(); }
+    if (ok) { invalidate(); onSaved(); }
   };
 
   const setCover = async (id: string) => {
@@ -574,7 +597,42 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
       () => fnUpd({ data: { id, patch: { is_cover: true } } }),
       { success: "Capa definida" },
     );
-    if (ok) { qc.invalidateQueries({ queryKey: ["color-media", activeColorId] }); onSaved(); }
+    if (ok) { invalidate(); onSaved(); }
+  };
+
+  // ---- Drag-and-drop nativo para reordenar ----
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  const persistOrder = async (orderedIds: string[]) => {
+    // Atualiza otimisticamente o cache antes da persistência.
+    qc.setQueryData<MediaRow[]>(["color-media", activeColorId], (prev) => {
+      if (!prev) return prev;
+      const byId = new Map(prev.map((m) => [m.id, m]));
+      return orderedIds.map((id, idx) => ({ ...(byId.get(id) as MediaRow), sort_order: idx }));
+    });
+    try {
+      for (let i = 0; i < orderedIds.length; i++) {
+        const r = await fnUpd({ data: { id: orderedIds[i], patch: { sort_order: i } } });
+        if (!r.ok) throw new Error(r.error.message);
+      }
+      notify.success("Ordem atualizada");
+      onSaved();
+    } catch (e) {
+      notify.error("Falha ao reordenar mídia");
+      invalidate();
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return; }
+    const list = (media.data ?? []).map((m) => m.id);
+    const from = list.indexOf(dragId);
+    const to = list.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    list.splice(to, 0, list.splice(from, 1)[0]);
+    setDragId(null); setOverId(null);
+    void persistOrder(list);
   };
 
   if (colors.length === 0) {
@@ -582,7 +640,10 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
   }
 
   return (
-    <StepShell title="Galeria por cor" description="Cada cor tem uma galeria independente. Suporta imagens (URL), YouTube e Vimeo.">
+    <StepShell
+      title="Galeria por cor"
+      description="Mídias vinculadas via DAM. Selecione da biblioteca, envie novas, arraste para reordenar e defina a imagem principal."
+    >
       <div className="flex flex-wrap gap-2 border-b pb-3">
         {colors.map((c) => (
           <button
@@ -597,26 +658,41 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Cole a URL da imagem ou link do YouTube/Vimeo"
-        />
-        <Button onClick={addImage} disabled={!url.trim()} className="gap-2">
-          <ImagePlus className="h-4 w-4" /> Adicionar
-        </Button>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground">
+          {(media.data?.length ?? 0)} mídia(s) nesta cor. Arraste os cards para reordenar.
+        </p>
+        <AssetPicker context="product" multiple onSelect={onAssetsPicked}>
+          <Button className="gap-2">
+            <Library className="h-4 w-4" /> Selecionar do DAM
+          </Button>
+        </AssetPicker>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {(media.data ?? []).map((m) => {
           const src = m.thumbnail_url || m.external_url || m.storage_path || "";
+          const isOver = overId === m.id && dragId !== m.id;
           return (
-            <div key={m.id} className="relative aspect-square rounded-md overflow-hidden border bg-muted group">
-              {src ? <img src={src} alt={m.alt ?? ""} className="w-full h-full object-cover" /> : null}
-              {m.is_cover && (
-                <Badge className="absolute top-1 left-1 text-xs"><Star className="h-3 w-3 mr-1" />Capa</Badge>
-              )}
+            <div
+              key={m.id}
+              draggable
+              onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
+              onDragOver={(e) => { e.preventDefault(); if (overId !== m.id) setOverId(m.id); }}
+              onDragLeave={() => { if (overId === m.id) setOverId(null); }}
+              onDrop={(e) => { e.preventDefault(); handleDrop(m.id); }}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              className={`relative aspect-square rounded-md overflow-hidden border bg-muted group cursor-grab active:cursor-grabbing transition ${isOver ? "ring-2 ring-primary" : ""} ${dragId === m.id ? "opacity-50" : ""}`}
+            >
+              {src ? <img src={src} alt={m.alt ?? ""} className="w-full h-full object-cover pointer-events-none" /> : null}
+              <div className="absolute top-1 left-1 flex items-center gap-1">
+                {m.is_cover && (
+                  <Badge className="text-xs"><Star className="h-3 w-3 mr-1" />Capa</Badge>
+                )}
+              </div>
+              <div className="absolute top-1 right-1 opacity-70 group-hover:opacity-100">
+                <div className="bg-background/80 rounded p-1"><GripVertical className="h-3 w-3" /></div>
+              </div>
               <div className="absolute inset-x-0 bottom-0 flex gap-1 p-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition">
                 {!m.is_cover && (
                   <Button size="sm" variant="secondary" className="h-7 text-xs flex-1" onClick={() => setCover(m.id)}>
@@ -631,20 +707,21 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
           );
         })}
         {!media.isLoading && !(media.data?.length) && (
-          <p className="col-span-full text-sm text-muted-foreground text-center py-8">Nenhuma mídia ainda.</p>
+          <div className="col-span-full">
+            <div className="flex flex-col items-center justify-center text-center py-10 border border-dashed rounded-md text-muted-foreground">
+              <ImagePlus className="h-8 w-8 mb-2 opacity-60" />
+              <p className="text-sm">Nenhuma mídia ainda nesta cor.</p>
+              <AssetPicker context="product" multiple onSelect={onAssetsPicked}>
+                <Button variant="outline" className="mt-3 gap-2">
+                  <Library className="h-4 w-4" /> Abrir biblioteca DAM
+                </Button>
+              </AssetPicker>
+            </div>
+          </div>
         )}
       </div>
     </StepShell>
   );
-}
-
-function extractYoutubeId(url: string): string | null {
-  const m = url.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-  return m?.[1] ?? null;
-}
-function extractVimeoId(url: string): string | null {
-  const m = url.match(/vimeo\.com\/(\d+)/);
-  return m?.[1] ?? null;
 }
 
 // ============== Step 5: Variantes ==============
