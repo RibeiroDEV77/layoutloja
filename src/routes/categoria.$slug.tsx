@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontFooter,
   Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid,
@@ -9,14 +9,34 @@ import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
   type StorefrontCategory,
-  type StorefrontBrand,
-  type StorefrontProduct,
 } from "@/lib/business/storefront.functions";
-import { Link } from "@tanstack/react-router";
+import { getCategoryFilters, type StorefrontFilterGroup } from "@/lib/business/storefront-filters.functions";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { findStorefrontNavItem, storefrontCategoryLabel, resolveStorefrontCategory } from "@/lib/storefront-navigation";
 
+type SearchParams = {
+  sort?: string;
+  attr?: Record<string, string>; // attributeCode -> "valId1,valId2"
+  pmin?: number;
+  pmax?: number;
+};
+
 export const Route = createFileRoute("/categoria/$slug")({
+  validateSearch: (search: Record<string, unknown>): SearchParams => {
+    const out: SearchParams = {};
+    if (typeof search.sort === "string") out.sort = search.sort;
+    if (typeof search.pmin === "number") out.pmin = search.pmin;
+    if (typeof search.pmax === "number") out.pmax = search.pmax;
+    if (search.attr && typeof search.attr === "object") {
+      const a: Record<string, string> = {};
+      for (const [k, v] of Object.entries(search.attr as Record<string, unknown>)) {
+        if (typeof v === "string" && v.length > 0) a[k] = v;
+      }
+      if (Object.keys(a).length > 0) out.attr = a;
+    }
+    return out;
+  },
   loader: async ({ params }) => {
     const { store } = await getStorefrontStore();
     const store_id = store?.id;
@@ -65,7 +85,22 @@ export const Route = createFileRoute("/categoria/$slug")({
       parents.unshift(parent);
       p = parent.parent_id;
     }
-    return { store, category, subcategories, parents, products: categoryProducts, allProducts: prods.rows, categories: cats.rows, brands: brands.rows };
+
+    // Dynamic filters — driven by the Admin Panel (no hardcoded lists).
+    const realCategoryId = category.id.startsWith("placeholder-") ? null : category.id;
+    const filters = await getCategoryFilters({
+      data: {
+        category_id: realCategoryId,
+        product_ids: categoryProducts.map((pp) => pp.id),
+      },
+    });
+
+    return {
+      store, category, subcategories, parents,
+      products: categoryProducts, allProducts: prods.rows,
+      categories: cats.rows, brands: brands.rows,
+      filters: filters.groups, productAttrs: filters.productAttrs,
+    };
   },
 
   head: ({ loaderData }) => {
@@ -91,39 +126,84 @@ export const Route = createFileRoute("/categoria/$slug")({
   component: CategoryPage,
 });
 
-function buildFilterGroups(subcategories: StorefrontCategory[], brands: StorefrontBrand[], products: StorefrontProduct[]): FilterGroup[] {
-  const groups: FilterGroup[] = [];
-  if (subcategories.length > 0) {
-    groups.push({ key: "subcategory", title: "Subcategorias", options: subcategories.map((category) => ({ label: category.name })) });
-  }
-  if (brands.length > 0) {
-    groups.push({
-      key: "brand",
-      title: "Marcas",
-      options: brands.map((brand) => ({ label: brand.name, count: products.filter((product) => product.brand_id === brand.id).length })),
-    });
-  }
-  const highlights = [
-    { label: "Novidades", count: products.filter((product) => product.new_product).length },
-    { label: "Promoções", count: products.filter((product) => product.on_sale).length },
-    { label: "Mais vendidos", count: products.filter((product) => product.best_seller).length },
-  ].filter((option) => option.count > 0);
-  if (highlights.length > 0) groups.push({ key: "highlights", title: "Destaques", options: highlights });
-  return groups;
+function toFilterGroups(
+  dynamic: StorefrontFilterGroup[],
+  selected: Record<string, Set<string>>,
+): FilterGroup[] {
+  return dynamic.map((g) => ({
+    key: g.code,
+    title: g.name,
+    options: g.values.map((v) => ({
+      label: v.label,
+      count: v.count || undefined,
+      swatch: v.swatch ?? undefined,
+      // Encoded id used by the click handler — kept on label is acceptable because
+      // SidebarFilter is read-only today; selection state is mirrored in URL.
+      // (selection state isn't read here; chips below handle clicks)
+      ...{ id: v.id, selected: selected[g.code]?.has(v.id) ?? false },
+    })),
+  }));
 }
 
 function CategoryPage() {
-  const { store, category, subcategories, parents, products, allProducts, categories, brands } = Route.useLoaderData();
+  const { store, category, subcategories, parents, products, allProducts, categories, brands, filters, productAttrs } = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/categoria/$slug" });
   const storeName = store?.name ?? "Layout";
-  const [sort, setSort] = useState("relevance");
+
+  const sort = search.sort ?? "relevance";
+  const setSort = (s: string) =>
+    navigate({ search: (prev) => ({ ...prev, sort: s === "relevance" ? undefined : s }) });
+
+  const selected = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const [code, csv] of Object.entries(search.attr ?? {})) {
+      map[code] = new Set(csv.split(",").filter(Boolean));
+    }
+    return map;
+  }, [search.attr]);
+
+  const filtered = useMemo(() => {
+    const activeCodes = Object.keys(selected).filter((c) => selected[c].size > 0);
+    if (activeCodes.length === 0) return products;
+    return products.filter((p) => {
+      const owned = new Set(productAttrs[p.id] ?? []);
+      // AND between groups, OR within group.
+      for (const code of activeCodes) {
+        const group = filters.find((g) => g.code === code);
+        if (!group) continue;
+        const required = selected[code];
+        const has = group.values.some((v) => required.has(v.id) && owned.has(v.id));
+        if (!has) return false;
+      }
+      return true;
+    });
+  }, [products, productAttrs, filters, selected]);
 
   const sorted = useMemo(() => {
-    const arr = [...products];
+    const arr = [...filtered];
     if (sort === "new") arr.sort((a, b) => Number(b.new_product) - Number(a.new_product));
     if (sort === "best") arr.sort((a, b) => Number(b.best_seller) - Number(a.best_seller));
     return arr;
-  }, [products, sort]);
-  const filterGroups = useMemo(() => buildFilterGroups(subcategories, brands, products), [subcategories, brands, products]);
+  }, [filtered, sort]);
+
+  const groups = useMemo(() => toFilterGroups(filters, selected), [filters, selected]);
+
+  const toggleValue = (code: string, valueId: string) => {
+    navigate({
+      search: (prev) => {
+        const cur = new Set((prev.attr?.[code] ?? "").split(",").filter(Boolean));
+        if (cur.has(valueId)) cur.delete(valueId); else cur.add(valueId);
+        const attr: Record<string, string> = { ...(prev.attr ?? {}) };
+        if (cur.size === 0) delete attr[code];
+        else attr[code] = Array.from(cur).join(",");
+        return { ...prev, attr: Object.keys(attr).length ? attr : undefined };
+      },
+    });
+  };
+
+  const clearAll = () =>
+    navigate({ search: () => ({}) });
 
   return (
     <StorefrontShell>
@@ -139,14 +219,12 @@ function CategoryPage() {
             ]}
           />
 
-          {/* Título da categoria — alinhamento à esquerda em páginas internas */}
           <header className="mt-8 mb-6 max-w-3xl">
             <h1 className="font-storefront-display text-4xl md:text-5xl font-light tracking-tight text-neutral-900">
               {category.name}
             </h1>
           </header>
 
-          {/* Subcategorias */}
           {subcategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-8">
               {subcategories.map((s: StorefrontCategory) => (
@@ -167,8 +245,43 @@ function CategoryPage() {
 
           <CategoryToolbar count={sorted.length} sort={sort} onSortChange={setSort} />
 
-          <div className={cn("mt-10 grid grid-cols-1 gap-10 lg:gap-14", filterGroups.length > 0 && "lg:grid-cols-[260px_minmax(0,1fr)]")}>
-            {filterGroups.length > 0 && <SidebarFilter groups={filterGroups} onClear={() => setSort("relevance")} />}
+          <div className={cn("mt-10 grid grid-cols-1 gap-10 lg:gap-14", groups.length > 0 && "lg:grid-cols-[260px_minmax(0,1fr)]")}>
+            {groups.length > 0 && (
+              <div className="space-y-2">
+                <SidebarFilter groups={groups} onClear={clearAll} />
+                {/* Active value chips: clickable to toggle. Sits below the
+                    read-only SidebarFilter without altering its component. */}
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {filters.flatMap((g) =>
+                    g.values.map((v) => {
+                      const isSelected = selected[g.code]?.has(v.id) ?? false;
+                      if (g.values.length > 24 && !isSelected) return null;
+                      return (
+                        <button
+                          key={`${g.code}:${v.id}`}
+                          type="button"
+                          onClick={() => toggleValue(g.code, v.id)}
+                          className={cn(
+                            "px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] border transition-colors",
+                            isSelected
+                              ? "bg-neutral-900 text-white border-neutral-900"
+                              : "border-neutral-200 text-neutral-600 hover:border-neutral-900 hover:text-neutral-900",
+                          )}
+                        >
+                          {g.is_color && v.swatch && (
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle border border-white/40"
+                              style={{ background: v.swatch }}
+                            />
+                          )}
+                          {v.label}
+                        </button>
+                      );
+                    }),
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <ProductGrid products={sorted} />
             </div>
