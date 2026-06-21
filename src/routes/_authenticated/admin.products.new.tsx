@@ -133,7 +133,7 @@ function ProductNewWizardPage() {
 
   const currentIdx = STEPS.findIndex((s) => s.key === step);
   const issues = readinessQ.data?.issues ?? [];
-  const checks = readinessQ.data?.checks as Record<string, boolean> | undefined;
+  const steps = readinessQ.data?.steps ?? [];
 
   // Sticky footer actions
   const fnPublish = useServerFn(publishProduct);
