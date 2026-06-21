@@ -116,9 +116,6 @@ function CategoryPage() {
             <h1 className="font-storefront-display text-4xl md:text-5xl font-light tracking-tight text-neutral-900">
               {category.name}
             </h1>
-            <p className="mt-3 text-sm font-light text-neutral-500 max-w-xl">
-              Peças cuidadosamente selecionadas para compor o seu estilo.
-            </p>
           </header>
 
           {/* Subcategorias */}
