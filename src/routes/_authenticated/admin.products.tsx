@@ -97,8 +97,10 @@ function ProductsPage() {
       description="Central de produtos. Crie, configure e publique todo o catálogo."
       breadcrumbs={[{ label: "Catálogo" }, { label: "Produtos" }]}
       actions={
-        <Button onClick={() => setAssistantOpen(true)} disabled={!storeId}>
-          <Plus className="h-4 w-4 mr-2" /> Novo Produto
+        <Button asChild disabled={!storeId}>
+          <Link to="/admin/products/new">
+            <Plus className="h-4 w-4 mr-2" /> Novo Produto
+          </Link>
         </Button>
       }
       toolbar={
@@ -162,7 +164,7 @@ function ProductsPage() {
         </>
       )}
 
-      <ProductAssistantDrawer open={assistantOpen} onOpenChange={setAssistantOpen} />
+      
     </CrudPage>
   );
 }
