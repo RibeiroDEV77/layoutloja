@@ -3,9 +3,11 @@ import {
   StorefrontShell, StorefrontNavbar, StorefrontHero, StorefrontFooter,
   Section, SectionHeader, ProductCarousel, CategoryGrid,
   InstitutionalBanner, NewsletterSection, TrustStrip, ProductGrid,
+  type HeroBanner,
 } from "@/components/storefront/storefront";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
+  listStorefrontBrands,
 } from "@/lib/business/storefront.functions";
 
 export const Route = createFileRoute("/")({
@@ -20,8 +22,9 @@ export const Route = createFileRoute("/")({
   loader: async () => {
     const { store } = await getStorefrontStore();
     const store_id = store?.id;
-    const [cats, novos, best, featured, all] = await Promise.all([
+    const [cats, brands, novos, best, featured, all] = await Promise.all([
       listStorefrontCategories({ data: { store_id } }),
+      listStorefrontBrands({ data: { store_id } }),
       listStorefrontProducts({ data: { store_id, flag: "new", limit: 12 } }),
       listStorefrontProducts({ data: { store_id, limit: 12 } }),
       listStorefrontProducts({ data: { store_id, flag: "featured", limit: 12 } }),
@@ -30,6 +33,7 @@ export const Route = createFileRoute("/")({
     return {
       store,
       categories: cats.rows,
+      brands: brands.rows,
       novidades: novos.rows,
       maisVendidos: best.rows,
       destaques: featured.rows,
@@ -43,8 +47,14 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { store, categories, novidades, maisVendidos, destaques, todos } = Route.useLoaderData();
+  const { store, categories, brands, novidades, maisVendidos, destaques, todos } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
+
+  // Banners do Hero: derivados das categorias raiz com imagem (admin-driven)
+  const heroBanners: HeroBanner[] = categories
+    .filter((c) => !c.parent_id && c.image_url)
+    .slice(0, 5)
+    .map((c) => ({ image: c.image_url as string, tag: c.name, ctaSlug: c.slug }));
 
   // Divide o pool em "estilos" diferentes para preencher as seções temáticas
   const sportFino = todos.slice(0, 8);
@@ -54,9 +64,10 @@ function HomePage() {
   return (
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
-        <StorefrontNavbar />
+        <StorefrontNavbar categories={categories} brands={brands} />
         <main className="flex-1">
-          <StorefrontHero />
+          <StorefrontHero banners={heroBanners} />
+
 
           {/* Novidades */}
           <Section id="novidades">
