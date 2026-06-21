@@ -173,3 +173,116 @@ export async function warehouseStoreId(supabase: SbClient, warehouseId: string):
   if (error) throw Errors.internal('Falha ao resolver loja do armazém', { error: error.message });
   return (data as unknown as string) ?? null;
 }
+
+// ============================================================================
+// Fase 6.1 Etapa 3 — Inventory MVP (Admin Read Model + listings)
+// ============================================================================
+
+export type StockAdminListRow = Database['public']['Views']['stock_admin_list_v']['Row'];
+export type StockMovementRow = Database['public']['Tables']['stock_movements']['Row'];
+export type StockReservationRow = Database['public']['Tables']['stock_reservations']['Row'];
+export type WarehouseRow = Database['public']['Tables']['warehouses']['Row'];
+
+export interface StockListFilters {
+  store_id: string;
+  q?: string;
+  warehouse_id?: string;
+  stock_status?: Array<'in_stock' | 'low_stock' | 'out_of_stock'>;
+  product_id?: string;
+  brand_id?: string;
+  category_id?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: 'product_name' | 'sku' | 'quantity_on_hand' | 'quantity_available' | 'last_movement_at';
+  sort_dir?: 'asc' | 'desc';
+}
+
+export async function listAdminStock(supabase: SbClient, filters: StockListFilters) {
+  const page = Math.max(1, filters.page ?? 1);
+  const size = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+  const from = (page - 1) * size;
+  const to = from + size - 1;
+  const sort = filters.sort ?? 'product_name';
+  const ascending = (filters.sort_dir ?? 'asc') === 'asc';
+
+  let q = supabase
+    .from('stock_admin_list_v')
+    .select('*', { count: 'exact' })
+    .eq('store_id', filters.store_id);
+
+  if (filters.warehouse_id) q = q.eq('warehouse_id', filters.warehouse_id);
+  if (filters.product_id) q = q.eq('product_id', filters.product_id);
+  if (filters.brand_id) q = q.eq('brand_id', filters.brand_id);
+  if (filters.category_id) q = q.eq('category_id', filters.category_id);
+  if (filters.stock_status?.length) q = q.in('stock_status', filters.stock_status);
+
+  if (filters.q?.trim()) {
+    const safe = filters.q.replace(/[%,]/g, '');
+    q = q.or(
+      `sku.ilike.%${safe}%,product_name.ilike.%${safe}%,barcode.ilike.%${safe}%,internal_reference.ilike.%${safe}%,sku_root.ilike.%${safe}%`,
+    );
+  }
+
+  q = q.order(sort, { ascending }).range(from, to);
+
+  const { data, error, count } = await q;
+  if (error) throw Errors.internal('Falha ao listar estoque', { error: error.message });
+  return { rows: (data ?? []) as StockAdminListRow[], total: count ?? 0, page, pageSize: size };
+}
+
+export async function findAdminStockById(
+  supabase: SbClient,
+  id: string,
+): Promise<StockAdminListRow | null> {
+  const { data, error } = await supabase
+    .from('stock_admin_list_v')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw Errors.internal('Falha ao buscar nível de estoque', { error: error.message });
+  return data as StockAdminListRow | null;
+}
+
+export async function listMovements(
+  supabase: SbClient,
+  args: { warehouse_id: string; variant_id: string; limit?: number },
+): Promise<StockMovementRow[]> {
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select('*')
+    .eq('warehouse_id', args.warehouse_id)
+    .eq('variant_id', args.variant_id)
+    .order('occurred_at', { ascending: false })
+    .limit(args.limit ?? 100);
+  if (error) throw Errors.internal('Falha ao listar movimentações', { error: error.message });
+  return (data ?? []) as StockMovementRow[];
+}
+
+export async function listReservations(
+  supabase: SbClient,
+  args: { warehouse_id: string; variant_id: string; limit?: number },
+): Promise<StockReservationRow[]> {
+  const { data, error } = await supabase
+    .from('stock_reservations')
+    .select('*')
+    .eq('warehouse_id', args.warehouse_id)
+    .eq('variant_id', args.variant_id)
+    .order('created_at', { ascending: false })
+    .limit(args.limit ?? 100);
+  if (error) throw Errors.internal('Falha ao listar reservas', { error: error.message });
+  return (data ?? []) as StockReservationRow[];
+}
+
+export async function listWarehouses(
+  supabase: SbClient,
+  storeId: string,
+): Promise<WarehouseRow[]> {
+  const { data, error } = await supabase
+    .from('warehouses')
+    .select('*')
+    .eq('store_id', storeId)
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (error) throw Errors.internal('Falha ao listar armazéns', { error: error.message });
+  return (data ?? []) as WarehouseRow[];
+}
