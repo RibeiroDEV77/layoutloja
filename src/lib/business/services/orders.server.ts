@@ -35,7 +35,7 @@ export async function list(supabase: SbClient, userId: string, input: ListInput)
   if (!input.store_id) throw Errors.validation('store_id obrigatório');
   await ensureRead(supabase, userId, input.store_id);
   const result = await Repo.listAdmin(supabase, input);
-  recordMetric({ name: 'orders.admin.list', value: result.total, tags: { store_id: input.store_id } }).catch(() => {});
+  recordMetric(supabase, { scope: 'orders', name: 'admin.list', value: result.total, storeId: input.store_id }).catch(() => {});
   return result;
 }
 
@@ -139,10 +139,10 @@ export async function cancel(
   }
   const { error } = await supabase.rpc('order_cancel', { _order_id: input.order_id, _reason: input.reason });
   if (error) {
-    if (error.message.includes('cannot cancel')) throw Errors.businessRule(error.message);
+    if (error.message.includes('cannot cancel')) throw Errors.rule(error.message);
     throw Errors.internal('Falha ao cancelar pedido', { error: error.message });
   }
-  recordMetric({ name: 'orders.admin.cancel', value: 1, tags: { store_id: order.store_id } }).catch(() => {});
+  recordMetric(supabase, { scope: 'orders', name: 'admin.cancel', value: 1, storeId: order.store_id }).catch(() => {});
   return { ok: true };
 }
 

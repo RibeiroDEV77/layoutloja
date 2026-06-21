@@ -77,7 +77,7 @@ export async function listAdmin(supabase: SbClient, filters: ListFilters) {
     .select('*', { count: 'exact' })
     .eq('store_id', filters.store_id);
 
-  if (filters.status?.length) q = q.in('status', filters.status);
+  if (filters.status?.length) q = q.in('status', filters.status as never);
   if (filters.channel) q = q.eq('channel', filters.channel);
   if (filters.customer_id) q = q.eq('customer_id', filters.customer_id);
   if (filters.date_from) q = q.gte('created_at', filters.date_from);
@@ -174,6 +174,9 @@ export async function listAudit(supabase: SbClient, orderId: string, limit = 200
   return (data ?? []) as OrderAuditRow[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type JsonValue = any;
+
 export interface UnifiedTimelineEntry {
   id: string;
   order_id: string;
@@ -181,7 +184,7 @@ export interface UnifiedTimelineEntry {
   source: 'order' | 'payment' | 'fulfillment' | 'tracking' | 'fiscal';
   event_type: string;
   title: string | null;
-  payload: Record<string, unknown> | null;
+  payload: JsonValue;
   actor_user_id: string | null;
   created_at: string;
 }
