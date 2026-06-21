@@ -673,7 +673,21 @@ async function computeReadiness(supabase: SbClient, productId: string): Promise<
   seo.complete = seo.issues.length === 0;
   steps.push(seo);
 
-  // 8. Publicação
+  // 8. Produtos relacionados (opcional — sempre completo)
+  const relCount = await supabase
+    .from('product_relations')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', productId);
+  const related: ReadinessStep = {
+    key: 'related',
+    label: 'Relacionados',
+    complete: true,
+    issues: [],
+  };
+  if ((relCount.count ?? 0) === 0) related.issues.push('Nenhum produto relacionado (opcional)');
+  steps.push(related);
+
+  // 9. Publicação
   const pub: ReadinessStep = {
     key: 'publish',
     label: 'Publicação',
@@ -682,7 +696,7 @@ async function computeReadiness(supabase: SbClient, productId: string): Promise<
   };
   steps.push(pub);
 
-  const considered = steps.filter((s) => s.key !== 'publish');
+  const considered = steps.filter((s) => s.key !== 'publish' && s.key !== 'related');
   const done = considered.filter((s) => s.complete).length;
   const progress = Math.round((done / considered.length) * 100);
   const blockingIssues = considered.flatMap((s) => s.issues);
