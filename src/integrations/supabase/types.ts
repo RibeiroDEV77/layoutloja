@@ -6095,6 +6095,24 @@ export type Database = {
           },
         ]
       }
+      payment_credentials_keyring: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          key: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          key?: string
+        }
+        Relationships: []
+      }
       payment_documents: {
         Row: {
           asset_id: string | null
@@ -6299,14 +6317,22 @@ export type Database = {
           config: Json
           created_at: string
           created_by: string | null
+          credentials_encrypted: string | null
+          credentials_fingerprint: string | null
+          credentials_set_at: string | null
+          credentials_set_by: string | null
           display_name: string
           id: string
           is_active: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_ok: boolean | null
           priority: number
           store_id: string
           supported_currencies: string[]
           supported_methods: Database["public"]["Enums"]["payment_method"][]
           updated_at: string
+          webhook_secret_encrypted: string | null
           webhook_secret_ref: string | null
         }
         Insert: {
@@ -6315,14 +6341,22 @@ export type Database = {
           config?: Json
           created_at?: string
           created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
           display_name: string
           id?: string
           is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
           priority?: number
           store_id: string
           supported_currencies?: string[]
           supported_methods?: Database["public"]["Enums"]["payment_method"][]
           updated_at?: string
+          webhook_secret_encrypted?: string | null
           webhook_secret_ref?: string | null
         }
         Update: {
@@ -6331,14 +6365,22 @@ export type Database = {
           config?: Json
           created_at?: string
           created_by?: string | null
+          credentials_encrypted?: string | null
+          credentials_fingerprint?: string | null
+          credentials_set_at?: string | null
+          credentials_set_by?: string | null
           display_name?: string
           id?: string
           is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_ok?: boolean | null
           priority?: number
           store_id?: string
           supported_currencies?: string[]
           supported_methods?: Database["public"]["Enums"]["payment_method"][]
           updated_at?: string
+          webhook_secret_encrypted?: string | null
           webhook_secret_ref?: string | null
         }
         Relationships: [
@@ -12341,6 +12383,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      payment_get_credentials: { Args: { _gateway_id: string }; Returns: Json }
+      payment_get_webhook_secret: {
+        Args: { _gateway_id: string }
+        Returns: string
+      }
       payment_reconciliation_match_item: {
         Args: { _item_id: string; _payment_id: string }
         Returns: {
@@ -12507,6 +12554,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      payment_set_credentials: {
+        Args: { _creds: Json; _gateway_id: string }
+        Returns: undefined
+      }
+      payment_set_webhook_secret: {
+        Args: { _gateway_id: string; _secret: string }
+        Returns: undefined
       }
       payment_store_id: { Args: { _payment_id: string }; Returns: string }
       payment_webhook_ingest: {
