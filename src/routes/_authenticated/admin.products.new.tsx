@@ -362,13 +362,21 @@ function BasicBlock({
             value={form.name}
             onChange={(e) => patch({
               name: e.target.value,
-              sku_root: form.sku_root || sanitizeSku(e.target.value),
+              sku_root: skuTouched ? form.sku_root : sanitizeSku(e.target.value),
             })}
-            placeholder="Ex.: Camiseta Básica Premium"
+            placeholder="Ex.: Camiseta Oversized Premium"
           />
         </FormField>
-        <FormField label="SKU Root" required hint="Prefixo único usado nos SKUs das variantes.">
-          <Input value={form.sku_root} onChange={(e) => patch({ sku_root: sanitizeSku(e.target.value) })} />
+        <FormField
+          label="SKU Root"
+          required
+          hint={skuTouched ? "Sincronização automática desativada (você editou)." : "Gerado automaticamente a partir do nome — edite para personalizar."}
+        >
+          <Input
+            value={form.sku_root}
+            onChange={(e) => { setSkuTouched(true); patch({ sku_root: sanitizeSku(e.target.value) }); }}
+            placeholder="CAMISETA-OVERSIZED-PREMIUM"
+          />
         </FormField>
       </FormRow>
 
