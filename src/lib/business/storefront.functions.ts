@@ -85,3 +85,20 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     const { data: rows } = await q;
     return { rows: (rows ?? []) as StorefrontProduct[] };
   });
+
+export const listStorefrontBrands = createServerFn({ method: 'POST' })
+  .inputValidator((input: { store_id?: string }) => input ?? {})
+  .handler(async ({ data }): Promise<{ rows: StorefrontBrand[] }> => {
+    const sb = publicClient();
+    let q = sb
+      .from('brands')
+      .select('id,name,slug,logo_url')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+      .limit(50);
+    if (data.store_id) q = q.eq('store_id', data.store_id);
+    const { data: rows } = await q;
+    return { rows: (rows ?? []) as StorefrontBrand[] };
+  });
+
