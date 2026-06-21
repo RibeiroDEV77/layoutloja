@@ -1446,21 +1446,248 @@ function BlockCard({ title, description, children }: {
   title: string; description?: string; children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="space-y-1.5 pb-4 border-b bg-muted/20 rounded-t-xl">
+        <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
+        {description && <CardDescription className="text-sm">{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="space-y-5">{children}</CardContent>
+      <CardContent className="space-y-6 p-6">{children}</CardContent>
     </Card>
   );
 }
 
 function BlockFooter({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-5 border-t mt-2">
       <div>{left}</div>
       <div>{right}</div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Wizard Sidebar — etapas verticais com status
+// =============================================================================
+function WizardSidebar({
+  step, currentIdx, productId, canPublish, onJump,
+}: {
+  step: StepKey;
+  currentIdx: number;
+  productId: string | null;
+  canPublish: boolean;
+  onJump: (k: StepKey) => void;
+}) {
+  return (
+    <aside className="lg:sticky lg:top-32 lg:self-start">
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Cadastro do Produto
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2">
+          <ol className="space-y-1">
+            {STEPS.map((s, i) => {
+              const isActive = s.key === step;
+              const isDone = i < currentIdx || (s.key === "publish" && canPublish);
+              const disabled = !productId && s.key !== "basic";
+              return (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onJump(s.key)}
+                    className={cn(
+                      "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                      isActive && "bg-primary/10 text-primary font-semibold",
+                      !isActive && isDone && "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/5",
+                      !isActive && !isDone && "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-bold transition",
+                        isActive ? "bg-primary text-primary-foreground shadow-sm"
+                          : isDone ? "bg-emerald-500 text-white"
+                          : "bg-muted text-muted-foreground border",
+                      )}
+                    >
+                      {isDone ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    </span>
+                    <span className="truncate flex-1">{s.label}</span>
+                    {isActive && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </CardContent>
+      </Card>
+    </aside>
+  );
+}
+
+// =============================================================================
+// Readiness Card — checklist em tempo real
+// =============================================================================
+type ReadinessStepLite = { key: string; label: string; complete: boolean; issues: string[] };
+function ReadinessCard({
+  enabled, loading, progress, canPublish, issues, steps,
+}: {
+  enabled: boolean;
+  loading: boolean;
+  progress: number;
+  canPublish: boolean;
+  issues: string[];
+  steps: ReadinessStepLite[];
+}) {
+  if (!enabled) {
+    return (
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Readiness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 text-xs text-muted-foreground">
+          Preencha os Dados Básicos para iniciar a verificação automática.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            Readiness
+          </CardTitle>
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={cn("text-3xl font-black tabular-nums", canPublish ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+            {progress}%
+          </span>
+          <Badge variant={canPublish ? "default" : "secondary"} className={cn(canPublish && "bg-emerald-600 hover:bg-emerald-600")}>
+            {canPublish ? "Pode Publicar" : "Não Pode Publicar"}
+          </Badge>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full transition-all duration-500", canPublish ? "bg-emerald-500" : "bg-primary")}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 space-y-3">
+        <ul className="space-y-1.5">
+          {steps.map((s) => (
+            <li key={s.key} className="flex items-start gap-2 text-xs">
+              {s.complete ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className={cn("font-medium", s.complete ? "text-foreground" : "text-muted-foreground")}>
+                  {s.label}
+                </p>
+                {!s.complete && s.issues.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground truncate">{s.issues[0]}</p>
+                )}
+              </div>
+            </li>
+          ))}
+          {steps.length === 0 && !loading && (
+            <li className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Circle className="h-4 w-4" /> Aguardando dados...
+            </li>
+          )}
+        </ul>
+        {issues.length > 0 && (
+          <div className="rounded-md bg-amber-500/5 border border-amber-500/30 p-2.5">
+            <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 mb-1">
+              {issues.length} pendência(s)
+            </p>
+            <ul className="text-[11px] text-amber-700 dark:text-amber-300 space-y-0.5 list-disc pl-4">
+              {issues.slice(0, 3).map((i, k) => <li key={k} className="truncate">{i}</li>)}
+              {issues.length > 3 && <li>+ {issues.length - 3} outras</li>}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Sticky Footer — ações primárias sempre visíveis
+// =============================================================================
+function StickyFooter({
+  productId, canPublish, busy, updatedAt, onSaveDraft, onPublish,
+}: {
+  productId: string | null;
+  canPublish: boolean;
+  busy: "draft" | "publish" | null;
+  updatedAt: number;
+  onSaveDraft: () => void;
+  onPublish: () => void;
+}) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!updatedAt) return;
+    const t = setInterval(() => force((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, [updatedAt]);
+
+  const since = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt) / 1000)) : null;
+  const sinceLabel = since == null
+    ? null
+    : since < 5 ? "agora mesmo"
+    : since < 60 ? `há ${since}s`
+    : since < 3600 ? `há ${Math.floor(since / 60)}min`
+    : `há ${Math.floor(since / 3600)}h`;
+
+  return (
+    <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex items-center gap-2 text-xs text-muted-foreground">
+          {productId && sinceLabel ? (
+            <>
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="truncate">Última verificação {sinceLabel}</span>
+            </>
+          ) : (
+            <span className="truncate">Cadastro guiado · alterações persistidas a cada etapa</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/admin/products" className="gap-2"><X className="h-4 w-4" /> Cancelar</Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSaveDraft}
+            disabled={!productId || busy !== null}
+            className="gap-2"
+          >
+            {busy === "draft" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Salvar Rascunho
+          </Button>
+          <Button
+            size="sm"
+            onClick={onPublish}
+            disabled={!productId || busy !== null}
+            className={cn("gap-2", canPublish && "bg-emerald-600 hover:bg-emerald-600/90")}
+          >
+            {busy === "publish" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Publicar Produto
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
