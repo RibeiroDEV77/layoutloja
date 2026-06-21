@@ -345,3 +345,133 @@ export async function finishInventoryCount(
 
   return { count: updated, adjustments };
 }
+
+// ============================================================================
+// Fase 6.1 Etapa 3 — Inventory MVP (Admin)
+//
+// Mantém SoC: leituras passam pelo Repository (read model + tabelas oficiais)
+// e mutações reutilizam EXCLUSIVAMENTE o Stock Engine já implementado
+// (createInventoryMovement / adjustInventory) preservando auditoria, Outbox,
+// telemetria e baixos de feature flag.
+// ============================================================================
+
+import { hasPermission, isSuperAdmin, requireStoreAccess } from './permissions.server';
+import { recordMetric } from '@/lib/foundations/observability.functions';
+
+async function ensureRead(supabase: SbClient, userId: string, storeId: string) {
+  if (await isSuperAdmin(supabase, userId)) return;
+  await requireStoreAccess(supabase, userId, storeId);
+  if (!(await hasPermission(supabase, userId, 'inventory.read', storeId))) {
+    throw Errors.forbidden('Permissão necessária: inventory.read');
+  }
+}
+
+export type ListStockInput = Inv.StockListFilters;
+
+export async function listAdminStock(
+  supabase: SbClient,
+  userId: string,
+  input: ListStockInput,
+) {
+  await ensureRead(supabase, userId, input.store_id);
+  const out = await Inv.listAdminStock(supabase, input);
+  recordMetric(supabase, {
+    scope: 'inventory',
+    name: 'admin.list',
+    value: 1,
+    storeId: input.store_id,
+  }).catch(() => {});
+  return out;
+}
+
+export async function getAdminStock(
+  supabase: SbClient,
+  userId: string,
+  id: string,
+) {
+  const row = await Inv.findAdminStockById(supabase, id);
+  if (!row || !row.store_id) throw Errors.notFound('Nível de estoque', id);
+  await ensureRead(supabase, userId, row.store_id);
+  return row;
+}
+
+export async function getStockMovements(
+  supabase: SbClient,
+  userId: string,
+  id: string,
+  limit = 100,
+) {
+  const row = await getAdminStock(supabase, userId, id);
+  return Inv.listMovements(supabase, {
+    warehouse_id: row.warehouse_id!,
+    variant_id: row.variant_id!,
+    limit,
+  });
+}
+
+export async function getStockReservations(
+  supabase: SbClient,
+  userId: string,
+  id: string,
+  limit = 100,
+) {
+  const row = await getAdminStock(supabase, userId, id);
+  return Inv.listReservations(supabase, {
+    warehouse_id: row.warehouse_id!,
+    variant_id: row.variant_id!,
+    limit,
+  });
+}
+
+export async function listAdminWarehouses(
+  supabase: SbClient,
+  userId: string,
+  storeId: string,
+) {
+  await ensureRead(supabase, userId, storeId);
+  return Inv.listWarehouses(supabase, storeId);
+}
+
+/**
+ * Ação em lote: ajuste absoluto de saldo para múltiplos níveis.
+ * Cada item passa pelo Stock Engine (adjustInventory) — preservando
+ * auditoria, eventos de domínio e baixo automático (low_stock).
+ */
+export async function bulkAdjustStock(
+  supabase: SbClient,
+  userId: string,
+  input: { items: Array<{ stock_level_id: string; new_quantity: number; reason?: string }> },
+) {
+  if (!input.items?.length) throw Errors.validation('Nenhum nível selecionado');
+  if (input.items.length > 100) throw Errors.validation('Máximo 100 ajustes por operação');
+
+  const results: { stock_level_id: string; ok: boolean; error?: string }[] = [];
+  for (const it of input.items) {
+    try {
+      const lvl = await Inv.findAdminStockById(supabase, it.stock_level_id);
+      if (!lvl || !lvl.store_id) {
+        results.push({ stock_level_id: it.stock_level_id, ok: false, error: 'not_found' });
+        continue;
+      }
+      await adjustInventory(supabase, userId, {
+        store_id: lvl.store_id,
+        warehouse_id: lvl.warehouse_id!,
+        variant_id: lvl.variant_id!,
+        new_quantity: it.new_quantity,
+        reason: it.reason,
+      });
+      results.push({ stock_level_id: it.stock_level_id, ok: true });
+    } catch (err) {
+      results.push({
+        stock_level_id: it.stock_level_id,
+        ok: false,
+        error: err instanceof Error ? err.message : 'erro',
+      });
+    }
+  }
+  return {
+    results,
+    ok_count: results.filter((r) => r.ok).length,
+    fail_count: results.filter((r) => !r.ok).length,
+  };
+}
