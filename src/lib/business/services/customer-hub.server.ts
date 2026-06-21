@@ -201,8 +201,8 @@ export async function updateConsents(
     if (e2) throw Errors.internal('Falha ao registrar log de consentimento', { error: e2.message });
   }
   await enqueueOutbox(supabase, {
-    store_id: c.store_id, aggregate_type: 'customer', aggregate_id: input.customer_id,
-    event_type: 'customer.consents.updated', payload: input.consents,
+    storeId: c.store_id, aggregateType: 'customer', aggregateId: input.customer_id,
+    eventType: 'customer.consents.updated', payload: input.consents as Record<string, unknown>,
   });
   await recordMetric(supabase, { scope: 'customers', name: 'consents_updated', value: logRows.length, storeId: c.store_id });
   return { ok: true };
