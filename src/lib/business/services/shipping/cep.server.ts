@@ -47,6 +47,5 @@ export async function lookupViaCep(rawCep: string): Promise<PostalLookup> {
     state:    String(json.uf ?? ''),
     country:  'BR',
     ibge:     (json.ibge as string) ?? null,
-    raw:      json,
   };
 }
