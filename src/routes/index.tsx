@@ -7,8 +7,9 @@ import {
 
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
-  listStorefrontBrands,
+  listStorefrontBrands, type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
