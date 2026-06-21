@@ -801,6 +801,9 @@ export type Database = {
           customer_id: string
           district: string | null
           doc_number: string | null
+          geocode_precision: string | null
+          geocode_provider: string | null
+          geocoded_at: string | null
           id: string
           is_default_billing: boolean
           is_default_shipping: boolean
@@ -825,6 +828,9 @@ export type Database = {
           customer_id: string
           district?: string | null
           doc_number?: string | null
+          geocode_precision?: string | null
+          geocode_provider?: string | null
+          geocoded_at?: string | null
           id?: string
           is_default_billing?: boolean
           is_default_shipping?: boolean
@@ -849,6 +855,9 @@ export type Database = {
           customer_id?: string
           district?: string | null
           doc_number?: string | null
+          geocode_precision?: string | null
+          geocode_provider?: string | null
+          geocoded_at?: string | null
           id?: string
           is_default_billing?: boolean
           is_default_shipping?: boolean
@@ -868,6 +877,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_consents_log: {
+        Row: {
+          actor_user_id: string | null
+          channel: string
+          created_at: string
+          customer_id: string
+          granted: boolean
+          id: string
+          ip: string | null
+          source: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          channel: string
+          created_at?: string
+          customer_id: string
+          granted: boolean
+          id?: string
+          ip?: string | null
+          source?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string
+          granted?: boolean
+          id?: string
+          ip?: string | null
+          source?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_consents_log_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -1052,6 +1105,150 @@ export type Database = {
           },
         ]
       }
+      customer_notes: {
+        Row: {
+          author_user_id: string | null
+          body: string
+          created_at: string
+          customer_id: string
+          id: string
+          pinned: boolean
+          updated_at: string
+        }
+        Insert: {
+          author_user_id?: string | null
+          body: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string | null
+          body?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_score_factors: {
+        Row: {
+          computed_at: string
+          customer_id: string
+          factor_code: string
+          id: string
+          value: number
+          weight: number
+        }
+        Insert: {
+          computed_at?: string
+          customer_id: string
+          factor_code: string
+          id?: string
+          value?: number
+          weight?: number
+        }
+        Update: {
+          computed_at?: string
+          customer_id?: string
+          factor_code?: string
+          id?: string
+          value?: number
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_score_factors_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tag_map: {
+        Row: {
+          created_at: string
+          customer_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tag_map_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_tag_map_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "customer_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tags_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_tax_profiles: {
         Row: {
           cnae: string | null
@@ -1101,6 +1298,11 @@ export type Database = {
           auth_user_id: string | null
           birth_date: string | null
           code: string | null
+          consent_data_processing: boolean
+          consent_marketing_email: boolean
+          consent_marketing_sms: boolean
+          consent_marketing_whatsapp: boolean
+          consent_updated_at: string | null
           created_at: string
           created_by: string | null
           credit_limit: number
@@ -1111,6 +1313,7 @@ export type Database = {
           email: string | null
           gender: string | null
           id: string
+          internal_notes: string | null
           legal_name: string | null
           marketing_opt_in: boolean
           municipal_registration: string | null
@@ -1118,6 +1321,8 @@ export type Database = {
           notes: string | null
           origin: string | null
           phone: string | null
+          score: number
+          score_updated_at: string | null
           segment: Database["public"]["Enums"]["customer_segment"]
           state_registration: string | null
           status: Database["public"]["Enums"]["customer_status"]
@@ -1130,6 +1335,11 @@ export type Database = {
           auth_user_id?: string | null
           birth_date?: string | null
           code?: string | null
+          consent_data_processing?: boolean
+          consent_marketing_email?: boolean
+          consent_marketing_sms?: boolean
+          consent_marketing_whatsapp?: boolean
+          consent_updated_at?: string | null
           created_at?: string
           created_by?: string | null
           credit_limit?: number
@@ -1140,6 +1350,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id?: string
+          internal_notes?: string | null
           legal_name?: string | null
           marketing_opt_in?: boolean
           municipal_registration?: string | null
@@ -1147,6 +1358,8 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          score?: number
+          score_updated_at?: string | null
           segment?: Database["public"]["Enums"]["customer_segment"]
           state_registration?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
@@ -1159,6 +1372,11 @@ export type Database = {
           auth_user_id?: string | null
           birth_date?: string | null
           code?: string | null
+          consent_data_processing?: boolean
+          consent_marketing_email?: boolean
+          consent_marketing_sms?: boolean
+          consent_marketing_whatsapp?: boolean
+          consent_updated_at?: string | null
           created_at?: string
           created_by?: string | null
           credit_limit?: number
@@ -1169,6 +1387,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id?: string
+          internal_notes?: string | null
           legal_name?: string | null
           marketing_opt_in?: boolean
           municipal_registration?: string | null
@@ -1176,6 +1395,8 @@ export type Database = {
           notes?: string | null
           origin?: string | null
           phone?: string | null
+          score?: number
+          score_updated_at?: string | null
           segment?: Database["public"]["Enums"]["customer_segment"]
           state_registration?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
@@ -3904,7 +4125,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_timeline_view: {
+        Row: {
+          actor_user_id: string | null
+          customer_id: string | null
+          data: Json | null
+          event_id: string | null
+          kind: string | null
+          occurred_at: string | null
+          source: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       asset_store_id: { Args: { _asset_id: string }; Returns: string }
@@ -4020,6 +4252,10 @@ export type Database = {
       po_store_id: { Args: { _po_id: string }; Returns: string }
       product_store_id: { Args: { _product_id: string }; Returns: string }
       purge_expired_idempotency_keys: { Args: never; Returns: number }
+      recompute_customer_score: {
+        Args: { _customer_id: string }
+        Returns: number
+      }
       record_health_check: {
         Args: {
           _component: string
