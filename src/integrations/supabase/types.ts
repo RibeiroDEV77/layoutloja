@@ -4349,6 +4349,554 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          payment_id: string
+          store_id: string
+          target_id: string | null
+          target_type: Database["public"]["Enums"]["payment_allocation_target"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          payment_id: string
+          store_id: string
+          target_id?: string | null
+          target_type: Database["public"]["Enums"]["payment_allocation_target"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          payment_id?: string
+          store_id?: string
+          target_id?: string | null
+          target_type?: Database["public"]["Enums"]["payment_allocation_target"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_attempts: {
+        Row: {
+          adapter: string
+          attempt_no: number
+          correlation_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          finished_at: string | null
+          gateway_id: string | null
+          gateway_status: string | null
+          http_status: number | null
+          id: string
+          idempotency_key: string | null
+          latency_ms: number | null
+          operation: Database["public"]["Enums"]["payment_attempt_operation"]
+          payment_id: string
+          request_payload: Json
+          response_payload: Json
+          retry_of: string | null
+          started_at: string
+          store_id: string
+          trace_id: string | null
+        }
+        Insert: {
+          adapter: string
+          attempt_no: number
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          gateway_id?: string | null
+          gateway_status?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key?: string | null
+          latency_ms?: number | null
+          operation: Database["public"]["Enums"]["payment_attempt_operation"]
+          payment_id: string
+          request_payload?: Json
+          response_payload?: Json
+          retry_of?: string | null
+          started_at?: string
+          store_id: string
+          trace_id?: string | null
+        }
+        Update: {
+          adapter?: string
+          attempt_no?: number
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          gateway_id?: string | null
+          gateway_status?: string | null
+          http_status?: number | null
+          id?: string
+          idempotency_key?: string | null
+          latency_ms?: number | null
+          operation?: Database["public"]["Enums"]["payment_attempt_operation"]
+          payment_id?: string
+          request_payload?: Json
+          response_payload?: Json
+          retry_of?: string | null
+          started_at?: string
+          store_id?: string
+          trace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_attempts_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_attempts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_attempts_retry_of_fkey"
+            columns: ["retry_of"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_attempts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_events: {
+        Row: {
+          actor_id: string | null
+          actor_type: Database["public"]["Enums"]["payment_event_actor"]
+          correlation_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          occurred_at: string
+          payload: Json
+          payment_id: string
+          store_id: string
+          trace_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: Database["public"]["Enums"]["payment_event_actor"]
+          correlation_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          payment_id: string
+          store_id: string
+          trace_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: Database["public"]["Enums"]["payment_event_actor"]
+          correlation_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          payment_id?: string
+          store_id?: string
+          trace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_gateways: {
+        Row: {
+          adapter: string
+          capabilities: Json
+          config: Json
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          priority: number
+          store_id: string
+          supported_currencies: string[]
+          supported_methods: Database["public"]["Enums"]["payment_method"][]
+          updated_at: string
+          webhook_secret_ref: string | null
+        }
+        Insert: {
+          adapter: string
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          store_id: string
+          supported_currencies?: string[]
+          supported_methods?: Database["public"]["Enums"]["payment_method"][]
+          updated_at?: string
+          webhook_secret_ref?: string | null
+        }
+        Update: {
+          adapter?: string
+          capabilities?: Json
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          priority?: number
+          store_id?: string
+          supported_currencies?: string[]
+          supported_methods?: Database["public"]["Enums"]["payment_method"][]
+          updated_at?: string
+          webhook_secret_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_gateways_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_metadata: {
+        Row: {
+          created_at: string
+          id: string
+          is_pii: boolean
+          is_secret: boolean
+          key: string
+          namespace: string
+          payment_id: string
+          store_id: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_pii?: boolean
+          is_secret?: boolean
+          key: string
+          namespace: string
+          payment_id: string
+          store_id: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_pii?: boolean
+          is_secret?: boolean
+          key?: string
+          namespace?: string
+          payment_id?: string
+          store_id?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_metadata_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_metadata_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_transactions: {
+        Row: {
+          amount: number
+          attempt_id: string | null
+          correlation_id: string | null
+          created_at: string
+          currency: string
+          direction: Database["public"]["Enums"]["payment_transaction_direction"]
+          external_id: string | null
+          gateway_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["payment_transaction_kind"]
+          metadata: Json
+          occurred_at: string
+          parent_transaction_id: string | null
+          payment_id: string
+          posted_at: string | null
+          settlement_date: string | null
+          store_id: string
+          trace_id: string | null
+        }
+        Insert: {
+          amount: number
+          attempt_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          direction: Database["public"]["Enums"]["payment_transaction_direction"]
+          external_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["payment_transaction_kind"]
+          metadata?: Json
+          occurred_at?: string
+          parent_transaction_id?: string | null
+          payment_id: string
+          posted_at?: string | null
+          settlement_date?: string | null
+          store_id: string
+          trace_id?: string | null
+        }
+        Update: {
+          amount?: number
+          attempt_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          currency?: string
+          direction?: Database["public"]["Enums"]["payment_transaction_direction"]
+          external_id?: string | null
+          gateway_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_transaction_kind"]
+          metadata?: Json
+          occurred_at?: string
+          parent_transaction_id?: string | null
+          payment_id?: string
+          posted_at?: string | null
+          settlement_date?: string | null
+          store_id?: string
+          trace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_parent_transaction_id_fkey"
+            columns: ["parent_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "payment_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_captured: number
+          amount_fee: number
+          amount_gross: number
+          amount_net: number
+          amount_refunded: number
+          authorized_at: string | null
+          cancelled_at: string | null
+          captured_at: string | null
+          closed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          customer_id: string | null
+          expires_at: string | null
+          external_id: string | null
+          failed_at: string | null
+          gateway_id: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json
+          method: Database["public"]["Enums"]["payment_method"] | null
+          paid_at: string | null
+          payable_id: string
+          payable_type: Database["public"]["Enums"]["payment_payable_type"]
+          refunded_at: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          store_id: string
+          trace_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          amount_captured?: number
+          amount_fee?: number
+          amount_gross: number
+          amount_net?: number
+          amount_refunded?: number
+          authorized_at?: string | null
+          cancelled_at?: string | null
+          captured_at?: string | null
+          closed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          customer_id?: string | null
+          expires_at?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          gateway_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          paid_at?: string | null
+          payable_id: string
+          payable_type: Database["public"]["Enums"]["payment_payable_type"]
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          store_id: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          amount_captured?: number
+          amount_fee?: number
+          amount_gross?: number
+          amount_net?: number
+          amount_refunded?: number
+          authorized_at?: string | null
+          cancelled_at?: string | null
+          captured_at?: string | null
+          closed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          customer_id?: string | null
+          expires_at?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          gateway_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          paid_at?: string | null
+          payable_id?: string
+          payable_type?: Database["public"]["Enums"]["payment_payable_type"]
+          refunded_at?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          store_id?: string
+          trace_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_gateway_id_fkey"
+            columns: ["gateway_id"]
+            isOneToOne: false
+            referencedRelation: "payment_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -6988,6 +7536,7 @@ export type Database = {
         Returns: string
       }
       order_store_id: { Args: { _order_id: string }; Returns: string }
+      payment_store_id: { Args: { _payment_id: string }; Returns: string }
       po_store_id: { Args: { _po_id: string }; Returns: string }
       product_store_id: { Args: { _product_id: string }; Returns: string }
       purge_expired_idempotency_keys: { Args: never; Returns: number }
@@ -7282,6 +7831,63 @@ export type Database = {
         | "rule_applied"
         | "system"
       outbox_status: "pending" | "processing" | "published" | "failed" | "dead"
+      payment_allocation_target:
+        | "order_item"
+        | "shipping"
+        | "tax"
+        | "discount"
+        | "marketplace_seller"
+        | "platform_fee"
+      payment_attempt_operation:
+        | "authorize"
+        | "capture"
+        | "cancel"
+        | "refund"
+        | "query"
+        | "tokenize"
+      payment_event_actor:
+        | "system"
+        | "user"
+        | "gateway"
+        | "webhook"
+        | "workflow"
+      payment_method:
+        | "pix"
+        | "credit_card"
+        | "debit_card"
+        | "boleto"
+        | "wallet"
+        | "bank_transfer"
+        | "store_credit"
+        | "gift_card"
+      payment_payable_type:
+        | "order"
+        | "subscription"
+        | "wallet_topup"
+        | "marketplace_split"
+      payment_status:
+        | "pending"
+        | "authorized"
+        | "partially_captured"
+        | "captured"
+        | "paid"
+        | "partially_refunded"
+        | "refunded"
+        | "failed"
+        | "cancelled"
+        | "chargeback"
+        | "closed"
+      payment_transaction_direction: "credit" | "debit"
+      payment_transaction_kind:
+        | "authorization"
+        | "capture"
+        | "cancel"
+        | "refund"
+        | "partial_refund"
+        | "chargeback"
+        | "adjustment"
+        | "fee"
+        | "settlement"
       product_status: "draft" | "published" | "archived"
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
       reservation_ledger_kind:
@@ -7648,6 +8254,64 @@ export const Constants = {
         "system",
       ],
       outbox_status: ["pending", "processing", "published", "failed", "dead"],
+      payment_allocation_target: [
+        "order_item",
+        "shipping",
+        "tax",
+        "discount",
+        "marketplace_seller",
+        "platform_fee",
+      ],
+      payment_attempt_operation: [
+        "authorize",
+        "capture",
+        "cancel",
+        "refund",
+        "query",
+        "tokenize",
+      ],
+      payment_event_actor: ["system", "user", "gateway", "webhook", "workflow"],
+      payment_method: [
+        "pix",
+        "credit_card",
+        "debit_card",
+        "boleto",
+        "wallet",
+        "bank_transfer",
+        "store_credit",
+        "gift_card",
+      ],
+      payment_payable_type: [
+        "order",
+        "subscription",
+        "wallet_topup",
+        "marketplace_split",
+      ],
+      payment_status: [
+        "pending",
+        "authorized",
+        "partially_captured",
+        "captured",
+        "paid",
+        "partially_refunded",
+        "refunded",
+        "failed",
+        "cancelled",
+        "chargeback",
+        "closed",
+      ],
+      payment_transaction_direction: ["credit", "debit"],
+      payment_transaction_kind: [
+        "authorization",
+        "capture",
+        "cancel",
+        "refund",
+        "partial_refund",
+        "chargeback",
+        "adjustment",
+        "fee",
+        "settlement",
+      ],
       product_status: ["draft", "published", "archived"],
       product_visibility: ["published", "hidden", "private", "catalog_only"],
       reservation_ledger_kind: [
