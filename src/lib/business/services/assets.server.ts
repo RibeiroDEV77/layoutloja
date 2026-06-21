@@ -223,7 +223,127 @@ export async function createUploadJob(
   return { job_id: data.id, target };
 }
 
+/* ----------- upload binário direto ao bucket `dam` (Supabase Storage) ----------- */
+
+const DAM_BUCKET = 'dam';
+
+function buildStoragePath(storeId: string, jobId: string, filename: string) {
+  const safe = (filename || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 180);
+  return `${storeId}/${jobId}/${safe}`;
+}
+
+export async function signUploadJob(supabase: SbClient, userId: string, jobId: string) {
+  const { data: job, error } = await supabase
+    .from('asset_upload_jobs')
+    .select('id, store_id, filename, status')
+    .eq('id', jobId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw Errors.internal('Falha ao carregar job', { error: error.message });
+  if (!job) throw Errors.notFound('Upload job', jobId);
+  await requirePermission(supabase, userId, 'dam.upload', job.store_id);
+  const path = buildStoragePath(job.store_id, job.id, job.filename);
+  const { data: signed, error: signErr } = await supabase
+    .storage.from(DAM_BUCKET)
+    .createSignedUploadUrl(path, { upsert: true });
+  if (signErr || !signed) {
+    throw Errors.internal(
+      'Falha ao gerar URL de upload — verifique se o bucket "dam" existe (Supabase → Storage)',
+      { error: signErr?.message },
+    );
+  }
+  await supabase.from('asset_upload_jobs').update({ status: 'uploading' }).eq('id', jobId);
+  return { url: signed.signedUrl, token: signed.token, bucket: DAM_BUCKET, path };
+}
+
+export interface CompleteUploadJobParams {
+  job_id: string;
+  size_bytes?: number;
+  mime?: string;
+  width?: number;
+  height?: number;
+  title?: string;
+  alt_text?: string;
+  folder_id?: string | null;
+}
+
+export async function completeUploadJob(
+  supabase: SbClient,
+  userId: string,
+  p: CompleteUploadJobParams,
+) {
+  const { data: job, error } = await supabase
+    .from('asset_upload_jobs')
+    .select('id, store_id, context, filename, mime, size_bytes, status, asset_id')
+    .eq('id', p.job_id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw Errors.internal('Falha ao carregar job', { error: error.message });
+  if (!job) throw Errors.notFound('Upload job', p.job_id);
+
+  if (job.status === 'done' && job.asset_id) {
+    const { data: existing } = await supabase.from('assets').select('*').eq('id', job.asset_id).maybeSingle();
+    if (existing) return existing;
+  }
+
+  await requirePermission(supabase, userId, 'dam.upload', job.store_id);
+
+  const mime = p.mime ?? job.mime ?? 'application/octet-stream';
+  const kind: AssetKind =
+    mime.startsWith('image/svg') ? 'svg'
+    : mime.startsWith('image/') ? 'image'
+    : mime.startsWith('video/') ? 'video'
+    : mime === 'application/pdf' ? 'pdf'
+    : 'other';
+
+  const path = buildStoragePath(job.store_id, job.id, job.filename);
+
+  const { data: asset, error: insErr } = await supabase
+    .from('assets')
+    .insert({
+      store_id: job.store_id,
+      context: job.context as AssetContext,
+      kind,
+      storage_driver: 'supabase' as AssetDriver,
+      bucket: DAM_BUCKET,
+      storage_path: path,
+      mime,
+      size_bytes: p.size_bytes ?? job.size_bytes ?? null,
+      width: p.width ?? null,
+      height: p.height ?? null,
+      original_filename: job.filename,
+      title: p.title ?? null,
+      alt_text: p.alt_text ?? null,
+      folder_id: p.folder_id ?? null,
+      created_by: userId,
+    })
+    .select('*')
+    .single();
+  if (insErr) throw Errors.internal('Falha ao registrar asset', { error: insErr.message });
+
+  await supabase
+    .from('asset_upload_jobs')
+    .update({
+      status: 'done',
+      asset_id: asset.id,
+      bytes_uploaded: p.size_bytes ?? job.size_bytes ?? 0,
+    })
+    .eq('id', p.job_id);
+
+  await dispatchEvent(supabase, {
+    event_type: 'asset.registered',
+    aggregate_type: 'asset',
+    aggregate_id: asset.id,
+    store_id: job.store_id,
+    payload: { kind: asset.kind, driver: 'supabase', bucket: DAM_BUCKET, path },
+  });
+
+  const preview_url = await resolvePreviewUrl(supabase, asset);
+  return { ...asset, preview_url };
+}
+
 export async function cancelUploadJob(supabase: SbClient, userId: string, jobId: string) {
+
   const { data, error } = await supabase
     .from('asset_upload_jobs')
     .update({ status: 'canceled' })
