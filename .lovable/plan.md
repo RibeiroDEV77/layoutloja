@@ -1,4 +1,20 @@
-## Fase 5.1 — Clientes
+## Fase 5.1 — Clientes ✅ CONCLUÍDA
+
+**Entregue:**
+- Tabelas: `customers`, `customer_addresses`, `customer_contacts`, `customer_tax_profiles`, `customer_credit_ledger`, `customer_groups_map`.
+- Enums: `customer_type`, `customer_status`, `customer_segment`, `address_type`, `tax_regime`, `credit_ledger_kind`.
+- RLS por loja + permissão; cliente autenticado lê/atualiza próprio cadastro/endereços.
+- Triggers: validação CPF/CNPJ + normalização, single default address, audit_row_change.
+- Permissions: `customers.read/create/update/delete/credit.manage` + role `sales`.
+- Workflow seed: `customer_onboarding` (lead → active → vip / blocked).
+- Feature flag: `customers.enable_credit_ledger` (default false).
+- Camada TS: repositories + services + 14 server fns (CRUD + addresses + contacts + tax + credit).
+- Integração: Outbox (`customer.created/updated/address.added`) + métricas observability.
+- UI: rota `/admin/customers` (MasterCrudPage) + entrada na sidebar (já existente).
+
+---
+
+## Fase 5.1 — Clientes (plano original)
 
 Implementar o módulo Clientes seguindo o padrão estabelecido (UI → server functions → services → repositories → Supabase), reutilizando as Fundações Transversais (Outbox, Workflow, Observability, Idempotency, RBAC).
 

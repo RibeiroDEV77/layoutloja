@@ -792,6 +792,183 @@ export type Database = {
           },
         ]
       }
+      customer_addresses: {
+        Row: {
+          city: string | null
+          complement: string | null
+          country: string
+          created_at: string
+          customer_id: string
+          district: string | null
+          doc_number: string | null
+          id: string
+          is_default_billing: boolean
+          is_default_shipping: boolean
+          label: string | null
+          latitude: number | null
+          longitude: number | null
+          number: string | null
+          phone: string | null
+          recipient: string | null
+          reference: string | null
+          state: string | null
+          street: string | null
+          type: Database["public"]["Enums"]["address_type"]
+          updated_at: string
+          zipcode: string | null
+        }
+        Insert: {
+          city?: string | null
+          complement?: string | null
+          country?: string
+          created_at?: string
+          customer_id: string
+          district?: string | null
+          doc_number?: string | null
+          id?: string
+          is_default_billing?: boolean
+          is_default_shipping?: boolean
+          label?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          number?: string | null
+          phone?: string | null
+          recipient?: string | null
+          reference?: string | null
+          state?: string | null
+          street?: string | null
+          type?: Database["public"]["Enums"]["address_type"]
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Update: {
+          city?: string | null
+          complement?: string | null
+          country?: string
+          created_at?: string
+          customer_id?: string
+          district?: string | null
+          doc_number?: string | null
+          id?: string
+          is_default_billing?: boolean
+          is_default_shipping?: boolean
+          label?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          number?: string | null
+          phone?: string | null
+          recipient?: string | null
+          reference?: string | null
+          state?: string | null
+          street?: string | null
+          type?: Database["public"]["Enums"]["address_type"]
+          updated_at?: string
+          zipcode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_contacts: {
+        Row: {
+          created_at: string
+          customer_id: string
+          email: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_credit_ledger: {
+        Row: {
+          actor_user_id: string | null
+          amount: number
+          balance_after: number
+          created_at: string
+          customer_id: string
+          id: string
+          kind: Database["public"]["Enums"]["credit_ledger_kind"]
+          reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          amount: number
+          balance_after: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["credit_ledger_kind"]
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["credit_ledger_kind"]
+          reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_groups: {
         Row: {
           code: string
@@ -835,6 +1012,188 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customer_groups_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_groups_map: {
+        Row: {
+          created_at: string
+          customer_group_id: string
+          customer_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_id: string
+          customer_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_id?: string
+          customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_groups_map_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_groups_map_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tax_profiles: {
+        Row: {
+          cnae: string | null
+          created_at: string
+          customer_id: string
+          icms_taxpayer: boolean
+          ie_isento: boolean
+          notes: string | null
+          regime: Database["public"]["Enums"]["tax_regime"] | null
+          suframa: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnae?: string | null
+          created_at?: string
+          customer_id: string
+          icms_taxpayer?: boolean
+          ie_isento?: boolean
+          notes?: string | null
+          regime?: Database["public"]["Enums"]["tax_regime"] | null
+          suframa?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnae?: string | null
+          created_at?: string
+          customer_id?: string
+          icms_taxpayer?: boolean
+          ie_isento?: boolean
+          notes?: string | null
+          regime?: Database["public"]["Enums"]["tax_regime"] | null
+          suframa?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tax_profiles_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          auth_user_id: string | null
+          birth_date: string | null
+          code: string | null
+          created_at: string
+          created_by: string | null
+          credit_limit: number
+          default_payment_terms: string | null
+          default_price_list_id: string | null
+          deleted_at: string | null
+          doc_number: string | null
+          email: string | null
+          gender: string | null
+          id: string
+          legal_name: string | null
+          marketing_opt_in: boolean
+          municipal_registration: string | null
+          name: string
+          notes: string | null
+          origin: string | null
+          phone: string | null
+          segment: Database["public"]["Enums"]["customer_segment"]
+          state_registration: string | null
+          status: Database["public"]["Enums"]["customer_status"]
+          store_id: string
+          trade_name: string | null
+          type: Database["public"]["Enums"]["customer_type"]
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          birth_date?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_limit?: number
+          default_payment_terms?: string | null
+          default_price_list_id?: string | null
+          deleted_at?: string | null
+          doc_number?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          legal_name?: string | null
+          marketing_opt_in?: boolean
+          municipal_registration?: string | null
+          name: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          segment?: Database["public"]["Enums"]["customer_segment"]
+          state_registration?: string | null
+          status?: Database["public"]["Enums"]["customer_status"]
+          store_id: string
+          trade_name?: string | null
+          type?: Database["public"]["Enums"]["customer_type"]
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          birth_date?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_limit?: number
+          default_payment_terms?: string | null
+          default_price_list_id?: string | null
+          deleted_at?: string | null
+          doc_number?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          legal_name?: string | null
+          marketing_opt_in?: boolean
+          municipal_registration?: string | null
+          name?: string
+          notes?: string | null
+          origin?: string | null
+          phone?: string | null
+          segment?: Database["public"]["Enums"]["customer_segment"]
+          state_registration?: string | null
+          status?: Database["public"]["Enums"]["customer_status"]
+          store_id?: string
+          trade_name?: string | null
+          type?: Database["public"]["Enums"]["customer_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_default_price_list_id_fkey"
+            columns: ["default_price_list_id"]
+            isOneToOne: false
+            referencedRelation: "price_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -3588,6 +3947,7 @@ export type Database = {
       }
       color_store_id: { Args: { _color_id: string }; Returns: string }
       current_user_context: { Args: never; Returns: Json }
+      customer_store_id: { Args: { _customer_id: string }; Returns: string }
       emit_domain_event: {
         Args: {
           _aggregate_id: string
@@ -3689,6 +4049,7 @@ export type Database = {
       warehouse_store_id: { Args: { _warehouse_id: string }; Returns: string }
     }
     Enums: {
+      address_type: "main" | "shipping" | "billing" | "commercial"
       asset_context:
         | "product"
         | "category"
@@ -3717,6 +4078,12 @@ export type Database = {
       asset_status: "active" | "archived"
       attribute_input_type: "select" | "text" | "number" | "boolean"
       collection_type: "manual" | "smart"
+      credit_ledger_kind:
+        | "credit"
+        | "debit"
+        | "refund"
+        | "adjustment"
+        | "expiration"
       customer_group_kind:
         | "varejo"
         | "atacado"
@@ -3724,6 +4091,15 @@ export type Database = {
         | "representante"
         | "distribuidor"
         | "revendedor"
+      customer_segment:
+        | "retail"
+        | "wholesale"
+        | "rep"
+        | "distributor"
+        | "reseller"
+        | "vip"
+      customer_status: "active" | "inactive" | "blocked"
+      customer_type: "pf" | "pj"
       health_status: "ok" | "degraded" | "down" | "unknown"
       idempotency_status: "in_flight" | "succeeded" | "failed"
       media_type: "image" | "video" | "youtube" | "vimeo"
@@ -3732,6 +4108,7 @@ export type Database = {
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
       sale_channel: "varejo" | "atacado" | "ambos"
       setting_scope: "global" | "store"
+      tax_regime: "mei" | "simples" | "presumido" | "real" | "isento"
       workflow_instance_status: "active" | "completed" | "cancelled" | "failed"
     }
     CompositeTypes: {
@@ -3860,6 +4237,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      address_type: ["main", "shipping", "billing", "commercial"],
       asset_context: [
         "product",
         "category",
@@ -3883,6 +4261,13 @@ export const Constants = {
       asset_status: ["active", "archived"],
       attribute_input_type: ["select", "text", "number", "boolean"],
       collection_type: ["manual", "smart"],
+      credit_ledger_kind: [
+        "credit",
+        "debit",
+        "refund",
+        "adjustment",
+        "expiration",
+      ],
       customer_group_kind: [
         "varejo",
         "atacado",
@@ -3891,6 +4276,16 @@ export const Constants = {
         "distribuidor",
         "revendedor",
       ],
+      customer_segment: [
+        "retail",
+        "wholesale",
+        "rep",
+        "distributor",
+        "reseller",
+        "vip",
+      ],
+      customer_status: ["active", "inactive", "blocked"],
+      customer_type: ["pf", "pj"],
       health_status: ["ok", "degraded", "down", "unknown"],
       idempotency_status: ["in_flight", "succeeded", "failed"],
       media_type: ["image", "video", "youtube", "vimeo"],
@@ -3899,6 +4294,7 @@ export const Constants = {
       product_visibility: ["published", "hidden", "private", "catalog_only"],
       sale_channel: ["varejo", "atacado", "ambos"],
       setting_scope: ["global", "store"],
+      tax_regime: ["mei", "simples", "presumido", "real", "isento"],
       workflow_instance_status: ["active", "completed", "cancelled", "failed"],
     },
   },
