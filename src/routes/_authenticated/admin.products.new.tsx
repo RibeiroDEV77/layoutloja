@@ -1082,19 +1082,20 @@ function StockPriceBlock({
           Nenhuma variante. Volte à etapa <strong>Variações</strong> e clique em <strong>Gerar variantes</strong>.
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="rounded-lg border overflow-x-auto bg-background">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase">
+            <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Cor</th>
-                <th className="text-left p-2">Tamanho</th>
-                <th className="text-left p-2">SKU</th>
-                <th className="text-left p-2">Cód. Barras</th>
-                <th className="text-right p-2">Peso (g)</th>
-                <th className="text-right p-2">Estoque</th>
-                <th className="text-right p-2">Preço</th>
-                <th className="text-right p-2">Promo</th>
-                <th></th>
+                <th className="text-left p-3 w-16">Miniatura</th>
+                <th className="text-left p-3 min-w-[120px]">Cor</th>
+                <th className="text-left p-3 w-20">Tamanho</th>
+                <th className="text-left p-3 min-w-[140px]">SKU</th>
+                <th className="text-left p-3 min-w-[140px]">Cód. Barras</th>
+                <th className="text-right p-3 w-24">Peso (g)</th>
+                <th className="text-right p-3 w-24">Estoque</th>
+                <th className="text-right p-3 w-28">Preço</th>
+                <th className="text-right p-3 w-28">Promo</th>
+                <th className="w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -1104,10 +1105,12 @@ function StockPriceBlock({
                   (v.size_attribute_value_id && sizeLabelsQ.data?.get(v.size_attribute_value_id)) || "Único";
                 const stock = stockByVariant.get(v.id);
                 const price = priceByVariant.get(v.id);
+                const thumb = colorThumbById.get(v.product_color_id) ?? null;
                 return (
                   <MatrixRow
                     key={v.id}
                     variant={v}
+                    thumbnailUrl={thumb}
                     colorName={color?.name ?? "—"}
                     colorHex={color?.hex ?? null}
                     sizeLabel={sizeLabel}
