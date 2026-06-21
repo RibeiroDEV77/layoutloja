@@ -282,18 +282,19 @@ function PurchaseDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <ConfirmDialog
-        open={cancelOpen}
-        onOpenChange={setCancelOpen}
-        title="Cancelar OC?"
-        description="Esta ação é irreversível."
-        confirmLabel="Cancelar OC"
-        destructive
-        loading={cancelMut.isPending}
-        onConfirm={() => cancelMut.mutate()}
-      >
-        <Textarea placeholder="Motivo (opcional)" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
-      </ConfirmDialog>
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar OC?</DialogTitle>
+            <DialogDescription>Esta ação é irreversível.</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="Motivo (opcional)" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)}>Voltar</Button>
+            <Button variant="destructive" onClick={() => cancelMut.mutate()} disabled={cancelMut.isPending}>Cancelar OC</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
         <DialogContent className="max-w-2xl">
