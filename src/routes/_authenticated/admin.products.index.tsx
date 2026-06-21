@@ -97,7 +97,7 @@ function ProductsPage() {
       description="Central de produtos. Crie, configure e publique todo o catálogo."
       breadcrumbs={[{ label: "Catálogo" }, { label: "Produtos" }]}
       actions={
-        <Button asChild disabled={!storeId}>
+        <Button asChild disabled={!loading && !storeId}>
           <Link to="/admin/products/new">
             <Plus className="h-4 w-4 mr-2" /> Novo Produto
           </Link>
