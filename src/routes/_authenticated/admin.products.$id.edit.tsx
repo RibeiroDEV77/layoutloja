@@ -1,15 +1,26 @@
 /**
- * Wizard de Configuração de Produto — Fase 4.2B.
- * Layout: stepper + checklist | etapa ativa | preview em tempo real.
+ * Cadastro de Produto — Tabs (refactor inspirado em Mercado Livre / Shopify / Nuvemshop).
  *
- * Toda I/O passa por Server Functions. Zero acesso direto ao Supabase.
+ * 9 abas: Geral · Organização · Variantes · Galeria · Preços · SEO · Relacionados · Publicação · Histórico.
+ *
+ * REUSO INTEGRAL — nenhum engine novo, nenhuma tabela nova:
+ *   • Product Engine ............ products.functions.ts
+ *   • Variants/Colors/Media ...... product-children.functions.ts (+ updateProductVariant)
+ *   • Inventory Engine ........... inventory.functions.ts (listAdminStock + bulkAdjustStock)
+ *   • Pricing Engine ............. price-lists.functions.ts + setVariantPrice
+ *   • DAM ........................ dam.functions.ts via AssetPicker
+ *   • Audit / Outbox / Telemetria  ../audit + ../events/dispatcher + useTelemetry
+ *   • RBAC / RLS ................. has_permission('products.update', store_id) escopado por loja
+ *
+ * Toda I/O via Server Functions. Zero acesso direto ao Supabase.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Plus, Trash2, Sparkles, ImagePlus, Star, Save, Send, GripVertical, Library,
+  CheckCircle2, AlertCircle, History as HistoryIcon, Eye, EyeOff, Loader2,
 } from "lucide-react";
 import { AssetPicker } from "@/components/dam/asset-picker";
 import type { AssetLike } from "@/components/dam/asset-thumb";
@@ -20,6 +31,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { FormField, FormRow } from "@/components/admin/form-field";
 import { SelectField } from "@/components/admin/select-field";
@@ -27,12 +40,11 @@ import { FullPageLoading } from "@/components/admin/loading";
 import { ColorPicker } from "@/components/admin/color-picker";
 import { runAction, notify } from "@/components/admin/notify";
 import { usePageBreadcrumbs } from "@/components/admin/breadcrumb-context";
-import { ProductWizardStepper } from "@/components/admin/products/product-wizard-stepper";
-import { ProductPreview } from "@/components/admin/products/product-preview";
 import { ProductOperationsMenu } from "@/components/admin/products/product-operations-menu";
 
 import {
   getProduct, updateProduct, publishProduct, unpublishProduct, getProductReadiness, listProducts,
+  listProductHistory, listProductAudit,
 } from "@/lib/business/products.functions";
 import {
   listProductRelations, addProductRelation, removeProductRelation,
@@ -41,7 +53,7 @@ import {
   listProductColors, createProductColor, updateProductColor, deleteProductColor,
   listColorMedia, addColorMedia, deleteColorMedia, updateColorMedia,
   listProductAttributes, setProductAttribute,
-  listProductVariants, generateProductVariants, deleteProductVariant,
+  listProductVariants, generateProductVariants, deleteProductVariant, updateProductVariant,
   listProductPrices, setVariantPrice,
 } from "@/lib/business/product-children.functions";
 import { listCategories } from "@/lib/business/categories.functions";
@@ -50,12 +62,14 @@ import { listAttributes } from "@/lib/business/attributes.functions";
 import { listAttributeValues } from "@/lib/business/attribute-values.functions";
 import { listCategoryAttributes } from "@/lib/business/category-attributes.functions";
 import { listPriceLists } from "@/lib/business/price-lists.functions";
+import { listAdminStock, bulkAdjustStock } from "@/lib/business/inventory.functions";
 import { useActiveStore } from "@/hooks/use-active-store";
+import { useTelemetry } from "@/hooks/use-telemetry";
 import type { Tables } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin/products/$id/edit")({
   head: () => ({ meta: [{ title: "Configurar Produto — Admin" }] }),
-  component: ProductWizardPage,
+  component: ProductEditPage,
 });
 
 type ProductRow = Tables<"products">;
@@ -65,19 +79,30 @@ type VariantRow = Tables<"product_variants">;
 type AttrValRow = Tables<"product_attribute_values">;
 type PriceItemRow = Tables<"price_list_items">;
 
-const STEP_KEYS = ["general", "attributes", "colors", "gallery", "variants", "prices", "seo", "related", "publish"] as const;
-type StepKey = typeof STEP_KEYS[number];
+const TABS = [
+  { key: "general", label: "Geral" },
+  { key: "organization", label: "Organização" },
+  { key: "variants", label: "Variantes" },
+  { key: "gallery", label: "Galeria" },
+  { key: "prices", label: "Preços" },
+  { key: "seo", label: "SEO" },
+  { key: "related", label: "Relacionados" },
+  { key: "publish", label: "Publicação" },
+  { key: "history", label: "Histórico" },
+] as const;
+type TabKey = typeof TABS[number]["key"];
 
-function ProductWizardPage() {
+function ProductEditPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { storeId } = useActiveStore();
+  const { record } = useTelemetry();
 
   usePageBreadcrumbs([
     { label: "Catálogo" },
     { label: "Produtos", to: "/admin/products" },
-    { label: "Configurar" },
+    { label: "Cadastro" },
   ]);
 
   const fnGet = useServerFn(getProduct);
@@ -104,7 +129,8 @@ function ProductWizardPage() {
     refetchInterval: false,
   });
 
-  const [activeStep, setActiveStep] = useState<StepKey>("general");
+  const [tab, setTab] = useState<TabKey>("general");
+  useEffect(() => { record({ name: "product.tab.viewed", tags: { tab } }); }, [tab, record]);
 
   if (productQ.isLoading) return <FullPageLoading />;
   if (productQ.error || !productQ.data) {
@@ -117,9 +143,9 @@ function ProductWizardPage() {
   }
 
   const { product, colors } = productQ.data;
-  const steps = readinessQ.data?.steps ?? [];
   const progress = readinessQ.data?.progress ?? 0;
   const canPublish = !!readinessQ.data?.canPublish;
+  const issues = readinessQ.data?.issues ?? [];
 
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ["product", id] });
@@ -131,7 +157,7 @@ function ProductWizardPage() {
       () => fnPublish({ data: { id } }),
       { loading: "Publicando...", success: "Produto publicado!" },
     );
-    if (ok) refreshAll();
+    if (ok) { record({ name: "product.published", tags: { product_id: id } }); refreshAll(); }
   };
   const onUnpublish = async () => {
     const ok = await runAction(
@@ -161,9 +187,13 @@ function ProductWizardPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="hidden md:flex flex-col items-end min-w-[180px]">
+            <span className="text-xs text-muted-foreground mb-1">Pronto p/ publicar: {progress}%</span>
+            <Progress value={progress} className="w-44 h-2" />
+          </div>
           {product.status === "published" ? (
-            <Button variant="outline" onClick={onUnpublish}>Despublicar</Button>
+            <Button variant="outline" onClick={onUnpublish} className="gap-2"><EyeOff className="h-4 w-4" />Despublicar</Button>
           ) : (
             <Button onClick={onPublish} disabled={!canPublish} className="gap-2">
               <Send className="h-4 w-4" /> Publicar
@@ -176,88 +206,66 @@ function ProductWizardPage() {
         </div>
       </div>
 
-      {/* Grid: stepper | step | preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_300px] gap-4">
-        <Card className="lg:sticky lg:top-4 self-start">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Wizard</CardTitle>
-            <CardDescription className="text-xs">Conclua todas as etapas para publicar.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProductWizardStepper
-              steps={steps}
-              activeKey={activeStep}
-              onSelect={(k) => setActiveStep(k as StepKey)}
-              progress={progress}
-              canPublish={canPublish}
-            />
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="space-y-4">
+        <div className="overflow-x-auto">
+          <TabsList className="flex-wrap h-auto">
+            {TABS.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        <Card>
+          <CardContent className="p-6">
+            <TabsContent value="general" className="m-0">
+              <GeneralTab product={product} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="organization" className="m-0">
+              <OrganizationTab product={product} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="variants" className="m-0">
+              <VariantsTab productId={id} product={product} colors={colors as ColorRow[]} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="gallery" className="m-0">
+              <GalleryTab productId={id} colors={colors as ColorRow[]} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="prices" className="m-0">
+              <PricesTab productId={id} storeId={storeId} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="seo" className="m-0">
+              <SeoTab product={product} onSaved={refreshAll} />
+            </TabsContent>
+            <TabsContent value="related" className="m-0">
+              <RelatedTab productId={id} storeId={storeId} />
+            </TabsContent>
+            <TabsContent value="publish" className="m-0">
+              <PublishTab canPublish={canPublish} issues={issues} onPublish={onPublish} onUnpublish={onUnpublish} status={product.status} />
+            </TabsContent>
+            <TabsContent value="history" className="m-0">
+              <HistoryTab productId={id} />
+            </TabsContent>
           </CardContent>
         </Card>
-
-        <div className="min-w-0">
-          <Card>
-            <CardContent className="p-6">
-              {activeStep === "general" && <GeneralStep product={product} onSaved={refreshAll} />}
-              {activeStep === "attributes" && <AttributesStep product={product} onSaved={refreshAll} />}
-              {activeStep === "colors" && <ColorsStep productId={id} colors={colors as ColorRow[]} onSaved={refreshAll} />}
-              {activeStep === "gallery" && <GalleryStep productId={id} colors={colors as ColorRow[]} onSaved={refreshAll} />}
-              {activeStep === "variants" && <VariantsStep productId={id} categoryId={product.category_id} onSaved={refreshAll} />}
-              {activeStep === "prices" && <PricesStep productId={id} storeId={storeId} onSaved={refreshAll} />}
-              {activeStep === "seo" && <SeoStep product={product} onSaved={refreshAll} />}
-              {activeStep === "related" && <RelatedStep productId={id} storeId={storeId} />}
-              {activeStep === "publish" && (
-                <PublishStep canPublish={canPublish} issues={readinessQ.data?.issues ?? []} onPublish={onPublish} status={product.status} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:sticky lg:top-4 self-start">
-          <p className="text-xs uppercase font-medium text-muted-foreground mb-2 px-1">Preview</p>
-          <PreviewPanel productId={id} product={product} colors={colors as ColorRow[]} />
-        </div>
-      </div>
+      </Tabs>
     </div>
   );
 }
 
-// ============== Step 1: Geral ==============
+// ============================================================================
+// Aba 1 — Geral (dados de identidade, sem organização nem flags de catálogo)
+// ============================================================================
 
-function GeneralStep({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
+function GeneralTab({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
   const fn = useServerFn(updateProduct);
-  const fnCats = useServerFn(listCategories);
-  const fnBrands = useServerFn(listBrands);
-  const { storeId } = useActiveStore();
   const [form, setForm] = useState({
     name: product.name,
     short_description: product.short_description ?? "",
     description: product.description ?? "",
-    category_id: product.category_id ?? "",
-    brand_id: product.brand_id ?? "",
     sale_channel: product.sale_channel,
-    featured: product.featured,
-    on_sale: product.on_sale,
-    new_product: product.new_product,
-    best_seller: product.best_seller,
   });
   const [saving, setSaving] = useState(false);
-
-  const cats = useQuery({
-    queryKey: ["wizard-cats", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnCats({ data: { store_id: storeId!, pageSize: 100 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as { id: string; name: string }[];
-    },
-  });
-  const brands = useQuery({
-    queryKey: ["wizard-brands", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnBrands({ data: { store_id: storeId!, pageSize: 100 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as { id: string; name: string }[];
-    },
-  });
 
   const save = async () => {
     setSaving(true);
@@ -266,13 +274,7 @@ function GeneralStep({ product, onSaved }: { product: ProductRow; onSaved: () =>
         name: form.name,
         short_description: form.short_description || null,
         description: form.description || null,
-        category_id: form.category_id || null,
-        brand_id: form.brand_id || null,
         sale_channel: form.sale_channel,
-        featured: form.featured,
-        on_sale: form.on_sale,
-        new_product: form.new_product,
-        best_seller: form.best_seller,
       } } }),
       { loading: "Salvando...", success: "Informações salvas" },
     );
@@ -280,100 +282,93 @@ function GeneralStep({ product, onSaved }: { product: ProductRow; onSaved: () =>
     if (ok) onSaved();
   };
 
-  const patch = (p: Partial<typeof form>) => setForm((s) => ({ ...s, ...p }));
-
   return (
-    <StepShell title="Informações Gerais" description="Dados que aparecem na ficha do produto." onSave={save} saving={saving}>
+    <TabShell title="Informações Gerais" description="Dados de identidade do produto." onSave={save} saving={saving}>
       <FormField label="Nome" required>
-        <Input value={form.name} onChange={(e) => patch({ name: e.target.value })} />
+        <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       </FormField>
-      <FormRow>
-        <SelectField
-          label="Categoria" required
-          value={form.category_id}
-          onChange={(v) => patch({ category_id: v })}
-          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-        />
-        <SelectField
-          label="Marca"
-          value={form.brand_id || "__none__"}
-          onChange={(v) => patch({ brand_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Sem marca —" },
-            ...(brands.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-      </FormRow>
-      <FormField label="Descrição curta" hint="Aparece em listagens.">
-        <Textarea rows={2} value={form.short_description} onChange={(e) => patch({ short_description: e.target.value })} />
+      <FormField label="Descrição curta" hint="Aparece em listagens e cartões.">
+        <Textarea rows={2} value={form.short_description} onChange={(e) => setForm({ ...form, short_description: e.target.value })} />
       </FormField>
       <FormField label="Descrição completa">
-        <Textarea rows={6} value={form.description} onChange={(e) => patch({ description: e.target.value })} />
+        <Textarea rows={8} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FormField>
       <SelectField
         label="Canal de venda"
         value={form.sale_channel}
-        onChange={(v) => patch({ sale_channel: v as ProductRow["sale_channel"] })}
+        onChange={(v) => setForm({ ...form, sale_channel: v as ProductRow["sale_channel"] })}
         options={[
           { value: "ambos", label: "Varejo + Atacado" },
           { value: "varejo", label: "Apenas Varejo" },
           { value: "atacado", label: "Apenas Atacado" },
         ]}
       />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t">
-        {([
-          ["featured", "Destaque"],
-          ["on_sale", "Em promoção"],
-          ["new_product", "Novidade"],
-          ["best_seller", "Mais vendido"],
-        ] as const).map(([k, label]) => (
-          <div key={k} className="flex items-center justify-between rounded-md border p-2">
-            <Label className="text-xs">{label}</Label>
-            <Switch checked={form[k] as boolean} onCheckedChange={(v) => patch({ [k]: v } as Partial<typeof form>)} />
-          </div>
-        ))}
-      </div>
-    </StepShell>
+    </TabShell>
   );
 }
 
-// ============== Step 2: Atributos ==============
+// ============================================================================
+// Aba 2 — Organização (categoria, marca, atributos do produto-pai, flags de catálogo)
+// ============================================================================
 
-function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
+function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
   const { storeId } = useActiveStore();
+  const fnUpd = useServerFn(updateProduct);
+  const fnCats = useServerFn(listCategories);
+  const fnBrands = useServerFn(listBrands);
   const fnList = useServerFn(listProductAttributes);
   const fnSet = useServerFn(setProductAttribute);
   const fnCatAttrs = useServerFn(listCategoryAttributes);
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
 
+  const [form, setForm] = useState({
+    category_id: product.category_id ?? "",
+    brand_id: product.brand_id ?? "",
+    featured: product.featured,
+    on_sale: product.on_sale,
+    new_product: product.new_product,
+    best_seller: product.best_seller,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const cats = useQuery({
+    queryKey: ["org-cats", storeId], enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnCats({ data: { store_id: storeId!, pageSize: 100 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as { id: string; name: string }[];
+    },
+  });
+  const brands = useQuery({
+    queryKey: ["org-brands", storeId], enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnBrands({ data: { store_id: storeId!, pageSize: 100 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as { id: string; name: string }[];
+    },
+  });
+
   const valsQ = useQuery({
-    queryKey: ["wizard-attr", product.id, product.category_id],
-    enabled: !!product.category_id && !!storeId,
+    queryKey: ["org-attrs", product.id, form.category_id],
+    enabled: !!form.category_id && !!storeId,
     queryFn: async () => {
       const [cat, prod, attrsAll] = await Promise.all([
-        fnCatAttrs({ data: { category_id: product.category_id! } }),
+        fnCatAttrs({ data: { category_id: form.category_id } }),
         fnList({ data: { product_id: product.id } }),
         fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
       ]);
-      if (!cat.ok) throw new Error(cat.error.message);
-      if (!prod.ok) throw new Error(prod.error.message);
-      if (!attrsAll.ok) throw new Error(attrsAll.error.message);
-
+      if (!cat.ok || !prod.ok || !attrsAll.ok) throw new Error("Falha ao carregar atributos");
       const catAttrs = cat.data.rows as Array<{ attribute_id: string; is_required: boolean }>;
       const attrsMap = new Map(
         (attrsAll.data.rows as Array<{ id: string; name: string; input_type: string }>).map((a) => [a.id, a]),
       );
-      const productValues = new Map(
-        (prod.data as AttrValRow[]).map((p) => [p.attribute_id, p]),
-      );
-
+      const productValues = new Map((prod.data as AttrValRow[]).map((p) => [p.attribute_id, p]));
       const valuesMap = new Map<string, Array<{ id: string; label: string }>>();
       for (const ca of catAttrs) {
         const r = await fnVals({ data: { attribute_id: ca.attribute_id, pageSize: 100 } });
         if (r.ok) valuesMap.set(ca.attribute_id, r.data.rows as Array<{ id: string; label: string }>);
       }
-
       return catAttrs.map((ca) => ({
         attribute_id: ca.attribute_id,
         required: ca.is_required,
@@ -385,152 +380,615 @@ function AttributesStep({ product, onSaved }: { product: ProductRow; onSaved: ()
     },
   });
 
-  if (!product.category_id) {
-    return <p className="text-sm text-muted-foreground">Defina a categoria na etapa anterior para configurar atributos.</p>;
-  }
-
-  const setValue = async (attributeId: string, payload: Parameters<typeof fnSet>[0]["data"]) => {
+  const save = async () => {
+    setSaving(true);
     const ok = await runAction(
-      () => fnSet({ data: payload }),
-      { success: "Atributo salvo" },
+      () => fnUpd({ data: { id: product.id, patch: {
+        category_id: form.category_id || null,
+        brand_id: form.brand_id || null,
+        featured: form.featured,
+        on_sale: form.on_sale,
+        new_product: form.new_product,
+        best_seller: form.best_seller,
+      } } }),
+      { loading: "Salvando...", success: "Organização salva" },
     );
+    setSaving(false);
+    if (ok) onSaved();
+  };
+
+  const setAttr = async (payload: Parameters<typeof fnSet>[0]["data"]) => {
+    const ok = await runAction(() => fnSet({ data: payload }), { success: "Atributo salvo" });
     if (ok) { onSaved(); valsQ.refetch(); }
-    void attributeId;
   };
 
   return (
-    <StepShell title="Atributos" description="Atributos herdados da categoria selecionada.">
-      {valsQ.isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
-      {valsQ.data?.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum atributo vinculado a esta categoria.</p>
-      )}
-      <div className="space-y-3">
-        {valsQ.data?.map((a) => (
-          <div key={a.attribute_id} className="rounded-md border p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="font-medium">{a.name}{a.required && <span className="text-destructive ml-1">*</span>}</Label>
-              <Badge variant="outline" className="text-xs">{a.type}</Badge>
-            </div>
-            {a.values.length > 0 ? (
-              <SelectField
-                label=""
-                value={a.current?.attribute_value_id ?? "__none__"}
-                onChange={(v) =>
-                  setValue(a.attribute_id, {
-                    product_id: product.id,
-                    attribute_id: a.attribute_id,
-                    attribute_value_id: v === "__none__" ? null : v,
-                  })
-                }
-                options={[
-                  { value: "__none__", label: "— Não definido —" },
-                  ...a.values.map((v) => ({ value: v.id, label: v.label })),
-                ]}
-              />
-            ) : (
-              <Input
-                defaultValue={a.current?.value_text ?? ""}
-                placeholder="Digite o valor"
-                onBlur={(e) =>
-                  setValue(a.attribute_id, {
-                    product_id: product.id,
-                    attribute_id: a.attribute_id,
-                    value_text: e.target.value || null,
-                  })
-                }
-              />
-            )}
+    <TabShell title="Organização" description="Categoria, marca, atributos e destaque no catálogo." onSave={save} saving={saving}>
+      <FormRow>
+        <SelectField
+          label="Categoria" required
+          value={form.category_id}
+          onChange={(v) => setForm({ ...form, category_id: v })}
+          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+        />
+        <SelectField
+          label="Marca"
+          value={form.brand_id || "__none__"}
+          onChange={(v) => setForm({ ...form, brand_id: v === "__none__" ? "" : v })}
+          options={[
+            { value: "__none__", label: "— Sem marca —" },
+            ...(brands.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
+      </FormRow>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([
+          ["featured", "Destaque"],
+          ["on_sale", "Em promoção"],
+          ["new_product", "Novidade"],
+          ["best_seller", "Mais vendido"],
+        ] as const).map(([k, label]) => (
+          <div key={k} className="flex items-center justify-between rounded-md border p-2">
+            <Label className="text-xs">{label}</Label>
+            <Switch checked={form[k] as boolean} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
           </div>
         ))}
       </div>
-    </StepShell>
+
+      {form.category_id && (
+        <div className="space-y-3 pt-4 border-t">
+          <p className="text-sm font-medium">Atributos da categoria</p>
+          {valsQ.isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+          {valsQ.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum atributo vinculado a esta categoria.</p>
+          )}
+          {valsQ.data?.map((a) => (
+            <div key={a.attribute_id} className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">{a.name}{a.required && <span className="text-destructive ml-1">*</span>}</Label>
+                <Badge variant="outline" className="text-xs">{a.type}</Badge>
+              </div>
+              {a.values.length > 0 ? (
+                <SelectField
+                  label=""
+                  value={a.current?.attribute_value_id ?? "__none__"}
+                  onChange={(v) => setAttr({
+                    product_id: product.id,
+                    attribute_id: a.attribute_id,
+                    attribute_value_id: v === "__none__" ? null : v,
+                  })}
+                  options={[
+                    { value: "__none__", label: "— Não definido —" },
+                    ...a.values.map((v) => ({ value: v.id, label: v.label })),
+                  ]}
+                />
+              ) : (
+                <Input
+                  defaultValue={a.current?.value_text ?? ""}
+                  placeholder="Digite o valor"
+                  onBlur={(e) => setAttr({
+                    product_id: product.id,
+                    attribute_id: a.attribute_id,
+                    value_text: e.target.value || null,
+                  })}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </TabShell>
   );
 }
 
-// ============== Step 3: Cores ==============
+// ============================================================================
+// Aba 3 — Variantes (centro do sistema): cores + gerador + matriz editável
+// ============================================================================
 
-function ColorsStep({ productId, colors, onSaved }: { productId: string; colors: ColorRow[]; onSaved: () => void }) {
+function VariantsTab({
+  productId, product, colors, onSaved,
+}: { productId: string; product: ProductRow; colors: ColorRow[]; onSaved: () => void }) {
+  const { storeId } = useActiveStore();
+  const { record } = useTelemetry();
+  const qc = useQueryClient();
+
   const fnCreate = useServerFn(createProductColor);
-  const fnUpdate = useServerFn(updateProductColor);
-  const fnDelete = useServerFn(deleteProductColor);
+  const fnUpdColor = useServerFn(updateProductColor);
+  const fnDelColor = useServerFn(deleteProductColor);
+  const fnListVar = useServerFn(listProductVariants);
+  const fnGen = useServerFn(generateProductVariants);
+  const fnDelVar = useServerFn(deleteProductVariant);
+  const fnUpdVar = useServerFn(updateProductVariant);
+  const fnCatAttrs = useServerFn(listCategoryAttributes);
+  const fnAttrs = useServerFn(listAttributes);
+  const fnVals = useServerFn(listAttributeValues);
+  const fnStock = useServerFn(listAdminStock);
+  const fnBulkStock = useServerFn(bulkAdjustStock);
+  const fnPrices = useServerFn(listProductPrices);
+  const fnPriceLists = useServerFn(listPriceLists);
+  const fnSetPrice = useServerFn(setVariantPrice);
 
-  const [name, setName] = useState("");
-  const [hex, setHex] = useState("#000000");
+  const variantsQ = useQuery({
+    queryKey: ["variants", productId],
+    queryFn: async () => {
+      const r = await fnListVar({ data: { product_id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as VariantRow[];
+    },
+  });
 
+  const sizeAttrQ = useQuery({
+    queryKey: ["size-attr", product.category_id, storeId],
+    enabled: !!product.category_id && !!storeId,
+    queryFn: async () => {
+      const [ca, attrs] = await Promise.all([
+        fnCatAttrs({ data: { category_id: product.category_id! } }),
+        fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
+      ]);
+      if (!ca.ok || !attrs.ok) return null;
+      const attrList = attrs.data.rows as Array<{ id: string; name: string; is_size?: boolean }>;
+      const catList = ca.data.rows as Array<{ attribute_id: string }>;
+      const candidate = attrList.find((a) =>
+        catList.some((c) => c.attribute_id === a.id) && (a.is_size || /tamanho|size/i.test(a.name)),
+      );
+      if (!candidate) return { attribute: null, values: [] as Array<{ id: string; label: string; code: string | null }> };
+      const v = await fnVals({ data: { attribute_id: candidate.id, pageSize: 100 } });
+      return {
+        attribute: candidate,
+        values: v.ok ? (v.data.rows as Array<{ id: string; label: string; code: string | null }>) : [],
+      };
+    },
+  });
+
+  // Stock por variante (loja ativa) — vem do Inventory Engine
+  const stockQ = useQuery({
+    queryKey: ["product-stock", productId, storeId],
+    enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnStock({ data: { store_id: storeId!, product_id: productId, pageSize: 100 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as Array<{ id: string; variant_id: string; quantity_on_hand: number; warehouse_id: string }>;
+    },
+  });
+
+  // Preços por variante (lista padrão)
+  const priceListsQ = useQuery({
+    queryKey: ["price-lists", storeId], enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnPriceLists({ data: { store_id: storeId!, pageSize: 100 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as Array<{ id: string; name: string; is_default?: boolean }>;
+    },
+  });
+  const defaultPriceListId = priceListsQ.data?.find((l) => l.is_default)?.id ?? priceListsQ.data?.[0]?.id ?? "";
+  const pricesQ = useQuery({
+    queryKey: ["product-prices", productId],
+    queryFn: async () => {
+      const r = await fnPrices({ data: { product_id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as PriceItemRow[];
+    },
+  });
+
+  // ---------- Cores ----------
+  const [newColor, setNewColor] = useState({ name: "", hex: "#000000" });
   const addColor = async () => {
-    if (!name.trim()) return;
+    if (!newColor.name.trim()) return;
     const ok = await runAction(
-      () => fnCreate({ data: { product_id: productId, name: name.trim(), hex, is_default: colors.length === 0 } }),
+      () => fnCreate({ data: {
+        product_id: productId, name: newColor.name.trim(), hex: newColor.hex,
+        is_default: colors.length === 0,
+      } }),
       { success: "Cor adicionada" },
     );
-    if (ok) { setName(""); onSaved(); }
+    if (ok) { setNewColor({ name: "", hex: "#000000" }); onSaved(); }
   };
-
-  const setDefault = async (id: string) => {
+  const removeColor = async (id: string) => {
+    const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
+    if (ok) onSaved();
+  };
+  const setColorDefault = async (id: string) => {
     const ok = await runAction(
-      () => fnUpdate({ data: { id, patch: { is_default: true } } }),
+      () => fnUpdColor({ data: { id, patch: { is_default: true } } }),
       { success: "Cor padrão definida" },
     );
     if (ok) onSaved();
   };
 
-  const remove = async (id: string) => {
+  // ---------- Gerar variantes ----------
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const toggleSize = (id: string) =>
+    setSelectedSizes((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const generate = async () => {
     const ok = await runAction(
-      () => fnDelete({ data: { id } }),
-      { success: "Cor removida" },
+      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selectedSizes } }),
+      { loading: "Gerando variantes...", success: "Variantes geradas" },
     );
-    if (ok) onSaved();
+    if (ok) {
+      record({
+        name: "product.variants.generated",
+        tags: { product_id: productId, colors: colors.length, sizes: selectedSizes.length || 1 },
+      });
+      qc.invalidateQueries({ queryKey: ["variants", productId] });
+      qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+      onSaved();
+    }
   };
 
-  return (
-    <StepShell title="Cores" description="Cada cor terá sua própria galeria de mídia.">
-      <div className="rounded-md border p-3 space-y-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase">Adicionar cor</p>
-        <FormRow>
-          <FormField label="Nome">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Azul Marinho" />
-          </FormField>
-          <ColorPicker label="Cor" value={hex} onChange={setHex} />
-        </FormRow>
-        <Button onClick={addColor} disabled={!name.trim()} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" /> Adicionar
-        </Button>
-      </div>
+  const removeVariant = async (id: string) => {
+    const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
+    if (ok) {
+      qc.invalidateQueries({ queryKey: ["variants", productId] });
+      onSaved();
+    }
+  };
 
-      <div className="space-y-2">
-        {colors.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma cor cadastrada.</p>}
-        {colors.map((c) => (
-          <div key={c.id} className="flex items-center gap-3 rounded-md border p-3">
-            <span className="h-8 w-8 rounded-full border-2 border-white shadow ring-1 ring-border" style={{ background: c.hex ?? "#ccc" }} />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{c.name}</p>
-              <code className="text-xs text-muted-foreground">{c.hex}</code>
+  // ---------- Edição inline ----------
+  const saveVariantField = async (
+    id: string,
+    patch: Parameters<typeof fnUpdVar>[0]["data"]["patch"],
+  ) => {
+    const ok = await runAction(
+      () => fnUpdVar({ data: { id, patch } }),
+      { success: "Variante atualizada" },
+    );
+    if (ok) {
+      record({ name: "product.variant.edited", tags: { variant_id: id, fields: Object.keys(patch).join(",") } });
+      qc.invalidateQueries({ queryKey: ["variants", productId] });
+    }
+  };
+
+  const saveStock = async (stockLevelId: string, newQty: number) => {
+    const ok = await runAction(
+      () => fnBulkStock({ data: { items: [{ stock_level_id: stockLevelId, new_quantity: newQty, reason: "Ajuste via cadastro de produto" }] } }),
+      { success: "Estoque ajustado" },
+    );
+    if (ok) qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+  };
+
+  const savePrice = async (variantId: string, price: number, salePrice: number | null) => {
+    if (!defaultPriceListId) {
+      notify.error("Cadastre ao menos uma lista de preços");
+      return;
+    }
+    const ok = await runAction(
+      () => fnSetPrice({ data: {
+        variant_id: variantId, price_list_id: defaultPriceListId,
+        price, compare_at_price: salePrice,
+      } }),
+      { success: "Preço salvo" },
+    );
+    if (ok) qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+  };
+
+  // ---------- Lookups ----------
+  const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
+  const sizeById = useMemo(() => {
+    const m = new Map<string, string>();
+    (sizeAttrQ.data?.values ?? []).forEach((v) => m.set(v.id, v.label));
+    return m;
+  }, [sizeAttrQ.data]);
+  const stockByVariant = useMemo(() => {
+    const m = new Map<string, { id: string; qty: number }>();
+    (stockQ.data ?? []).forEach((s) => m.set(s.variant_id, { id: s.id, qty: s.quantity_on_hand }));
+    return m;
+  }, [stockQ.data]);
+  const priceByVariant = useMemo(() => {
+    const m = new Map<string, { price: number; compare: number | null }>();
+    (pricesQ.data ?? []).filter((p) => p.price_list_id === defaultPriceListId).forEach((p) =>
+      m.set(p.variant_id!, { price: Number(p.price), compare: p.compare_at_price != null ? Number(p.compare_at_price) : null }),
+    );
+    return m;
+  }, [pricesQ.data, defaultPriceListId]);
+
+  const sizeValues = sizeAttrQ.data?.values ?? [];
+  const variants = variantsQ.data ?? [];
+
+  return (
+    <TabShell
+      title="Variantes"
+      description="Centro operacional. Toda baixa de estoque, pedido, pagamento, NF e frete usa o SKU da variante."
+    >
+      {/* CORES — formam o eixo principal das variantes e a chave da galeria */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Cores</h3>
+          <p className="text-xs text-muted-foreground">Imagens pertencem à cor — gerencie na aba Galeria.</p>
+        </div>
+        <div className="rounded-md border p-3 space-y-3 bg-muted/30">
+          <FormRow>
+            <FormField label="Nome">
+              <Input value={newColor.name} onChange={(e) => setNewColor({ ...newColor, name: e.target.value })} placeholder="Ex.: Vermelho" />
+            </FormField>
+            <ColorPicker label="Cor" value={newColor.hex} onChange={(v) => setNewColor({ ...newColor, hex: v })} />
+            <div className="flex items-end">
+              <Button onClick={addColor} disabled={!newColor.name.trim()} className="gap-2">
+                <Plus className="h-4 w-4" /> Adicionar cor
+              </Button>
             </div>
-            {c.is_default ? (
-              <Badge variant="default" className="gap-1"><Star className="h-3 w-3" />Padrão</Badge>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={() => setDefault(c.id)}>Tornar padrão</Button>
-            )}
-            <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+          </FormRow>
+        </div>
+        {colors.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {colors.map((c) => (
+              <div key={c.id} className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
+                <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: c.hex ?? "#ccc" }} />
+                <span className="font-medium">{c.name}</span>
+                {c.is_default ? (
+                  <Badge className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>
+                ) : (
+                  <button onClick={() => setColorDefault(c.id)} className="text-xs text-muted-foreground hover:text-foreground">tornar padrão</button>
+                )}
+                <button onClick={() => removeColor(c.id)} className="text-destructive hover:text-destructive/80">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </StepShell>
+        )}
+      </section>
+
+      {/* GERADOR */}
+      <section className="space-y-3 pt-2 border-t">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Gerador de variantes</h3>
+          <Button
+            size="sm"
+            onClick={generate}
+            disabled={!colors.length || (!sizeValues.length && !selectedSizes.length && !sizeAttrQ.data)}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" /> Gerar variantes
+          </Button>
+        </div>
+        <div className="rounded-md border p-3 bg-muted/30 space-y-3">
+          {!colors.length && (
+            <p className="text-sm text-amber-700 dark:text-amber-300">Adicione ao menos uma cor para gerar variantes.</p>
+          )}
+          <div>
+            <p className="text-xs uppercase font-medium text-muted-foreground mb-2">
+              Tamanhos
+              {sizeAttrQ.data?.attribute && (
+                <span className="normal-case ml-1 text-muted-foreground/70">({sizeAttrQ.data.attribute.name})</span>
+              )}
+            </p>
+            {!sizeValues.length ? (
+              <p className="text-xs text-muted-foreground">
+                Categoria sem atributo de tamanho — será gerada 1 variante por cor.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {sizeValues.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => toggleSize(v.id)}
+                    className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* MATRIZ EDITÁVEL */}
+      <section className="space-y-3 pt-2 border-t">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Matriz de variantes ({variants.length})</h3>
+        </div>
+        {variants.length === 0 ? (
+          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Nenhuma variante. Adicione cores e clique em <strong>Gerar variantes</strong>.
+          </div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs uppercase">
+                <tr>
+                  <th className="text-left p-2">Cor</th>
+                  <th className="text-left p-2">Tamanho</th>
+                  <th className="text-left p-2">SKU</th>
+                  <th className="text-left p-2">Cód. barras</th>
+                  <th className="text-right p-2">Estoque</th>
+                  <th className="text-right p-2">Peso (g)</th>
+                  <th className="text-right p-2">Preço</th>
+                  <th className="text-right p-2">Promo</th>
+                  <th className="text-center p-2">Ativo</th>
+                  <th className="text-right p-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {variants.map((v) => {
+                  const color = colorById.get(v.product_color_id);
+                  const sizeLabel = v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? "—" : "Único";
+                  const stock = stockByVariant.get(v.id);
+                  const price = priceByVariant.get(v.id);
+                  return (
+                    <VariantRow
+                      key={v.id}
+                      variant={v}
+                      colorName={color?.name ?? "—"}
+                      colorHex={color?.hex ?? null}
+                      sizeLabel={sizeLabel}
+                      stockLevelId={stock?.id ?? null}
+                      stockQty={stock?.qty ?? null}
+                      price={price?.price ?? null}
+                      salePrice={price?.compare ?? null}
+                      onChangeVariant={(patch) => saveVariantField(v.id, patch)}
+                      onChangeStock={(qty) => stock?.id && saveStock(stock.id, qty)}
+                      onChangePrice={(p, sale) => savePrice(v.id, p, sale)}
+                      onDelete={() => removeVariant(v.id)}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Edição inline: pressione Tab para salvar cada célula. Estoque usa o Inventory Engine (com auditoria + outbox).
+          Preços usam a lista padrão da loja.
+        </p>
+      </section>
+    </TabShell>
   );
 }
 
-// ============== Step 4: Galeria ==============
+function VariantRow({
+  variant, colorName, colorHex, sizeLabel, stockLevelId, stockQty, price, salePrice,
+  onChangeVariant, onChangeStock, onChangePrice, onDelete,
+}: {
+  variant: VariantRow;
+  colorName: string;
+  colorHex: string | null;
+  sizeLabel: string;
+  stockLevelId: string | null;
+  stockQty: number | null;
+  price: number | null;
+  salePrice: number | null;
+  onChangeVariant: (patch: { sku?: string; barcode?: string | null; weight_grams?: number | null; is_active?: boolean }) => void;
+  onChangeStock: (qty: number) => void;
+  onChangePrice: (price: number, sale: number | null) => void;
+  onDelete: () => void;
+}) {
+  const [sku, setSku] = useState(variant.sku);
+  const [barcode, setBarcode] = useState(variant.barcode ?? "");
+  const [weight, setWeight] = useState(variant.weight_grams != null ? String(variant.weight_grams) : "");
+  const [stock, setStock] = useState(stockQty != null ? String(stockQty) : "");
+  const [priceInput, setPriceInput] = useState(price != null ? String(price) : "");
+  const [saleInput, setSaleInput] = useState(salePrice != null ? String(salePrice) : "");
 
-function GalleryStep({ productId, colors, onSaved }: { productId: string; colors: ColorRow[]; onSaved: () => void }) {
+  useEffect(() => { setSku(variant.sku); }, [variant.sku]);
+  useEffect(() => { setBarcode(variant.barcode ?? ""); }, [variant.barcode]);
+  useEffect(() => { setWeight(variant.weight_grams != null ? String(variant.weight_grams) : ""); }, [variant.weight_grams]);
+  useEffect(() => { setStock(stockQty != null ? String(stockQty) : ""); }, [stockQty]);
+  useEffect(() => { setPriceInput(price != null ? String(price) : ""); }, [price]);
+  useEffect(() => { setSaleInput(salePrice != null ? String(salePrice) : ""); }, [salePrice]);
+
+  const onBlurNumber = (raw: string, cb: (n: number) => void) => {
+    const n = Number(raw.replace(",", "."));
+    if (!Number.isNaN(n) && n >= 0) cb(n);
+  };
+
+  return (
+    <tr className={!variant.is_active ? "opacity-60" : ""}>
+      <td className="p-2 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: colorHex }} />}
+          <span>{colorName}</span>
+        </div>
+      </td>
+      <td className="p-2 whitespace-nowrap">{sizeLabel}</td>
+      <td className="p-2">
+        <Input
+          value={sku}
+          onChange={(e) => setSku(e.target.value)}
+          onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
+          className="h-8 text-xs font-mono w-32"
+        />
+      </td>
+      <td className="p-2">
+        <Input
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+          onBlur={() => (barcode || "") !== (variant.barcode ?? "") && onChangeVariant({ barcode: barcode || null })}
+          className="h-8 text-xs font-mono w-32"
+          placeholder="EAN/UPC"
+        />
+      </td>
+      <td className="p-2 text-right">
+        {stockLevelId ? (
+          <Input
+            type="number" min={0}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            onBlur={() => onBlurNumber(stock, onChangeStock)}
+            className="h-8 text-xs w-20 text-right ml-auto"
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground">— sem nível —</span>
+        )}
+      </td>
+      <td className="p-2 text-right">
+        <Input
+          type="number" min={0} step={1}
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          onBlur={() => {
+            const n = weight ? Number(weight) : null;
+            if (n !== variant.weight_grams) onChangeVariant({ weight_grams: n });
+          }}
+          className="h-8 text-xs w-20 text-right ml-auto"
+        />
+      </td>
+      <td className="p-2 text-right">
+        <Input
+          type="number" min={0} step="0.01"
+          value={priceInput}
+          onChange={(e) => setPriceInput(e.target.value)}
+          onBlur={() => {
+            const p = Number(priceInput.replace(",", "."));
+            const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
+            if (!Number.isNaN(p) && p !== price) onChangePrice(p, s);
+          }}
+          className="h-8 text-xs w-24 text-right ml-auto"
+          placeholder="0,00"
+        />
+      </td>
+      <td className="p-2 text-right">
+        <Input
+          type="number" min={0} step="0.01"
+          value={saleInput}
+          onChange={(e) => setSaleInput(e.target.value)}
+          onBlur={() => {
+            const p = priceInput ? Number(priceInput.replace(",", ".")) : price;
+            const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
+            if (p != null && !Number.isNaN(p)) onChangePrice(p, s);
+          }}
+          className="h-8 text-xs w-24 text-right ml-auto"
+          placeholder="—"
+        />
+      </td>
+      <td className="p-2 text-center">
+        <Switch
+          checked={variant.is_active}
+          onCheckedChange={(v) => onChangeVariant({ is_active: v })}
+        />
+      </td>
+      <td className="p-2 text-right">
+        <Button size="icon" variant="ghost" onClick={onDelete}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
+// ============================================================================
+// Aba 4 — Galeria (por COR — imagens NÃO pertencem à variante)
+// ============================================================================
+
+function GalleryTab({ productId, colors, onSaved }: { productId: string; colors: ColorRow[]; onSaved: () => void }) {
   void productId;
   const [activeColorId, setActiveColorId] = useState(colors[0]?.id ?? "");
+  const { record } = useTelemetry();
   const fnList = useServerFn(listColorMedia);
   const fnAdd = useServerFn(addColorMedia);
   const fnDel = useServerFn(deleteColorMedia);
   const fnUpd = useServerFn(updateColorMedia);
   const qc = useQueryClient();
+
+  // Reset active color when colors set changes
+  useEffect(() => {
+    if (!colors.find((c) => c.id === activeColorId)) {
+      setActiveColorId(colors[0]?.id ?? "");
+    }
+  }, [colors, activeColorId]);
 
   const media = useQuery({
     queryKey: ["color-media", activeColorId],
@@ -544,12 +1002,10 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["color-media", activeColorId] });
 
-  // ---- DAM: receber assets selecionados (1..N) e persistir como product_color_media ----
   const onAssetsPicked = async (assets: AssetLike[]) => {
     if (!activeColorId || assets.length === 0) return;
     const baseOrder = media.data?.length ?? 0;
     const hasCover = (media.data ?? []).some((m) => m.is_cover);
-
     const ok = await runAction(
       async () => {
         let i = 0;
@@ -565,8 +1021,6 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
             data: {
               color_id: activeColorId,
               media_type: mediaType,
-              // Para o renderer do step (`thumbnail_url || external_url || storage_path`),
-              // gravamos a URL pública resolvida no DAM em external_url.
               external_url: previewUrl,
               external_id: a.external_id ?? null,
               storage_path: null,
@@ -582,16 +1036,18 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
         }
         return { ok: true as const, data: { added: assets.length } };
       },
-      { loading: "Vinculando mídia ao produto…", success: `${assets.length} mídia(s) adicionada(s)` },
+      { loading: "Vinculando mídia…", success: `${assets.length} mídia(s) adicionada(s)` },
     );
-    if (ok) { invalidate(); onSaved(); }
+    if (ok) {
+      record({ name: "product.color.media.uploaded", tags: { color_id: activeColorId, count: assets.length } });
+      invalidate(); onSaved();
+    }
   };
 
   const remove = async (id: string) => {
     const ok = await runAction(() => fnDel({ data: { id } }), { success: "Mídia removida" });
     if (ok) { invalidate(); onSaved(); }
   };
-
   const setCover = async (id: string) => {
     const ok = await runAction(
       () => fnUpd({ data: { id, patch: { is_cover: true } } }),
@@ -600,12 +1056,9 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
     if (ok) { invalidate(); onSaved(); }
   };
 
-  // ---- Drag-and-drop nativo para reordenar ----
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-
   const persistOrder = async (orderedIds: string[]) => {
-    // Atualiza otimisticamente o cache antes da persistência.
     qc.setQueryData<MediaRow[]>(["color-media", activeColorId], (prev) => {
       if (!prev) return prev;
       const byId = new Map(prev.map((m) => [m.id, m]));
@@ -616,14 +1069,9 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
         const r = await fnUpd({ data: { id: orderedIds[i], patch: { sort_order: i } } });
         if (!r.ok) throw new Error(r.error.message);
       }
-      notify.success("Ordem atualizada");
-      onSaved();
-    } catch (e) {
-      notify.error("Falha ao reordenar mídia");
-      invalidate();
-    }
+      notify.success("Ordem atualizada"); onSaved();
+    } catch { notify.error("Falha ao reordenar"); invalidate(); }
   };
-
   const handleDrop = (targetId: string) => {
     if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return; }
     const list = (media.data ?? []).map((m) => m.id);
@@ -636,13 +1084,17 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
   };
 
   if (colors.length === 0) {
-    return <p className="text-sm text-muted-foreground">Adicione ao menos uma cor antes de configurar a galeria.</p>;
+    return (
+      <TabShell title="Galeria" description="Imagens pertencem à cor, não à variante.">
+        <p className="text-sm text-muted-foreground">Cadastre ao menos uma cor na aba <strong>Variantes</strong> para gerenciar a galeria.</p>
+      </TabShell>
+    );
   }
 
   return (
-    <StepShell
+    <TabShell
       title="Galeria por cor"
-      description="Mídias vinculadas via DAM. Selecione da biblioteca, envie novas, arraste para reordenar e defina a imagem principal."
+      description="As imagens pertencem à cor. Na storefront, ao selecionar uma cor a galeria troca automaticamente."
     >
       <div className="flex flex-wrap gap-2 border-b pb-3">
         {colors.map((c) => (
@@ -660,16 +1112,14 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted-foreground">
-          {(media.data?.length ?? 0)} mídia(s) nesta cor. Arraste os cards para reordenar.
+          {(media.data?.length ?? 0)} mídia(s) nesta cor. Arraste para reordenar.
         </p>
         <AssetPicker context="product" multiple onSelect={onAssetsPicked}>
-          <Button className="gap-2">
-            <Library className="h-4 w-4" /> Selecionar do DAM
-          </Button>
+          <Button className="gap-2"><Library className="h-4 w-4" /> Selecionar do DAM</Button>
         </AssetPicker>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {(media.data ?? []).map((m) => {
           const src = m.thumbnail_url || m.external_url || m.storage_path || "";
           const isOver = overId === m.id && dragId !== m.id;
@@ -686,9 +1136,7 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
             >
               {src ? <img src={src} alt={m.alt ?? ""} className="w-full h-full object-cover pointer-events-none" /> : null}
               <div className="absolute top-1 left-1 flex items-center gap-1">
-                {m.is_cover && (
-                  <Badge className="text-xs"><Star className="h-3 w-3 mr-1" />Capa</Badge>
-                )}
+                {m.is_cover && <Badge className="text-xs"><Star className="h-3 w-3 mr-1" />Capa</Badge>}
               </div>
               <div className="absolute top-1 right-1 opacity-70 group-hover:opacity-100">
                 <div className="bg-background/80 rounded p-1"><GripVertical className="h-3 w-3" /></div>
@@ -696,7 +1144,7 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
               <div className="absolute inset-x-0 bottom-0 flex gap-1 p-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition">
                 {!m.is_cover && (
                   <Button size="sm" variant="secondary" className="h-7 text-xs flex-1" onClick={() => setCover(m.id)}>
-                    Definir como capa
+                    Capa
                   </Button>
                 )}
                 <Button size="icon" variant="destructive" className="h-7 w-7" onClick={() => remove(m.id)}>
@@ -720,137 +1168,15 @@ function GalleryStep({ productId, colors, onSaved }: { productId: string; colors
           </div>
         )}
       </div>
-    </StepShell>
+    </TabShell>
   );
 }
 
-// ============== Step 5: Variantes ==============
+// ============================================================================
+// Aba 5 — Preços (todas as listas, por variante)
+// ============================================================================
 
-function VariantsStep({ productId, categoryId, onSaved }: { productId: string; categoryId: string | null; onSaved: () => void }) {
-  const { storeId } = useActiveStore();
-  const fnList = useServerFn(listProductVariants);
-  const fnGen = useServerFn(generateProductVariants);
-  const fnDel = useServerFn(deleteProductVariant);
-  const fnCatAttrs = useServerFn(listCategoryAttributes);
-  const fnAttrs = useServerFn(listAttributes);
-  const fnVals = useServerFn(listAttributeValues);
-  const qc = useQueryClient();
-
-  const variantsQ = useQuery({
-    queryKey: ["variants", productId],
-    queryFn: async () => {
-      const r = await fnList({ data: { product_id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data as VariantRow[];
-    },
-  });
-
-  // Find size attribute via category
-  const sizeAttrQ = useQuery({
-    queryKey: ["size-attr", categoryId, storeId],
-    enabled: !!categoryId && !!storeId,
-    queryFn: async () => {
-      const [ca, attrs] = await Promise.all([
-        fnCatAttrs({ data: { category_id: categoryId! } }),
-        fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
-      ]);
-      if (!ca.ok || !attrs.ok) return null;
-      const attrList = attrs.data.rows as Array<{ id: string; name: string; code?: string; is_size?: boolean }>;
-      const catList = ca.data.rows as Array<{ attribute_id: string }>;
-      const candidate = attrList.find((a) =>
-        catList.some((c) => c.attribute_id === a.id) &&
-        (a.is_size || /tamanho|size/i.test(a.name)),
-      );
-      if (!candidate) return { attribute: null, values: [] as Array<{ id: string; label: string; code: string | null }> };
-      const v = await fnVals({ data: { attribute_id: candidate.id, pageSize: 100 } });
-      return {
-        attribute: candidate,
-        values: v.ok ? (v.data.rows as Array<{ id: string; label: string; code: string | null }>) : [],
-      };
-    },
-  });
-
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggle = (id: string) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  const generate = async () => {
-    const ok = await runAction(
-      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selected } }),
-      { loading: "Gerando variantes...", success: "Variantes geradas" },
-    );
-    if (ok) {
-      qc.invalidateQueries({ queryKey: ["variants", productId] });
-      onSaved();
-    }
-  };
-
-  const remove = async (id: string) => {
-    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Variante removida" });
-    if (ok) { qc.invalidateQueries({ queryKey: ["variants", productId] }); onSaved(); }
-  };
-
-  const values = sizeAttrQ.data?.values ?? [];
-
-  return (
-    <StepShell title="Geração de variantes" description="Combina automaticamente cores × tamanhos. Idempotente.">
-      <div className="rounded-md border p-3 space-y-3 bg-muted/30">
-        <div className="flex items-center justify-between">
-          <p className="text-sm">
-            Tamanhos disponíveis na categoria
-            {sizeAttrQ.data?.attribute && <span className="font-medium ml-1">({sizeAttrQ.data.attribute.name})</span>}
-          </p>
-          <Button size="sm" onClick={generate} disabled={!values.length && selected.length === 0} className="gap-2">
-            <Sparkles className="h-4 w-4" /> Gerar variantes
-          </Button>
-        </div>
-        {!values.length ? (
-          <p className="text-xs text-muted-foreground">
-            Nenhum atributo de tamanho vinculado a esta categoria — será gerada uma variante única por cor.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {values.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => toggle(v.id)}
-                className={`px-3 py-1.5 rounded-full border text-sm ${selected.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-md border">
-        <div className="p-3 border-b flex items-center justify-between">
-          <p className="font-medium">Variantes ({variantsQ.data?.length ?? 0})</p>
-        </div>
-        {(variantsQ.data ?? []).length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground text-center">Nenhuma variante gerada.</p>
-        ) : (
-          <div className="divide-y">
-            {(variantsQ.data ?? []).map((v) => (
-              <div key={v.id} className="flex items-center justify-between p-3 text-sm">
-                <code className="font-mono">{v.sku}</code>
-                <Button size="icon" variant="ghost" onClick={() => remove(v.id)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </StepShell>
-  );
-}
-
-// ============== Step 6: Preços ==============
-
-function PricesStep({ productId, storeId, onSaved }: { productId: string; storeId: string | null; onSaved: () => void }) {
+function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId: string | null; onSaved: () => void }) {
   const fnList = useServerFn(listProductPrices);
   const fnSet = useServerFn(setVariantPrice);
   const fnLists = useServerFn(listPriceLists);
@@ -888,24 +1214,24 @@ function PricesStep({ productId, storeId, onSaved }: { productId: string; storeI
   const priceFor = (variantId: string) =>
     prices.data?.find((p) => p.variant_id === variantId && p.price_list_id === effectiveListId);
 
-  const save = async (variantId: string, value: number) => {
+  const save = async (variantId: string, value: number, compare: number | null) => {
     if (!effectiveListId) return;
     const ok = await runAction(
-      () => fnSet({ data: { variant_id: variantId, price_list_id: effectiveListId, price: value } }),
+      () => fnSet({ data: { variant_id: variantId, price_list_id: effectiveListId, price: value, compare_at_price: compare } }),
       { success: "Preço salvo" },
     );
     if (ok) { qc.invalidateQueries({ queryKey: ["product-prices", productId] }); onSaved(); }
   };
 
   if (!variants.data?.length) {
-    return <p className="text-sm text-muted-foreground">Gere variantes na etapa anterior antes de definir preços.</p>;
+    return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Gere variantes antes de definir preços.</p></TabShell>;
   }
   if (!lists.data?.length) {
-    return <p className="text-sm text-muted-foreground">Cadastre uma lista de preços antes de continuar.</p>;
+    return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Cadastre uma lista de preços antes de continuar.</p></TabShell>;
   }
 
   return (
-    <StepShell title="Preços" description="Defina o preço de cada variante por lista de preços.">
+    <TabShell title="Preços" description="Defina o preço (e o preço promocional) de cada variante por lista.">
       <SelectField
         label="Lista de preços"
         value={effectiveListId}
@@ -916,37 +1242,38 @@ function PricesStep({ productId, storeId, onSaved }: { productId: string; storeI
         {variants.data.map((v) => {
           const current = priceFor(v.id);
           return (
-            <PriceRow
+            <PriceRowEditor
               key={v.id}
               sku={v.sku}
-              initial={current?.price ? Number(current.price) : null}
-              onSave={(val) => save(v.id, val)}
+              initialPrice={current?.price ? Number(current.price) : null}
+              initialSale={current?.compare_at_price ? Number(current.compare_at_price) : null}
+              onSave={(p, s) => save(v.id, p, s)}
             />
           );
         })}
       </div>
-    </StepShell>
+    </TabShell>
   );
 }
 
-function PriceRow({ sku, initial, onSave }: { sku: string; initial: number | null; onSave: (v: number) => void }) {
-  const [val, setVal] = useState<string>(initial?.toString() ?? "");
+function PriceRowEditor({
+  sku, initialPrice, initialSale, onSave,
+}: { sku: string; initialPrice: number | null; initialSale: number | null; onSave: (p: number, s: number | null) => void }) {
+  const [price, setPrice] = useState<string>(initialPrice?.toString() ?? "");
+  const [sale, setSale] = useState<string>(initialSale?.toString() ?? "");
   return (
     <div className="flex items-center gap-3 p-3 text-sm">
       <code className="font-mono flex-1 min-w-0 truncate">{sku}</code>
-      <Input
-        type="number"
-        step="0.01"
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        className="w-32"
-        placeholder="0,00"
-      />
+      <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-28" placeholder="Preço" />
+      <Input type="number" step="0.01" value={sale} onChange={(e) => setSale(e.target.value)} className="w-28" placeholder="Promo" />
       <Button
-        size="sm"
-        variant="outline"
-        onClick={() => { const n = Number(val); if (!Number.isNaN(n)) onSave(n); }}
-        disabled={!val.trim()}
+        size="sm" variant="outline"
+        onClick={() => {
+          const p = Number(price); if (Number.isNaN(p)) return;
+          const s = sale ? Number(sale) : null;
+          onSave(p, s);
+        }}
+        disabled={!price.trim()}
       >
         <Save className="h-3.5 w-3.5" />
       </Button>
@@ -954,9 +1281,11 @@ function PriceRow({ sku, initial, onSave }: { sku: string; initial: number | nul
   );
 }
 
-// ============== Step 7: SEO ==============
+// ============================================================================
+// Aba 6 — SEO
+// ============================================================================
 
-function SeoStep({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
+function SeoTab({ product, onSaved }: { product: ProductRow; onSaved: () => void }) {
   const fn = useServerFn(updateProduct);
   const [form, setForm] = useState({
     slug: product.slug,
@@ -974,7 +1303,7 @@ function SeoStep({ product, onSaved }: { product: ProductRow; onSaved: () => voi
     if (ok) onSaved();
   };
   return (
-    <StepShell title="SEO" description="Como o produto aparece em buscadores e redes sociais." onSave={save} saving={saving}>
+    <TabShell title="SEO" description="Como o produto aparece em buscadores e redes sociais." onSave={save} saving={saving}>
       <FormField label="Slug (URL)" required>
         <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
       </FormField>
@@ -989,11 +1318,13 @@ function SeoStep({ product, onSaved }: { product: ProductRow; onSaved: () => voi
           maxLength={170}
         />
       </FormField>
-    </StepShell>
+    </TabShell>
   );
 }
 
-// ============== Step 8: Produtos Relacionados ==============
+// ============================================================================
+// Aba 7 — Relacionados
+// ============================================================================
 
 type RelationType = "related" | "cross_sell" | "up_sell";
 const RELATION_LABEL: Record<RelationType, string> = {
@@ -1002,7 +1333,7 @@ const RELATION_LABEL: Record<RelationType, string> = {
   up_sell: "Up-sell",
 };
 
-function RelatedStep({ productId, storeId }: { productId: string; storeId: string | null }) {
+function RelatedTab({ productId, storeId }: { productId: string; storeId: string | null }) {
   const qc = useQueryClient();
   const fnList = useServerFn(listProductRelations);
   const fnAdd = useServerFn(addProductRelation);
@@ -1038,16 +1369,12 @@ function RelatedStep({ productId, storeId }: { productId: string; storeId: strin
   const handleAdd = async (relatedId: string) => {
     const ok = await runAction(
       () => fnAdd({ data: { product_id: productId, related_product_id: relatedId, relation_type: type } }),
-      { success: "Produto relacionado adicionado" },
+      { success: "Relação adicionada" },
     );
     if (ok) { setSearch(""); invalidate(); }
   };
-
   const handleRemove = async (id: string) => {
-    const ok = await runAction(
-      () => fnRemove({ data: { id } }),
-      { success: "Relação removida" },
-    );
+    const ok = await runAction(() => fnRemove({ data: { id } }), { success: "Relação removida" });
     if (ok) invalidate();
   };
 
@@ -1060,130 +1387,209 @@ function RelatedStep({ productId, storeId }: { productId: string; storeId: strin
   }>;
 
   return (
-    <StepShell
-      title="Produtos Relacionados"
-      description="Vincule produtos para recomendações, cross-sell e up-sell. Etapa opcional."
-    >
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-3">
-          <SelectField
-            label="Tipo de relação"
-            value={type}
-            onChange={(v) => setType(v as RelationType)}
-            options={[
-              { value: "related", label: "Relacionado" },
-              { value: "cross_sell", label: "Cross-sell" },
-              { value: "up_sell", label: "Up-sell" },
-            ]}
-          />
-          <FormField label="Buscar produto" hint="Digite ao menos 2 caracteres (nome, SKU ou slug)">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar para adicionar..."
-            />
-          </FormField>
-        </div>
-
-        {search.trim().length >= 2 && (
-          <Card>
-            <CardContent className="p-3 space-y-2">
-              {searchQ.isLoading && <p className="text-sm text-muted-foreground">Buscando...</p>}
-              {searchQ.data && searchQ.data.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum produto encontrado.</p>
-              )}
-              {(searchQ.data ?? []).map((p: { id: string; name: string; sku_root: string; status: string }) => (
-                <div key={p.id} className="flex items-center justify-between border rounded-md px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.sku_root} · {p.status}</p>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => handleAdd(p.id)} className="gap-1">
-                    <Plus className="h-3.5 w-3.5" /> Adicionar
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="space-y-3">
-          {(["related", "cross_sell", "up_sell"] as RelationType[]).map((t) => {
-            const items = rows.filter((r) => r.relation_type === t);
-            return (
-              <div key={t}>
-                <p className="text-xs uppercase font-medium text-muted-foreground mb-2">
-                  {RELATION_LABEL[t]} <span className="text-muted-foreground/60">({items.length})</span>
-                </p>
-                {items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground border border-dashed rounded-md p-3">
-                    Nenhum produto {RELATION_LABEL[t].toLowerCase()} vinculado.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {items.map((r) => (
-                      <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {r.related?.name ?? "(produto removido)"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {r.related?.sku_root} · {r.related?.status}
-                          </p>
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => handleRemove(r.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <TabShell title="Produtos relacionados" description="Cross-sell, up-sell e relacionados para recomendações.">
+      <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-3">
+        <SelectField
+          label="Tipo"
+          value={type}
+          onChange={(v) => setType(v as RelationType)}
+          options={[
+            { value: "related", label: "Relacionado" },
+            { value: "cross_sell", label: "Cross-sell" },
+            { value: "up_sell", label: "Up-sell" },
+          ]}
+        />
+        <FormField label="Buscar produto" hint="Mínimo 2 caracteres (nome, SKU ou slug)">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." />
+        </FormField>
       </div>
-    </StepShell>
+
+      {search.trim().length >= 2 && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            {searchQ.isLoading && <p className="text-sm text-muted-foreground">Buscando...</p>}
+            {searchQ.data?.length === 0 && <p className="text-sm text-muted-foreground">Nada encontrado.</p>}
+            {(searchQ.data ?? []).map((p: { id: string; name: string; sku_root: string; status: string }) => (
+              <div key={p.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{p.sku_root} · {p.status}</p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => handleAdd(p.id)} className="gap-1">
+                  <Plus className="h-3.5 w-3.5" /> Adicionar
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        {(["related", "cross_sell", "up_sell"] as RelationType[]).map((t) => {
+          const items = rows.filter((r) => r.relation_type === t);
+          return (
+            <div key={t}>
+              <p className="text-xs uppercase font-medium text-muted-foreground mb-2">
+                {RELATION_LABEL[t]} <span className="text-muted-foreground/60">({items.length})</span>
+              </p>
+              {items.length === 0 ? (
+                <p className="text-sm text-muted-foreground border border-dashed rounded-md p-3">Sem vínculos.</p>
+              ) : (
+                <div className="space-y-2">
+                  {items.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{r.related?.name ?? "(produto removido)"}</p>
+                        <p className="text-xs text-muted-foreground">{r.related?.sku_root} · {r.related?.status}</p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemove(r.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </TabShell>
   );
 }
 
-// ============== Step 9: Publicação ==============
+// ============================================================================
+// Aba 8 — Publicação (readiness + ações)
+// ============================================================================
 
-function PublishStep({ canPublish, issues, onPublish, status }: { canPublish: boolean; issues: string[]; onPublish: () => void; status: string }) {
+function PublishTab({
+  canPublish, issues, onPublish, onUnpublish, status,
+}: { canPublish: boolean; issues: string[]; onPublish: () => void; onUnpublish: () => void; status: string }) {
   return (
-    <StepShell title="Publicação" description="Validação final e ativação na loja.">
+    <TabShell title="Publicação" description="Validação final e ativação no catálogo.">
       {status === "published" ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 p-4">
-          <p className="font-medium text-emerald-900 dark:text-emerald-200">Produto publicado</p>
-          <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">O produto está visível no catálogo.</p>
+        <div className="space-y-3">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 p-4 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-emerald-900 dark:text-emerald-200">Produto publicado</p>
+              <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">Visível no catálogo da loja.</p>
+            </div>
+          </div>
+          <Button onClick={onUnpublish} variant="outline" className="gap-2"><EyeOff className="h-4 w-4" /> Despublicar</Button>
         </div>
       ) : canPublish ? (
         <div className="space-y-4">
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 p-4">
-            <p className="font-medium text-emerald-900 dark:text-emerald-200">Tudo pronto para publicar 🎉</p>
-            <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">Todas as etapas obrigatórias foram concluídas.</p>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 p-4 flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-emerald-900 dark:text-emerald-200">Pronto para publicar</p>
+              <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">Todas as etapas obrigatórias foram concluídas.</p>
+            </div>
           </div>
           <Button onClick={onPublish} size="lg" className="gap-2">
             <Send className="h-4 w-4" /> Publicar agora
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-4">
-            <p className="font-medium text-amber-900 dark:text-amber-200">Há pendências antes de publicar</p>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-medium text-amber-900 dark:text-amber-200">Pendências antes de publicar</p>
             <ul className="mt-2 text-sm text-amber-800 dark:text-amber-300 list-disc pl-5 space-y-0.5">
               {issues.slice(0, 8).map((i, idx) => <li key={idx}>{i}</li>)}
             </ul>
           </div>
         </div>
       )}
-    </StepShell>
+    </TabShell>
   );
 }
 
-// ============== Helpers ==============
+// ============================================================================
+// Aba 9 — Histórico (domain_events + audit_log)
+// ============================================================================
 
-function StepShell({
+function HistoryTab({ productId }: { productId: string }) {
+  const fnHist = useServerFn(listProductHistory);
+  const fnAudit = useServerFn(listProductAudit);
+
+  const histQ = useQuery({
+    queryKey: ["product-history", productId],
+    queryFn: async () => {
+      const r = await fnHist({ data: { id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as Array<{ id: string; event_type: string; payload: unknown; actor_user_id: string | null; created_at: string }>;
+    },
+  });
+  const auditQ = useQuery({
+    queryKey: ["product-audit", productId],
+    queryFn: async () => {
+      const r = await fnAudit({ data: { id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as Array<{ id: string; action: string; actor_user_id: string | null; diff: unknown; created_at: string }>;
+    },
+  });
+
+  return (
+    <TabShell title="Histórico" description="Eventos de domínio e trilha de auditoria deste produto.">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><HistoryIcon className="h-4 w-4" /> Eventos de domínio</CardTitle>
+            <CardDescription className="text-xs">Outbox / Event Store — últimos 100 eventos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-[500px] overflow-y-auto">
+            {histQ.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            {histQ.data?.length === 0 && <p className="text-xs text-muted-foreground">Nenhum evento.</p>}
+            {(histQ.data ?? []).map((e) => (
+              <div key={e.id} className="text-xs border rounded-md p-2">
+                <div className="flex items-center justify-between">
+                  <code className="font-mono text-[11px]">{e.event_type}</code>
+                  <span className="text-muted-foreground">{new Date(e.created_at).toLocaleString()}</span>
+                </div>
+                {!!e.payload && Object.keys(e.payload as object).length > 0 && (
+                  <pre className="mt-1 text-[10px] text-muted-foreground whitespace-pre-wrap break-all">
+                    {JSON.stringify(e.payload, null, 0).slice(0, 200)}
+                  </pre>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Eye className="h-4 w-4" /> Auditoria</CardTitle>
+            <CardDescription className="text-xs">audit_log — quem alterou o quê.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-[500px] overflow-y-auto">
+            {auditQ.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            {auditQ.data?.length === 0 && <p className="text-xs text-muted-foreground">Sem registros.</p>}
+            {(auditQ.data ?? []).map((a) => (
+              <div key={a.id} className="text-xs border rounded-md p-2">
+                <div className="flex items-center justify-between">
+                  <code className="font-mono text-[11px]">{a.action}</code>
+                  <span className="text-muted-foreground">{new Date(a.created_at).toLocaleString()}</span>
+                </div>
+                {!!a.diff && (
+                  <pre className="mt-1 text-[10px] text-muted-foreground whitespace-pre-wrap break-all">
+                    {JSON.stringify(a.diff, null, 0).slice(0, 200)}
+                  </pre>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </TabShell>
+  );
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function TabShell({
   title, description, children, onSave, saving,
 }: {
   title: string;
@@ -1198,38 +1604,14 @@ function StepShell({
         <h2 className="text-lg font-semibold">{title}</h2>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
-      <div className="space-y-4">{children}</div>
+      <div className="space-y-5">{children}</div>
       {onSave && (
         <div className="flex justify-end pt-2 border-t">
           <Button onClick={onSave} disabled={saving} className="gap-2">
-            <Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar etapa"}
+            <Save className="h-4 w-4" /> {saving ? "Salvando..." : "Salvar aba"}
           </Button>
         </div>
       )}
     </div>
-  );
-}
-
-function PreviewPanel({
-  productId, product, colors,
-}: { productId: string; product: ProductRow; colors: ColorRow[] }) {
-  const fnList = useServerFn(listColorMedia);
-  // Fetch media for all colors in parallel via individual queries
-  const mediaQueries = useQuery({
-    queryKey: ["preview-media", productId, colors.map((c) => c.id).join(",")],
-    enabled: colors.length > 0,
-    queryFn: async () => {
-      const map: Record<string, MediaRow[]> = {};
-      await Promise.all(
-        colors.map(async (c) => {
-          const r = await fnList({ data: { color_id: c.id } });
-          if (r.ok) map[c.id] = r.data as MediaRow[];
-        }),
-      );
-      return map;
-    },
-  });
-  return (
-    <ProductPreview product={product} colors={colors} mediaByColor={mediaQueries.data ?? {}} />
   );
 }
