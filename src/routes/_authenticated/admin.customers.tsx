@@ -58,6 +58,7 @@ function formatDoc(type: string, doc: string | null) {
 }
 
 function CustomersPage() {
+  const navigate = useNavigate();
   return (
     <MasterCrudPage<Customer>
       title="Clientes"
@@ -69,6 +70,11 @@ function CustomersPage() {
       create={createCustomer as never}
       update={updateCustomer as never}
       remove={deleteCustomer}
+      rowActions={(row, helpers) => [
+        { label: "Abrir Visão 360°", onClick: () => navigate({ to: "/admin/customers/$customerId", params: { customerId: row.id } }) },
+        { label: "Editar", onClick: helpers.edit },
+        { label: "Excluir", onClick: helpers.remove, destructive: true },
+      ]}
       searchPlaceholder="Buscar por nome, documento, e-mail ou código"
       columns={[
         {
