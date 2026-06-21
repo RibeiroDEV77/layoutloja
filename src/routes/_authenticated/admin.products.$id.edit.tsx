@@ -30,8 +30,11 @@ import { ProductPreview } from "@/components/admin/products/product-preview";
 import { ProductOperationsMenu } from "@/components/admin/products/product-operations-menu";
 
 import {
-  getProduct, updateProduct, publishProduct, unpublishProduct, getProductReadiness,
+  getProduct, updateProduct, publishProduct, unpublishProduct, getProductReadiness, listProducts,
 } from "@/lib/business/products.functions";
+import {
+  listProductRelations, addProductRelation, removeProductRelation,
+} from "@/lib/business/product-relations.functions";
 import {
   listProductColors, createProductColor, updateProductColor, deleteProductColor,
   listColorMedia, addColorMedia, deleteColorMedia, updateColorMedia,
@@ -199,6 +202,7 @@ function ProductWizardPage() {
               {activeStep === "variants" && <VariantsStep productId={id} categoryId={product.category_id} onSaved={refreshAll} />}
               {activeStep === "prices" && <PricesStep productId={id} storeId={storeId} onSaved={refreshAll} />}
               {activeStep === "seo" && <SeoStep product={product} onSaved={refreshAll} />}
+              {activeStep === "related" && <RelatedStep productId={id} storeId={storeId} />}
               {activeStep === "publish" && (
                 <PublishStep canPublish={canPublish} issues={readinessQ.data?.issues ?? []} onPublish={onPublish} status={product.status} />
               )}
