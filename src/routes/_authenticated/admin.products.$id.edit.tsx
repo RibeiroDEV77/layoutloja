@@ -60,7 +60,7 @@ type VariantRow = Tables<"product_variants">;
 type AttrValRow = Tables<"product_attribute_values">;
 type PriceItemRow = Tables<"price_list_items">;
 
-const STEP_KEYS = ["general", "attributes", "colors", "gallery", "variants", "prices", "seo", "publish"] as const;
+const STEP_KEYS = ["general", "attributes", "colors", "gallery", "variants", "prices", "seo", "related", "publish"] as const;
 type StepKey = typeof STEP_KEYS[number];
 
 function ProductWizardPage() {
