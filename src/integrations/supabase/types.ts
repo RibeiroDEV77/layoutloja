@@ -12304,6 +12304,79 @@ export type Database = {
           },
         ]
       }
+      stock_admin_list_v: {
+        Row: {
+          barcode: string | null
+          brand_id: string | null
+          category_id: string | null
+          created_at: string | null
+          id: string | null
+          internal_reference: string | null
+          last_movement_at: string | null
+          product_id: string | null
+          product_name: string | null
+          product_status: Database["public"]["Enums"]["product_status"] | null
+          quantity_available: number | null
+          quantity_incoming: number | null
+          quantity_on_hand: number | null
+          quantity_reserved: number | null
+          reorder_point: number | null
+          reorder_quantity: number | null
+          sku: string | null
+          sku_root: string | null
+          stock_status: string | null
+          store_id: string | null
+          updated_at: string | null
+          variant_id: string | null
+          warehouse_code: string | null
+          warehouse_id: string | null
+          warehouse_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_levels_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_levels_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_levels_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_metrics_daily_v: {
         Row: {
           day: string | null
