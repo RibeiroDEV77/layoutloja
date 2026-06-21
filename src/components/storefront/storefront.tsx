@@ -589,7 +589,15 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
 
 export function CategoryGrid({ categories }: { categories: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id);
-  if (roots.length === 0) return null;
+  if (roots.length === 0) {
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="relative overflow-hidden bg-[#F4F4F4] aspect-[4/5] animate-pulse" />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {roots.map((c) => (
