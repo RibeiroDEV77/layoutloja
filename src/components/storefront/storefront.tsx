@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Search, Heart, User, ShoppingBag, Menu, X, Instagram, Facebook, Youtube,
+  Search, Heart, User, ShoppingBag, Menu, X,
   Star, ChevronDown, ChevronLeft, ChevronRight, Truck, MessageCircle, Tag,
-  Mail, ShieldCheck, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import lookCowboy from "@/assets/look-cowboy.jpg";
@@ -376,15 +375,10 @@ export type HeroBanner = {
 };
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
-  const slides: HeroBanner[] = useMemo(() => {
-    const list = (banners ?? []).filter((b) => !!b.image);
-    if (list.length > 0) return list.slice(0, 6);
-    return [
-      { image: lookSocial, tag: "Coleção Social", title: "Alfaiataria em movimento", subtitle: "Peças que acompanham seu tempo." },
-      { image: lookFeminino, tag: "Coleção Feminina", title: "Novo capítulo feminino", subtitle: "Silhuetas autorais para a estação." },
-      { image: lookCowboy, tag: "Coleção Country", title: "Estilo country atemporal", subtitle: "Tradição e atitude em cada peça." },
-    ];
-  }, [banners]);
+  const slides: HeroBanner[] = useMemo(
+    () => (banners ?? []).filter((b) => !!b.image).slice(0, 6),
+    [banners],
+  );
 
   const [active, setActive] = useState(0);
   useEffect(() => {
@@ -393,7 +387,9 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     return () => clearInterval(id);
   }, [slides.length]);
 
+  if (slides.length === 0) return null;
   const current = slides[active];
+  const hasOverlay = !!(current?.tag || current?.title || current?.subtitle || (current?.ctaSlug && current?.ctaLabel));
 
   return (
     <section className="relative w-full overflow-hidden bg-[#111]">
@@ -402,45 +398,50 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
           <img
             key={`${s.image}-${i}`}
             src={s.image}
-            alt={s.tag ?? "Coleção Layout"}
+            alt={s.tag ?? ""}
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out",
               i === active ? "opacity-100" : "opacity-0",
             )}
           />
         ))}
-        {/* Overlay escuro suave + degradê lateral para suportar texto à esquerda */}
-        <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
-
-        {/* Conteúdo alinhado à esquerda */}
-        <div className="absolute inset-0 flex items-center">
-          <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
-            <div className="max-w-xl text-white">
-              {current?.tag && (
-                <p className="text-[11px] md:text-[12px] uppercase tracking-[0.32em] font-medium text-white/90">
-                  {current.tag}
-                </p>
-              )}
-              <h1 className="mt-4 text-[40px] md:text-[60px] leading-[1.05] font-semibold tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-                {current?.title ?? "Coleção atual"}
-              </h1>
-              {current?.subtitle && (
-                <p className="mt-5 text-[15px] md:text-[17px] font-normal text-white/95 max-w-md leading-relaxed">
-                  {current.subtitle}
-                </p>
-              )}
-              <a
-                href="#novidades"
-                className="mt-8 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
-              >
-                {current?.ctaLabel ?? "Explorar coleção"}
-              </a>
+        <div className="absolute inset-0 bg-black/20" />
+        {hasOverlay && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
+            <div className="absolute inset-0 flex items-center">
+              <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
+                <div className="max-w-xl text-white">
+                  {current?.tag && (
+                    <p className="text-[11px] md:text-[12px] uppercase tracking-[0.32em] font-medium text-white/90">
+                      {current.tag}
+                    </p>
+                  )}
+                  {current?.title && (
+                    <h1 className="mt-4 text-[40px] md:text-[60px] leading-[1.05] font-semibold tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+                      {current.title}
+                    </h1>
+                  )}
+                  {current?.subtitle && (
+                    <p className="mt-5 text-[15px] md:text-[17px] font-normal text-white/95 max-w-md leading-relaxed">
+                      {current.subtitle}
+                    </p>
+                  )}
+                  {current?.ctaSlug && current?.ctaLabel && (
+                    <Link
+                      to="/categoria/$slug"
+                      params={{ slug: current.ctaSlug }}
+                      className="mt-8 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
+                    >
+                      {current.ctaLabel}
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Dots */}
         {slides.length > 1 && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
             {slides.map((_, i) => (
@@ -520,7 +521,7 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
     const el = ref.current; if (!el) return;
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 900), behavior: "smooth" });
   };
-  if (products.length === 0) return <EmptyState message="Em breve, novas peças." />;
+  if (products.length === 0) return null;
   return (
     <div className="relative">
       <button
@@ -558,7 +559,7 @@ const CATEGORY_FALLBACK_IMAGES = [lookSocial, lookFeminino, lookCowboy, lookSoci
 export function CategoryGrid({ categories }: { categories: StorefrontCategory[] }) {
   const roots = categories.filter((c) => !c.parent_id);
   const list = (roots.length > 0 ? roots : []).slice(0, 6);
-  if (list.length === 0) return <EmptyState message="Categorias em breve." />;
+  if (list.length === 0) return null;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {list.map((c, i) => (
@@ -698,7 +699,7 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
 }
 
 export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
-  if (products.length === 0) return <EmptyState message="Nenhum produto encontrado." />;
+  if (products.length === 0) return null;
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-7 md:gap-y-12">
       {products.map((p) => <ProductCard key={p.id} p={p} />)}
@@ -711,33 +712,8 @@ export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
 // ---------------------------------------------------------------------------
 
 export function InstitutionalBanner() {
-  return (
-    <section className="bg-white">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20">
-        <div className="relative overflow-hidden bg-[#111] text-white">
-          <div className="grid md:grid-cols-2">
-            <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]">
-              <img src={lookCowboy} alt="Indústria Layout" className="absolute inset-0 h-full w-full object-cover opacity-80" />
-            </div>
-            <div className="p-10 md:p-16 flex flex-col justify-center gap-5">
-              <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Indústria Layout</p>
-              <h3 className="text-[32px] md:text-[40px] font-semibold leading-tight">
-                Confecção própria, qualidade que veste gerações.
-              </h3>
-              <p className="text-[15px] text-neutral-300 max-w-md">
-                Há décadas produzindo moda autoral. Cada peça nasce da nossa indústria, com matéria-prima selecionada e acabamento impecável.
-              </p>
-              <div>
-                <a href="#" className="inline-flex bg-white text-[#111] px-7 py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] hover:text-white transition-colors">
-                  Conheça nossa história
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  // Sem dados institucionais reais cadastrados — não renderiza conteúdo fictício.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -745,38 +721,8 @@ export function InstitutionalBanner() {
 // ---------------------------------------------------------------------------
 
 export function NewsletterSection() {
-  return (
-    <section className="bg-[#F8F8F8]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 md:py-20 grid gap-10 md:grid-cols-2 md:items-center">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-red)] font-semibold">Newsletter</p>
-          <h3 className="mt-3 text-[32px] md:text-[40px] font-semibold leading-tight text-[#111]">
-            Receba novidades e ofertas em primeira mão.
-          </h3>
-          <p className="mt-3 text-[15px] text-[#666] max-w-md">
-            Cadastre-se e ganhe <span className="text-[var(--brand-red)] font-semibold">10% off</span> na primeira compra.
-          </p>
-        </div>
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
-          <div className="relative flex-1">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666]" strokeWidth={1.5}/>
-            <input
-              type="email"
-              required
-              placeholder="Seu melhor e-mail"
-              className="w-full bg-white border border-[#EFEFEF] pl-11 pr-4 h-14 text-[15px] text-[#111] placeholder:text-[#666] focus:border-[#111] outline-none transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            className="h-14 px-8 bg-[#111] text-white text-[13px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors"
-          >
-            Cadastrar
-          </button>
-        </form>
-      </div>
-    </section>
-  );
+  // Funcionalidade de newsletter ainda não conectada ao Painel Administrativo.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -784,27 +730,8 @@ export function NewsletterSection() {
 // ---------------------------------------------------------------------------
 
 export function TrustStrip() {
-  const items = [
-    { icon: Truck, title: "Frete grátis", text: "Em compras acima de R$ 299" },
-    { icon: RotateCcw, title: "Troca fácil", text: "Em até 30 dias" },
-    { icon: ShieldCheck, title: "Compra segura", text: "Site protegido SSL" },
-    { icon: MessageCircle, title: "Atendimento", text: "Seg a sáb, 9h às 19h" },
-  ];
-  return (
-    <section className="bg-white border-t border-[#EFEFEF]">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {items.map((i) => (
-          <div key={i.title} className="flex items-start gap-3">
-            <i.icon className="h-7 w-7 text-[#111] shrink-0" strokeWidth={1.25}/>
-            <div>
-              <p className="text-[14px] font-semibold text-[#111]">{i.title}</p>
-              <p className="text-[13px] text-[#666] mt-0.5">{i.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  // Benefícios institucionais virão do Painel Administrativo.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -989,30 +916,14 @@ export function StorefrontFooter({
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
-          <p className="mt-5 text-[14px] text-[#666] leading-relaxed max-w-xs">
-            Indústria do vestuário com tradição em moda autoral, qualidade e atenção aos detalhes.
-          </p>
-          <div className="mt-5 flex gap-3">
-            <a href="#" aria-label="Instagram" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Instagram className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="Facebook" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Facebook className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-            <a href="#" aria-label="YouTube" className="h-9 w-9 grid place-items-center border border-[#EFEFEF] text-[#111] hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors">
-              <Youtube className="h-4 w-4" strokeWidth={1.5}/>
-            </a>
-          </div>
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-8">
           <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-            {roots.length === 0 ? (
-              <li className="text-[#999]">—</li>
-            ) : roots.map((c) => (
+          <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
+            {roots.map((c) => (
               <li key={c.id}>
                 <Link
                   to="/categoria/$slug"
@@ -1025,32 +936,14 @@ export function StorefrontFooter({
             ))}
           </ul>
         </div>
-        <FooterCol className="md:col-span-2" title="Ajuda" items={["Central de ajuda", "Trocas e devoluções", "Entregas", "Formas de pagamento", "Fale conosco"]} />
-        <FooterCol className="md:col-span-2" title="Minha Conta" items={["Acessar", "Meus pedidos", "Endereços", "Favoritos", "Cadastro"]} />
-        <FooterCol className="md:col-span-3" title="Políticas" items={["Política de privacidade", "Termos de uso", "Política de cookies", "Trocas e devoluções"]} />
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-[12px] text-[#666]">
-          <span>© {new Date().getFullYear()} {storeName} — Indústria do Vestuário Ltda. Todos os direitos reservados.</span>
-          <span>CNPJ 00.000.000/0001-00 · Atendimento (00) 0000-0000</span>
+        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
+          <span>© {new Date().getFullYear()} {storeName}</span>
         </div>
       </div>
     </footer>
   );
 }
 
-function FooterCol({ title, items, className }: { title: string; items: string[]; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">{title}</p>
-      <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
-        {items.map((i) => (
-          <li key={i}>
-            <a href="#" className="hover:text-[var(--brand-red)] transition-colors">{i}</a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 

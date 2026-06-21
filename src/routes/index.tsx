@@ -75,21 +75,13 @@ function HomePage() {
 
           {/* Novidades */}
           <Section id="novidades">
-            <SectionHeader
-              title="Novidades"
-              description="Os lançamentos mais recentes da nossa coleção."
-              action={{ label: "Ver todos" }}
-            />
+            <SectionHeader title="Novidades" action={{ label: "Ver todos" }} />
             <ProductCarousel products={novidades.length ? novidades : todos.slice(0, 8)} />
           </Section>
 
           {/* Categorias */}
           <Section tone="soft">
-            <SectionHeader
-              title="Categorias"
-              description="Encontre o estilo que combina com você."
-              action={{ label: "Ver todas" }}
-            />
+            <SectionHeader title="Categorias" action={{ label: "Ver todas" }} />
             <CategoryGrid categories={categories} />
           </Section>
 
@@ -98,41 +90,25 @@ function HomePage() {
 
           {/* Mais vendidos */}
           <Section>
-            <SectionHeader
-              title="Mais vendidos"
-              description="As peças preferidas pelos nossos clientes."
-              action={{ label: "Ver todos" }}
-            />
+            <SectionHeader title="Mais vendidos" action={{ label: "Ver todos" }} />
             <ProductGrid products={(maisVendidos.length ? maisVendidos : todos).slice(0, 8)} />
           </Section>
 
           {/* Sport Fino */}
           <Section tone="soft">
-            <SectionHeader
-              title="Sport Fino"
-              description="Conforto e elegância para o dia a dia."
-              action={{ label: "Ver coleção" }}
-            />
+            <SectionHeader title="Sport Fino" action={{ label: "Ver coleção" }} />
             <ProductCarousel products={sportFino.length ? sportFino : destaques.slice(0, 8)} />
           </Section>
 
           {/* Country */}
           <Section>
-            <SectionHeader
-              title="Country"
-              description="Tradição e atitude no melhor estilo country."
-              action={{ label: "Ver coleção" }}
-            />
+            <SectionHeader title="Country" action={{ label: "Ver coleção" }} />
             <ProductCarousel products={country.length ? country : todos.slice(0, 8)} />
           </Section>
 
           {/* Social */}
           <Section tone="soft">
-            <SectionHeader
-              title="Social"
-              description="Alfaiataria moderna para momentos especiais."
-              action={{ label: "Ver coleção" }}
-            />
+            <SectionHeader title="Social" action={{ label: "Ver coleção" }} />
             <ProductCarousel products={social.length ? social : todos.slice(0, 8)} />
           </Section>
 
