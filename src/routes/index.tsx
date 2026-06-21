@@ -5,6 +5,10 @@ import {
   NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
+import bannerCountry from "@/assets/banner-country.jpg";
+import bannerMasculino from "@/assets/banner-masculino.jpg";
+import bannerFeminino from "@/assets/banner-feminino.jpg";
+import bannerSportFino from "@/assets/banner-sport-fino.jpg";
 
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
@@ -51,11 +55,18 @@ function HomePage() {
   const { store, categories, brands, novidades, maisVendidos, destaques, todos } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
 
-  // Banners do Hero: derivados das categorias raiz com imagem (admin-driven)
-  const heroBanners: HeroBanner[] = categories
-    .filter((c: { parent_id: string | null; image_url: string | null }) => !c.parent_id && c.image_url)
-    .slice(0, 5)
-    .map((c: { image_url: string | null; name: string; slug: string }) => ({ image: c.image_url as string, tag: c.name, ctaSlug: c.slug }));
+  // Banners do Hero: imagens premium de campanha por coleção (sem textos sobrepostos).
+  // Sem fallback de placeholder — clique abre a categoria quando o slug existir no catálogo.
+  const findSlug = (...candidates: string[]) => {
+    const set = new Set(categories.map((c: { slug: string }) => c.slug));
+    return candidates.find((s) => set.has(s));
+  };
+  const heroBanners: HeroBanner[] = [
+    { image: bannerCountry, ctaSlug: findSlug("country") },
+    { image: bannerMasculino, ctaSlug: findSlug("masculino", "homem") },
+    { image: bannerFeminino, ctaSlug: findSlug("feminino", "mulher") },
+    { image: bannerSportFino, ctaSlug: findSlug("sport-fino", "social") },
+  ];
 
 
   // Divide o pool em "estilos" diferentes para preencher as seções temáticas
