@@ -349,12 +349,13 @@ function IconBtn({ label, children, badge }: { label: string; children: ReactNod
 
 export function StorefrontLogoStrip() {
   return (
-    <section className="bg-white">
-      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-[120px] flex items-center justify-center">
+    <section className="bg-white" aria-label="Layout — Indústria do vestuário">
+      <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-[130px] flex items-center justify-center">
         <img
           src={logoTransparent.url}
           alt="Layout — Indústria do vestuário"
-          className="h-12 md:h-14 w-auto object-contain"
+          className="h-16 md:h-[78px] w-auto object-contain select-none"
+          draggable={false}
         />
       </div>
     </section>
