@@ -46,6 +46,7 @@ import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes
 import { Route as ApiPublicHooksNuvemfiscalRouteImport } from './routes/api/public/hooks/nuvemfiscal'
 import { Route as ApiPublicHooksMercadopagoRouteImport } from './routes/api/public/hooks/mercadopago'
 import { Route as AuthenticatedAdminPurchasesPoIdRouteImport } from './routes/_authenticated/admin.purchases.$poId'
+import { Route as AuthenticatedAdminProductsNewRouteImport } from './routes/_authenticated/admin.products.new'
 import { Route as AuthenticatedAdminOrdersOrderIdRouteImport } from './routes/_authenticated/admin.orders.$orderId'
 import { Route as AuthenticatedAdminInvoicesInvoiceIdRouteImport } from './routes/_authenticated/admin.invoices.$invoiceId'
 import { Route as AuthenticatedAdminInventoryStockLevelIdRouteImport } from './routes/_authenticated/admin.inventory.$stockLevelId'
@@ -262,6 +263,12 @@ const AuthenticatedAdminPurchasesPoIdRoute =
     path: '/$poId',
     getParentRoute: () => AuthenticatedAdminPurchasesRoute,
   } as any)
+const AuthenticatedAdminProductsNewRoute =
+  AuthenticatedAdminProductsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedAdminProductsRoute,
+  } as any)
 const AuthenticatedAdminOrdersOrderIdRoute =
   AuthenticatedAdminOrdersOrderIdRouteImport.update({
     id: '/$orderId',
@@ -330,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
   '/admin/invoices/$invoiceId': typeof AuthenticatedAdminInvoicesInvoiceIdRoute
   '/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
+  '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
@@ -372,6 +380,7 @@ export interface FileRoutesByTo {
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
   '/admin/invoices/$invoiceId': typeof AuthenticatedAdminInvoicesInvoiceIdRoute
   '/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
+  '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
@@ -417,6 +426,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
   '/_authenticated/admin/invoices/$invoiceId': typeof AuthenticatedAdminInvoicesInvoiceIdRoute
   '/_authenticated/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
+  '/_authenticated/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/_authenticated/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/admin/inventory/$stockLevelId'
     | '/admin/invoices/$invoiceId'
     | '/admin/orders/$orderId'
+    | '/admin/products/new'
     | '/admin/purchases/$poId'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/admin/inventory/$stockLevelId'
     | '/admin/invoices/$invoiceId'
     | '/admin/orders/$orderId'
+    | '/admin/products/new'
     | '/admin/purchases/$poId'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
@@ -548,6 +560,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/inventory/$stockLevelId'
     | '/_authenticated/admin/invoices/$invoiceId'
     | '/_authenticated/admin/orders/$orderId'
+    | '/_authenticated/admin/products/new'
     | '/_authenticated/admin/purchases/$poId'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
@@ -826,6 +839,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPurchasesPoIdRouteImport
       parentRoute: typeof AuthenticatedAdminPurchasesRoute
     }
+    '/_authenticated/admin/products/new': {
+      id: '/_authenticated/admin/products/new'
+      path: '/new'
+      fullPath: '/admin/products/new'
+      preLoaderRoute: typeof AuthenticatedAdminProductsNewRouteImport
+      parentRoute: typeof AuthenticatedAdminProductsRoute
+    }
     '/_authenticated/admin/orders/$orderId': {
       id: '/_authenticated/admin/orders/$orderId'
       path: '/$orderId'
@@ -924,11 +944,13 @@ const AuthenticatedAdminOrdersRouteWithChildren =
   )
 
 interface AuthenticatedAdminProductsRouteChildren {
+  AuthenticatedAdminProductsNewRoute: typeof AuthenticatedAdminProductsNewRoute
   AuthenticatedAdminProductsIdEditRoute: typeof AuthenticatedAdminProductsIdEditRoute
 }
 
 const AuthenticatedAdminProductsRouteChildren: AuthenticatedAdminProductsRouteChildren =
   {
+    AuthenticatedAdminProductsNewRoute: AuthenticatedAdminProductsNewRoute,
     AuthenticatedAdminProductsIdEditRoute:
       AuthenticatedAdminProductsIdEditRoute,
   }

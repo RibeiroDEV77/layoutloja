@@ -17,7 +17,6 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { SelectField } from "@/components/admin/select-field";
 import { useActiveStore } from "@/hooks/use-active-store";
 import { listProducts } from "@/lib/business/products.functions";
-import { ProductAssistantDrawer } from "@/components/admin/products/product-assistant-drawer";
 import { ProductOperationsMenu, type ProductLite } from "@/components/admin/products/product-operations-menu";
 
 export const Route = createFileRoute("/_authenticated/admin/products")({
@@ -47,7 +46,7 @@ function ProductsPage() {
   const [status, setStatus] = useState<"all" | "draft" | "published" | "archived">("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  
 
   const query = useQuery({
     queryKey: ["products", storeId, q, status, page, pageSize],
@@ -98,8 +97,10 @@ function ProductsPage() {
       description="Central de produtos. Crie, configure e publique todo o catálogo."
       breadcrumbs={[{ label: "Catálogo" }, { label: "Produtos" }]}
       actions={
-        <Button onClick={() => setAssistantOpen(true)} disabled={!storeId}>
-          <Plus className="h-4 w-4 mr-2" /> Novo Produto
+        <Button asChild disabled={!storeId}>
+          <Link to="/admin/products/new">
+            <Plus className="h-4 w-4 mr-2" /> Novo Produto
+          </Link>
         </Button>
       }
       toolbar={
@@ -163,7 +164,7 @@ function ProductsPage() {
         </>
       )}
 
-      <ProductAssistantDrawer open={assistantOpen} onOpenChange={setAssistantOpen} />
+      
     </CrudPage>
   );
 }
