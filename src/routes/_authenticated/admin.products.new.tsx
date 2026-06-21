@@ -1139,11 +1139,12 @@ function StockPriceBlock({
 }
 
 function MatrixRow({
-  variant, colorName, colorHex, sizeLabel,
+  variant, thumbnailUrl, colorName, colorHex, sizeLabel,
   stockLevelId, stockQty, price, compare,
   onChangeVariant, onChangeStock, onChangePrice, onDelete,
 }: {
   variant: VariantRow;
+  thumbnailUrl: string | null;
   colorName: string; colorHex: string | null; sizeLabel: string;
   stockLevelId: string | null; stockQty: number | null;
   price: number | null; compare: number | null;
@@ -1167,14 +1168,24 @@ function MatrixRow({
   useEffect(() => { setPc(compare != null ? String(compare) : ""); }, [compare]);
 
   return (
-    <tr>
-      <td className="p-2 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: colorHex }} />}
-          <span>{colorName}</span>
+    <tr className="hover:bg-muted/30 transition-colors">
+      <td className="p-3 w-16">
+        <div
+          className="h-10 w-10 rounded-md border bg-muted overflow-hidden grid place-items-center shrink-0"
+          style={!thumbnailUrl && colorHex ? { background: colorHex } : undefined}
+        >
+          {thumbnailUrl
+            ? <img src={thumbnailUrl} alt={colorName} className="w-full h-full object-cover" />
+            : !colorHex && <ImageIcon className="h-4 w-4 text-muted-foreground" />}
         </div>
       </td>
-      <td className="p-2 whitespace-nowrap">{sizeLabel}</td>
+      <td className="p-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border shrink-0" style={{ background: colorHex }} />}
+          <span className="font-medium">{colorName}</span>
+        </div>
+      </td>
+      <td className="p-3 whitespace-nowrap text-muted-foreground">{sizeLabel}</td>
       <td className="p-2">
         <Input value={sku} onChange={(e) => setSku(e.target.value)}
           onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
