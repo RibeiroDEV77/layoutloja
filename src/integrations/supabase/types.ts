@@ -435,6 +435,7 @@ export type Database = {
           id: string
           input_type: Database["public"]["Enums"]["attribute_input_type"]
           is_color: boolean
+          is_public: boolean
           is_size: boolean
           name: string
           store_id: string
@@ -448,6 +449,7 @@ export type Database = {
           id?: string
           input_type?: Database["public"]["Enums"]["attribute_input_type"]
           is_color?: boolean
+          is_public?: boolean
           is_size?: boolean
           name: string
           store_id: string
@@ -461,6 +463,7 @@ export type Database = {
           id?: string
           input_type?: Database["public"]["Enums"]["attribute_input_type"]
           is_color?: boolean
+          is_public?: boolean
           is_size?: boolean
           name?: string
           store_id?: string
@@ -4459,6 +4462,7 @@ export type Database = {
           ends_at: string | null
           id: string
           is_active: boolean
+          is_public: boolean
           name: string
           priority: number
           starts_at: string | null
@@ -4472,6 +4476,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
           name: string
           priority?: number
           starts_at?: string | null
@@ -4485,6 +4490,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
           name?: string
           priority?: number
           starts_at?: string | null
@@ -6177,6 +6183,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_public: boolean
           name: string
           slug: string
           store_id: string
@@ -6184,6 +6191,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_public?: boolean
           name: string
           slug: string
           store_id: string
@@ -6191,6 +6199,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_public?: boolean
           name?: string
           slug?: string
           store_id?: string
@@ -6821,6 +6830,7 @@ export type Database = {
       }
       asset_store_id: { Args: { _asset_id: string }; Returns: string }
       assets_usage_count: { Args: { _asset_id: string }; Returns: number }
+      cart_accessible: { Args: { _cart_id: string }; Returns: boolean }
       cart_apply_pricing: { Args: { _cart_id: string }; Returns: undefined }
       cart_recalculate: {
         Args: { _cart_id: string }
@@ -6857,6 +6867,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cart_set_session_v1: { Args: { _token: string }; Returns: undefined }
       cart_store_id: { Args: { _cart_id: string }; Returns: string }
       claim_first_super_admin: { Args: never; Returns: Json }
       claim_outbox_batch: {
@@ -6895,6 +6906,10 @@ export type Database = {
         }
       }
       color_store_id: { Args: { _color_id: string }; Returns: string }
+      coupon_lookup_by_code_v1: {
+        Args: { _code: string; _store_id: string }
+        Returns: Json
+      }
       current_user_context: { Args: never; Returns: Json }
       customer_store_id: { Args: { _customer_id: string }; Returns: string }
       emit_domain_event: {
