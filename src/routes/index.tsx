@@ -52,9 +52,10 @@ function HomePage() {
 
   // Banners do Hero: derivados das categorias raiz com imagem (admin-driven)
   const heroBanners: HeroBanner[] = categories
-    .filter((c) => !c.parent_id && c.image_url)
+    .filter((c: { parent_id: string | null; image_url: string | null }) => !c.parent_id && c.image_url)
     .slice(0, 5)
-    .map((c) => ({ image: c.image_url as string, tag: c.name, ctaSlug: c.slug }));
+    .map((c: { image_url: string | null; name: string; slug: string }) => ({ image: c.image_url as string, tag: c.name, ctaSlug: c.slug }));
+
 
   // Divide o pool em "estilos" diferentes para preencher as seções temáticas
   const sportFino = todos.slice(0, 8);
