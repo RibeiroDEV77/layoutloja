@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Search, Heart, User, ShoppingBag, Menu, X, Instagram, Facebook, Youtube,
+  Search, Heart, User, ShoppingBag, Menu, X,
   Star, ChevronDown, ChevronLeft, ChevronRight, Truck, MessageCircle, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
