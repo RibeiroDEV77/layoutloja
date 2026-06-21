@@ -358,3 +358,28 @@ Premissas: 500k clientes, 5k pedidos/dia (~150k/mês), 20 lojas.
 9. Camada UI por bloco, sempre consumindo server functions.
 
 Aguardando sua revisão antes de iniciar qualquer implementação.
+
+---
+
+## 15. ✅ Fase 5.0 — Fundações Transversais (IMPLEMENTADA)
+
+**Status:** concluída. Arquitetura congelada e aprovada.
+
+### Migrations aplicadas
+- `fase5_0_foundations.sql` — Workflow Engine (5 tabelas), Transactional Outbox (3 tabelas), Idempotency Keys (1 tabela), Observability Layer (6 tabelas: metrics, traces, health_checks, feature_flags, feature_flag_overrides, system_settings). 13 RPCs `SECURITY DEFINER` (enqueue/claim/mark outbox, idempotency_begin/complete/purge, record_metric/health, evaluate_feature_flag, release_stale_outbox_locks). 13 novas permissões RBAC, todas concedidas ao super_admin.
+- `fase5_0_security_hardening.sql` — REVOKE EXECUTE de PUBLIC nas RPCs novas; GRANT a service_role/authenticated conforme escopo.
+
+### Jobs pg_cron agendados (via supabase--insert)
+- `release-outbox-locks` (a cada 1min) — libera locks expirados.
+- `purge-idempotency` (a cada 1h) — remove chaves expiradas (status ≠ in_flight).
+- Workers HTTP do dispatcher de outbox serão agendados na Fase 5.1+ quando houver URL publicada.
+
+### Camada TypeScript (helpers reutilizáveis)
+- `src/lib/foundations/events.ts` — catálogo de event types e aggregate types do módulo comercial.
+- `src/lib/foundations/outbox.functions.ts` — `enqueueOutbox()` + server fns `listOutbox`, `listDeadLetter`.
+- `src/lib/foundations/idempotency.functions.ts` — `withIdempotency()` wrapper + `hashRequest()`.
+- `src/lib/foundations/observability.functions.ts` — `recordMetric`, `recordHealth`, server fns `evaluateFlag`, `getSetting`.
+- `src/lib/foundations/workflow.functions.ts` — `startWorkflow()`, `transitionWorkflow()` + server fn `getWorkflowForAggregate`.
+
+### Próximos passos
+Iniciar **Fase 5.1 — Clientes** (customers, customer_addresses, customer_contacts, customer_tax_profiles, customer_credit_ledger, customer_groups_map) na próxima aprovação.
