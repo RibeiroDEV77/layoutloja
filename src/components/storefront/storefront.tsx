@@ -376,15 +376,10 @@ export type HeroBanner = {
 };
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
-  const slides: HeroBanner[] = useMemo(() => {
-    const list = (banners ?? []).filter((b) => !!b.image);
-    if (list.length > 0) return list.slice(0, 6);
-    return [
-      { image: lookSocial, tag: "Coleção Social", title: "Alfaiataria em movimento", subtitle: "Peças que acompanham seu tempo." },
-      { image: lookFeminino, tag: "Coleção Feminina", title: "Novo capítulo feminino", subtitle: "Silhuetas autorais para a estação." },
-      { image: lookCowboy, tag: "Coleção Country", title: "Estilo country atemporal", subtitle: "Tradição e atitude em cada peça." },
-    ];
-  }, [banners]);
+  const slides: HeroBanner[] = useMemo(
+    () => (banners ?? []).filter((b) => !!b.image).slice(0, 6),
+    [banners],
+  );
 
   const [active, setActive] = useState(0);
   useEffect(() => {
@@ -393,7 +388,9 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     return () => clearInterval(id);
   }, [slides.length]);
 
+  if (slides.length === 0) return null;
   const current = slides[active];
+  const hasOverlay = !!(current?.tag || current?.title || current?.subtitle || (current?.ctaSlug && current?.ctaLabel));
 
   return (
     <section className="relative w-full overflow-hidden bg-[#111]">
@@ -402,45 +399,50 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
           <img
             key={`${s.image}-${i}`}
             src={s.image}
-            alt={s.tag ?? "Coleção Layout"}
+            alt={s.tag ?? ""}
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out",
               i === active ? "opacity-100" : "opacity-0",
             )}
           />
         ))}
-        {/* Overlay escuro suave + degradê lateral para suportar texto à esquerda */}
-        <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
-
-        {/* Conteúdo alinhado à esquerda */}
-        <div className="absolute inset-0 flex items-center">
-          <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
-            <div className="max-w-xl text-white">
-              {current?.tag && (
-                <p className="text-[11px] md:text-[12px] uppercase tracking-[0.32em] font-medium text-white/90">
-                  {current.tag}
-                </p>
-              )}
-              <h1 className="mt-4 text-[40px] md:text-[60px] leading-[1.05] font-semibold tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-                {current?.title ?? "Coleção atual"}
-              </h1>
-              {current?.subtitle && (
-                <p className="mt-5 text-[15px] md:text-[17px] font-normal text-white/95 max-w-md leading-relaxed">
-                  {current.subtitle}
-                </p>
-              )}
-              <a
-                href="#novidades"
-                className="mt-8 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
-              >
-                {current?.ctaLabel ?? "Explorar coleção"}
-              </a>
+        <div className="absolute inset-0 bg-black/20" />
+        {hasOverlay && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
+            <div className="absolute inset-0 flex items-center">
+              <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
+                <div className="max-w-xl text-white">
+                  {current?.tag && (
+                    <p className="text-[11px] md:text-[12px] uppercase tracking-[0.32em] font-medium text-white/90">
+                      {current.tag}
+                    </p>
+                  )}
+                  {current?.title && (
+                    <h1 className="mt-4 text-[40px] md:text-[60px] leading-[1.05] font-semibold tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+                      {current.title}
+                    </h1>
+                  )}
+                  {current?.subtitle && (
+                    <p className="mt-5 text-[15px] md:text-[17px] font-normal text-white/95 max-w-md leading-relaxed">
+                      {current.subtitle}
+                    </p>
+                  )}
+                  {current?.ctaSlug && current?.ctaLabel && (
+                    <Link
+                      to="/categoria/$slug"
+                      params={{ slug: current.ctaSlug }}
+                      className="mt-8 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 text-[13px] font-semibold uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] hover:text-white transition-colors duration-300"
+                    >
+                      {current.ctaLabel}
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Dots */}
         {slides.length > 1 && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
             {slides.map((_, i) => (
