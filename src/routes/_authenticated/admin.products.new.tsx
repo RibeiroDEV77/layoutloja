@@ -274,6 +274,7 @@ function BasicBlock({
     short_description: "", description: "",
   });
   const [saving, setSaving] = useState(false);
+  const [skuTouched, setSkuTouched] = useState(false);
 
   const cats = useQuery({
     queryKey: ["wizard-cats", storeId], enabled: !!storeId,
