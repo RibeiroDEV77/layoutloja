@@ -1252,10 +1252,7 @@ function MatrixRow({
 function OrganizationBlock({
   productId, onChange, onPrev, onNext,
 }: { productId: string; onChange: () => void; onPrev: () => void; onNext: () => void }) {
-  const { storeId } = useActiveStore();
   const fnUpdate = useServerFn(updateProduct);
-  const fnCats = useServerFn(listCategories);
-  const fnCols = useServerFn(listCollections);
 
   const productQ = useQuery({
     queryKey: ["wizard-product", productId],
@@ -1267,28 +1264,7 @@ function OrganizationBlock({
     },
   });
 
-  const cats = useQuery({
-    queryKey: ["wizard-cats", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnCats({ data: { store_id: storeId!, pageSize: 200 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Row[];
-    },
-  });
-  const cols = useQuery({
-    queryKey: ["wizard-cols", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnCols({ data: { store_id: storeId!, pageSize: 200 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Row[];
-    },
-  });
-
   const [form, setForm] = useState({
-    department_id: "",
-    category_id: "",
-    subcategory_id: "",
-    collection_id: "",
     featured: false,
     on_sale: false,
     new_product: false,
@@ -1297,10 +1273,6 @@ function OrganizationBlock({
   useEffect(() => {
     if (productQ.data) {
       setForm({
-        department_id: "",
-        category_id: productQ.data.category_id ?? "",
-        subcategory_id: "",
-        collection_id: "",
         featured: productQ.data.featured,
         on_sale: productQ.data.on_sale,
         new_product: productQ.data.new_product,
@@ -1313,7 +1285,6 @@ function OrganizationBlock({
     setSaving(true);
     const ok = await runAction(
       () => fnUpdate({ data: { id: productId, patch: {
-        category_id: form.category_id || null,
         featured: form.featured,
         on_sale: form.on_sale,
         new_product: form.new_product,
@@ -1327,58 +1298,23 @@ function OrganizationBlock({
   return (
     <BlockCard
       title="Organização"
-      description="Como o produto aparece na navegação e nos destaques da loja."
+      description="Destaques, promoções e tags. Departamento, Categoria, Subcategoria e Coleção são definidos em Dados Básicos."
     >
-      <FormRow>
-        <SelectField
-          label="Departamento"
-          value={form.department_id || "__none__"}
-          onChange={(v) => setForm({ ...form, department_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Selecionar —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Categoria" required
-          value={form.category_id}
-          onChange={(v) => setForm({ ...form, category_id: v })}
-          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-        />
-      </FormRow>
-      <FormRow>
-        <SelectField
-          label="Subcategoria"
-          value={form.subcategory_id || "__none__"}
-          onChange={(v) => setForm({ ...form, subcategory_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Opcional —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Coleção"
-          value={form.collection_id || "__none__"}
-          onChange={(v) => setForm({ ...form, collection_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Nenhuma —" },
-            ...(cols.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-      </FormRow>
-
-      <FormField label="Tags" hint="Cadastre tags na aba de organização avançada (futuro).">
+      <FormField label="Tags" hint="Cadastre tags na aba de organização avançada (em breve).">
         <Input disabled placeholder="—" />
       </FormField>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([
-          ["featured", "Produto em Destaque"],
-          ["on_sale", "Produto em Promoção"],
-          ["new_product", "Produto Novo"],
-        ] as const).map(([k, label]) => (
-          <div key={k} className="flex items-center justify-between rounded-md border p-3">
-            <Label className="text-sm">{label}</Label>
+          ["featured", "Produto em Destaque", "Exibido nas vitrines principais."],
+          ["on_sale", "Produto em Promoção", "Sinaliza preço promocional ativo."],
+          ["new_product", "Produto Novo", "Marca como novidade no catálogo."],
+        ] as const).map(([k, label, desc]) => (
+          <div key={k} className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div className="min-w-0">
+              <Label className="text-sm">{label}</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+            </div>
             <Switch checked={form[k] as boolean} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
           </div>
         ))}
@@ -1392,6 +1328,10 @@ function OrganizationBlock({
             Salvar e avançar
           </Button>
         }
+      />
+    </BlockCard>
+  );
+}
       />
     </BlockCard>
   );
