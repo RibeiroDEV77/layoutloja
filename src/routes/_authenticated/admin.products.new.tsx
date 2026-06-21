@@ -1285,7 +1285,7 @@ function OrganizationBlock({
         department_id: "",
         category_id: productQ.data.category_id ?? "",
         subcategory_id: "",
-        collection_id: productQ.data.collection_id ?? "",
+        collection_id: "",
         featured: productQ.data.featured,
         on_sale: productQ.data.on_sale,
         new_product: productQ.data.new_product,
@@ -1299,7 +1299,6 @@ function OrganizationBlock({
     const ok = await runAction(
       () => fnUpdate({ data: { id: productId, patch: {
         category_id: form.category_id || null,
-        collection_id: form.collection_id || null,
         featured: form.featured,
         on_sale: form.on_sale,
         new_product: form.new_product,
