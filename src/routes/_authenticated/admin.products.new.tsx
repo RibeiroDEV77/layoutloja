@@ -476,39 +476,30 @@ function PhotosBlock({
   });
 
   // Garante ao menos uma cor para anexar mídias (cor "Padrão" se não houver nenhuma).
-  const [ensuring, setEnsuring] = useState(false);
-  const ensureDefaultColor = async () => {
-    if (ensuring) return null;
-    setEnsuring(true);
-    const r = await fnCreateColor({
+  const [ensured, setEnsured] = useState(false);
+  useEffect(() => {
+    if (ensured) return;
+    if (colorsQ.isLoading || colorsQ.isError) return;
+    if ((colorsQ.data ?? []).length > 0) { setEnsured(true); return; }
+    setEnsured(true);
+    void fnCreateColor({
       data: { product_id: productId, name: "Padrão", hex: "#000000", is_default: true },
+    }).then((r) => {
+      if (r.ok) { colorsQ.refetch(); onChange(); }
     });
-    setEnsuring(false);
-    if (!r.ok) { notify.error(r.error.message); return null; }
-    await colorsQ.refetch();
-    onChange();
-    return r.data as ColorRow;
-  };
+  }, [colorsQ.isLoading, colorsQ.isError, colorsQ.data, ensured, fnCreateColor, productId, colorsQ, onChange]);
 
   const colors = colorsQ.data ?? [];
 
   return (
     <BlockCard
       title="Fotos do Produto"
-      description="Selecione mídias do DAM ou envie novas. As fotos pertencem a uma cor — usamos a cor 'Padrão' enquanto você não cadastra variações."
+      description="Selecione mídias do DAM ou envie novas. As fotos pertencem a uma cor — usamos 'Padrão' enquanto você não cadastra variações."
     >
-      {colorsQ.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+      {colorsQ.isLoading || colors.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+          <Loader2 className="h-4 w-4 animate-spin" /> Preparando galeria...
         </div>
-      ) : colors.length === 0 ? (
-        <EmptyPhotosState
-          onPicked={async (assets) => {
-            const c = await ensureDefaultColor();
-            if (c) await attachAssets(c.id, assets, 0, false);
-            onChange();
-          }}
-        />
       ) : (
         <div className="space-y-6">
           {colors.map((c) => (
@@ -530,27 +521,7 @@ function PhotosBlock({
   );
 }
 
-function EmptyPhotosState({ onPicked }: { onPicked: (assets: AssetLike[]) => void | Promise<void> }) {
-  return (
-    <div className="flex flex-col items-center justify-center text-center py-10 border border-dashed rounded-lg bg-muted/20">
-      <ImageIcon className="h-10 w-10 text-muted-foreground mb-3" />
-      <p className="font-medium">Nenhuma foto ainda</p>
-      <p className="text-sm text-muted-foreground mt-1 mb-4">
-        Adicione imagens, vídeos ou links de YouTube/Vimeo.
-      </p>
-      <AssetPicker context="product" multiple onSelect={onPicked}>
-        <Button className="gap-2"><Library className="h-4 w-4" /> Abrir biblioteca DAM</Button>
-      </AssetPicker>
-    </div>
-  );
-}
 
-// ─── Galeria por cor (reusada nos Blocos 2 e 5) ──────────────────────────────
-async function attachAssets(colorId: string, assets: AssetLike[], baseOrder: number, hasCover: boolean) {
-  const fnAdd = addColorMedia; // function ref via fetch — uses createServerFn
-  // we'll call via the same useServerFn pattern in the component instead
-  void fnAdd; void colorId; void assets; void baseOrder; void hasCover;
-}
 
 function ColorGallerySection({
   color, onChange, compact,
