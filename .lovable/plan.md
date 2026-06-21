@@ -1,139 +1,70 @@
-## Premissas (não-negociáveis)
+## Sistema de Filtros por Categoria — Painel + Loja
 
-- **Zero novas tabelas.** O esquema atual já comporta o modelo pedido:
-  - `products` (engine principal)
-  - `product_colors` (cor com `hex`, `is_default`, ligada a `attribute_values`)
-  - `product_color_media` (imagens **por cor**, com `is_cover`, `is_hover_media`, `sort_order`)
-  - `product_variants` (SKU, barcode, peso, dimensões, `product_color_id` + `size_attribute_value_id`)
-  - `variant_attribute_values` (mapa genérico cor/tamanho/qualquer atributo → variante)
-  - `stock_levels`, `price_lists`/`price_list_items`, `product_relations`, `audit_log`, `event_outbox`
-- **Zero novos server functions de domínio.** Tudo passa pelos existentes: `products.functions.ts`, `inventory.functions.ts`, `dam.functions.ts`, `price-lists.functions.ts`, `product-relations.functions.ts`, `audit.functions.ts`.
-- **Zero migrations.** Só refactor de UI + thin wrappers de orquestração quando faltar uma operação CRUD pontual sobre tabelas já existentes (ex.: `product_colors`, `product_variants`, `variant_attribute_values`, `product_color_media`).
-- **RLS/RBAC intactos.** Permissões continuam `products.read` / `products.update` / `products.write` escopadas por `store_id` (já corrigidas no commit de segurança anterior).
-- **SKU permanece a única chave operacional** para estoque, pedidos, pagamento, NF e frete. Nada disso é tocado.
+Implementar um sistema de filtros 100% dinâmico, administrado pelo Painel e consumido pela Loja Pública. Sem listas fixas no código.
 
-## Arquitetura das 9 abas
+### 1. Banco (migração)
 
-A tela `admin.products.$id.edit.tsx` (hoje 1235 linhas, monolítica) é quebrada em uma **shell** + 9 abas isoladas, cada uma em seu próprio arquivo:
+O schema já tem `attributes`, `attribute_values`, `category_attributes`, `product_attribute_values`. Vou apenas complementar:
 
-```text
-src/components/admin/products/edit/
-  product-edit-shell.tsx          # tabs, breadcrumb, readiness, save bar
-  tabs/
-    general-tab.tsx               # nome, descrição, tipo, marca, sale_channel
-    organization-tab.tsx          # categorias, coleções, tags, atributos do produto-pai
-    variants-tab.tsx              # ⭐ centro do sistema (ver abaixo)
-    gallery-tab.tsx               # galeria por COR (não por variante)
-    pricing-tab.tsx               # preço base, listas de preço, promoção
-    seo-tab.tsx                   # slug, meta title/desc, OG image
-    relations-tab.tsx             # cross-sell / up-sell / acessórios
-    publish-tab.tsx               # status, visibilidade, canais, agenda
-    history-tab.tsx               # audit_log + product_history (já existe drawer)
-  variants/
-    variant-generator.tsx         # seletor de atributos + botão "Gerar Variantes"
-    variant-matrix-table.tsx      # tabela editável: cor × tamanho × SKU/EAN/estoque/peso/preço
-    color-row-editor.tsx          # cor: nome, hex, swatch, default
-    color-gallery-panel.tsx       # galeria filtrada pela cor selecionada
-```
+- Adicionar em `attributes`: `is_filterable boolean default true`, `filter_ui text default 'checkbox'` (`checkbox` | `color` | `size` | `range`), `filter_order int default 0`.
+- Adicionar em `category_attributes`: `show_in_filters boolean default true`, `filter_order int default 0`.
+- View `public.v_category_filters` que retorna, por `category_id`, a lista de atributos visíveis + seus valores ativos, ordenados.
+- View `public.v_category_filter_counts` (opcional, fase 2) com contagem de produtos por valor para a categoria atual.
+- GRANTs e políticas: `SELECT TO anon` nas views (somente leitura pública).
 
-A rota `admin.products.$id.edit.tsx` passa a ser um arquivo curto que monta o shell. O conteúdo monolítico antigo é movido para os arquivos acima — não há lógica nova de negócio.
+Nenhum dado é semeado em código. O Painel cria tudo.
 
-## Aba Variantes — fluxo
+### 2. Server functions (`src/lib/business/filters.functions.ts`)
 
-1. **Seleção de atributos** (reusa `attributes.functions.ts` + `attribute-values.functions.ts`):
-   - Atributo "Cor" obrigatório (mapeia para `product_colors`).
-   - Atributo "Tamanho" opcional (mapeia para `product_variants.size_attribute_value_id`).
-   - Atributos extras opcionais (mapeados via `variant_attribute_values`).
-2. **Gerar Variantes** (botão): produz o produto cartesiano das opções selecionadas.
-   - Para cada cor nova: insert em `product_colors` (com `attribute_value_id`, `hex`, `is_default` na primeira).
-   - Para cada combinação cor × tamanho × extras: insert em `product_variants` (SKU autogerado `${product.slug}-${color.code}-${size.code}`, editável) + linhas em `variant_attribute_values`.
-   - Combinações já existentes são preservadas (idempotente, casa pela tupla de attribute_value_ids).
-3. **Tabela editável** com colunas:
-   - Cor (read-only, lookup) · Tamanho (read-only) · SKU · Código de barras · Estoque (lê `stock_levels` agregado da loja ativa, edita via `inventory.functions.ts`) · Peso · Preço · Preço promocional · Status (is_active).
-   - Edição inline com debounce; salva variante a variante via wrapper de update.
-4. **Galeria por cor**: ao clicar numa linha/cor, abre painel lateral mostrando `product_color_media` daquela cor. Upload usa `dam.functions.ts` (cria asset + link `product_color`); a tabela `product_color_media` recebe `storage_path`/`external_url` espelhados a partir do asset (já é o padrão atual). Reordenação por drag-and-drop atualiza `sort_order`.
+- `getCategoryFilters({ categorySlug })` → público (cliente publishable), retorna `[{ attribute, values[] }]` + faixa de preço min/max calculada dos produtos da categoria.
+- `listAttributes()`, `getAttribute({id})`, `upsertAttribute(...)`, `deleteAttribute({id})` — admin (`requireSupabaseAuth` + `has_role admin`).
+- `upsertAttributeValue(...)`, `deleteAttributeValue(...)` — admin.
+- `setCategoryAttributes({ categoryId, attributeIds[] })` — admin (vínculo many-to-many com ordem).
+- `setProductAttributeValues({ productId, values[] })` — admin (usado ao editar produto).
 
-## Aba Galeria
+### 3. Loja Pública
 
-- View consolidada de todas as cores. Cada cor mostra suas mídias. Não há "imagens do produto" soltas — toda imagem pertence a uma cor (regra do usuário).
-- Botão "definir como capa" grava `is_cover=true` (único por cor).
+- `src/routes/categoria.$slug.tsx`: substituir `buildFilterGroups` hardcoded por `useSuspenseQuery(categoryFiltersQuery(slug))`. Renderização:
+  - `filter_ui='color'` → swatches.
+  - `filter_ui='size'` → chips compactos.
+  - `filter_ui='range'` → slider de faixa de preço.
+  - default → checkboxes.
+- Aplicar filtros via search params (`?attr[<code>]=val1,val2&price=min-max`), filtragem feita no `loader` chamando server fn.
+- Mesmo componente reaproveitado em `/marcas`, `/promocoes`, `/novidades` e busca, sempre lendo da categoria contextual (ou "todas").
 
-## Loja pública (preparação, não escopo desta entrega de UI admin)
+### 4. Painel Administrativo — módulo "Atributos e Filtros"
 
-- Os dados ficam prontos para a vitrine: `product_colors` + `product_color_media` + `product_variants` + `variant_attribute_values` já modelam:
-  - Troca de galeria ao selecionar cor.
-  - Recalcular tamanhos disponíveis: filtrar `product_variants WHERE product_color_id = X AND is_active AND stock>0`.
-  - Habilitar "Adicionar ao Carrinho" só com (cor, tamanho) válidos: a variante resultante tem um SKU único.
-- Esta entrega **não** mexe na storefront pública — só garante o cadastro correto.
+Nova rota `src/routes/_authenticated/admin/atributos.tsx`:
 
-## Server functions reutilizadas (sem alterações)
+- Lista de atributos com: nome, código, tipo (`select`/`multiselect`/`color`/`size`/`number`/`text`), `is_filterable`, UI de filtro, ordem.
+- Drawer "Editar atributo": campos básicos + tabela de valores (label, code, ordem, hex se cor, ativo).
+- Drawer "Categorias deste atributo": multi-select de categorias + ordem + `show_in_filters`.
 
-| Capability | Função existente |
-|---|---|
-| CRUD produto | `products.functions.ts` (list/get/create/update/publish/unpublish/archive/duplicate/readiness/history/audit) |
-| Estoque por SKU | `inventory.functions.ts` |
-| Preços / listas | `price-lists.functions.ts` |
-| Mídia / upload | `dam.functions.ts` (`createUploadJob`, `signUploadJob`, `completeUploadJob`, `linkAsset`) |
-| Relacionados | `product-relations.functions.ts` |
-| Auditoria | `audit.functions.ts` + `listProductAudit` |
-| Filhos / variantes existentes | `product-children.functions.ts` |
-| Atributos / valores | `attributes.functions.ts`, `attribute-values.functions.ts`, `category-attributes.functions.ts` |
+Nova aba dentro de `admin/categorias/$id`:
 
-## Wrappers thin (apenas se ainda não existirem)
+- "Filtros desta categoria": tabela ordenável de atributos vinculados, toggle "exibir no filtro", botão "Adicionar atributo".
 
-Onde já houver função, **não criar**. Onde faltar, adicionar mínimo necessário em `src/lib/business/services/products.server.ts` + `products.functions.ts`:
+Na tela de edição de produto, seção "Atributos":
 
-- `listProductColors(productId)` / `upsertProductColor(...)` / `deleteProductColor(id)`
-- `listProductVariants(productId)` / `upsertProductVariants(rows[])` (bulk para o "Gerar Variantes") / `updateVariant(...)` / `deleteVariant(id)`
-- `listColorMedia(colorId)` / `attachAssetToColor(colorId, assetId)` / `reorderColorMedia(items)` / `setColorCover(colorId, mediaId)`
+- Inputs gerados dinamicamente a partir dos atributos vinculados à categoria do produto. Salva em `product_attribute_values`.
 
-Cada wrapper:
-- Resolve `store_id` via `product_store_id(product_id)`.
-- Aplica `has_permission(userId, 'products.update', store_id)`.
-- Grava `audit_log` (entity `product_variant` / `product_color`) reutilizando o helper de auditoria já existente.
-- Emite `event_outbox` (`product.variant.created/updated/deleted`, `product.color.media.attached`) usando o dispatcher já existente — sem nova tabela.
+### 5. Comportamento
 
-Total esperado: ~250 linhas em `services/products.server.ts`, ~80 em `products.functions.ts`.
+- Sem produtos cadastrados → filtros mostram skeleton + estado vazio ("Nenhum filtro disponível").
+- Admin cadastra atributo "Tipo de Produto" com valores "Polos, Camisas, …", vincula à categoria Masculino → aparece automaticamente em `/categoria/masculino` sem deploy.
+- Faixa de preço é sempre derivada dos produtos reais da categoria (não é atributo).
+- Cores e tamanhos usam `is_color`/`is_size` já existentes para renderização especial.
 
-## Histórico (aba 9)
+### 6. Não alterar
 
-Reusa `listProductHistory` + `listProductAudit` (já existem) e o componente `product-history-drawer.tsx` (vira o conteúdo da aba em vez de drawer).
+Hero, Home, Carrosséis, Navbar, Footer, Product Engine, Variant Engine, Pricing, Inventory, DAM, Audit, RLS/RBAC base. Apenas leitura adicional em `attributes`/`attribute_values`/`category_attributes`/`product_attribute_values` + novas telas admin.
 
-## Telemetria
+### Entregáveis
 
-Eventos de UX via `useTelemetry()` existente: `product.tab.viewed`, `product.variants.generated` (`{combinations, colors, sizes}`), `product.variant.edited`, `product.color.media.uploaded`, `product.published`.
-
-## Detalhes técnicos
-
-- TanStack Query: cada aba tem seu `queryOptions` próprio, invalida só o que mudou (`['product', id, 'variants']`, `['product', id, 'colors']`, etc.). Save bar do shell escuta `isDirty` agregado.
-- Tabela de variantes: `@tanstack/react-table` (já é dependência), edição inline com Zod por linha, salvamento otimista e rollback em erro.
-- Geração de combinações: util puro `generateVariantCombinations(colors[], sizes[], extras[][])` testável isoladamente.
-- Validações de SKU único por loja: tratamento de violação de constraint do banco (já existe `UNIQUE (store_id, sku)` no esquema), com mensagem amigável.
-- Acessibilidade: tabs com aria-roles, foco gerenciado ao trocar aba, atalhos `Ctrl/Cmd+S`.
-
-## Arquivos alterados (resumo)
-
-**Refatorados / quebrados:**
-- `src/routes/_authenticated/admin.products.$id.edit.tsx` — reduzido a ~80 linhas (shell + tabs router).
-- `src/components/admin/products/product-history-drawer.tsx` — adaptado para uso embarcado na aba.
-
-**Novos componentes de UI** (sem nova lógica de negócio):
-- 9 arquivos em `src/components/admin/products/edit/tabs/`
-- `src/components/admin/products/edit/product-edit-shell.tsx`
-- 4 arquivos em `src/components/admin/products/edit/variants/`
-- `src/lib/products/variant-combinations.ts` (util puro + testes)
-
-**Backend (apenas wrappers thin)**:
-- `src/lib/business/services/products.server.ts` — adiciona seções `colors`, `variants`, `colorMedia`.
-- `src/lib/business/products.functions.ts` — adiciona os server fns correspondentes.
-
-**Não tocados** (reuso integral): `inventory.*`, `dam.*`, `price-lists.*`, `product-relations.*`, `audit.*`, `product-children.*`, `attributes*.*`, integração de checkout, pagamento, NF, frete.
-
-## Entrega final
-
-Ao concluir, gero relatório de auditoria técnica listando:
-- Diff por arquivo (linhas alteradas/adicionadas/removidas)
-- Componentes/services reutilizados (com link)
-- Confirmação de zero migrations, zero novas tabelas, zero novos engines
-- Mapa "operação UI → server fn existente"
-- Checklist de RLS/RBAC validados por aba.
+1. Migração SQL (colunas + views + grants + policies).
+2. `src/lib/business/filters.functions.ts`.
+3. Refactor de `src/routes/categoria.$slug.tsx` para usar filtros dinâmicos.
+4. Componente `src/components/storefront/DynamicFilters.tsx`.
+5. Tela admin `src/routes/_authenticated/admin/atributos.tsx` + drawers.
+6. Aba "Filtros" em `admin/categorias/$id`.
+7. Bloco "Atributos" no editor de produto.
