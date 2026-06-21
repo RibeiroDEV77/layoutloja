@@ -19,6 +19,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin.suppliers'
 import { Route as AuthenticatedAdminStoresRouteImport } from './routes/_authenticated/admin.stores'
 import { Route as AuthenticatedAdminShippingRouteImport } from './routes/_authenticated/admin.shipping'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminPurchasesRouteImport } from './routes/_authenticated/admin.purchases'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin.products'
 import { Route as AuthenticatedAdminPriceListsRouteImport } from './routes/_authenticated/admin.price-lists'
@@ -99,6 +100,12 @@ const AuthenticatedAdminShippingRoute =
   AuthenticatedAdminShippingRouteImport.update({
     id: '/shipping',
     path: '/shipping',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPurchasesRoute =
@@ -299,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
@@ -338,6 +346,7 @@ export interface FileRoutesByTo {
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
@@ -380,6 +389,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/_authenticated/admin/purchases': typeof AuthenticatedAdminPurchasesRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/_authenticated/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/price-lists'
     | '/admin/products'
     | '/admin/purchases'
+    | '/admin/settings'
     | '/admin/shipping'
     | '/admin/stores'
     | '/admin/suppliers'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/admin/price-lists'
     | '/admin/products'
     | '/admin/purchases'
+    | '/admin/settings'
     | '/admin/shipping'
     | '/admin/stores'
     | '/admin/suppliers'
@@ -502,6 +514,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/price-lists'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/purchases'
+    | '/_authenticated/admin/settings'
     | '/_authenticated/admin/shipping'
     | '/_authenticated/admin/stores'
     | '/_authenticated/admin/suppliers'
@@ -596,6 +609,13 @@ declare module '@tanstack/react-router' {
       path: '/shipping'
       fullPath: '/admin/shipping'
       preLoaderRoute: typeof AuthenticatedAdminShippingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/purchases': {
@@ -886,6 +906,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPriceListsRoute: typeof AuthenticatedAdminPriceListsRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
   AuthenticatedAdminPurchasesRoute: typeof AuthenticatedAdminPurchasesRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminShippingRoute: typeof AuthenticatedAdminShippingRoute
   AuthenticatedAdminStoresRoute: typeof AuthenticatedAdminStoresRoute
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
@@ -920,6 +941,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPriceListsRoute: AuthenticatedAdminPriceListsRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRouteWithChildren,
   AuthenticatedAdminPurchasesRoute: AuthenticatedAdminPurchasesRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminShippingRoute: AuthenticatedAdminShippingRoute,
   AuthenticatedAdminStoresRoute: AuthenticatedAdminStoresRoute,
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
