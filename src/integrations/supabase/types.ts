@@ -9325,6 +9325,495 @@ export type Database = {
           },
         ]
       }
+      support_sla_policies: {
+        Row: {
+          at_risk_threshold_pct: number
+          business_hours_only: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          first_response_minutes: number
+          id: string
+          is_active: boolean
+          match_category_id: string | null
+          match_priority:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          match_source:
+            | Database["public"]["Enums"]["support_ticket_source"]
+            | null
+          name: string
+          pause_on_pending_customer: boolean
+          priority: number
+          resolution_minutes: number
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          at_risk_threshold_pct?: number
+          business_hours_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          first_response_minutes: number
+          id?: string
+          is_active?: boolean
+          match_category_id?: string | null
+          match_priority?:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          match_source?:
+            | Database["public"]["Enums"]["support_ticket_source"]
+            | null
+          name: string
+          pause_on_pending_customer?: boolean
+          priority?: number
+          resolution_minutes: number
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          at_risk_threshold_pct?: number
+          business_hours_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          first_response_minutes?: number
+          id?: string
+          is_active?: boolean
+          match_category_id?: string | null
+          match_priority?:
+            | Database["public"]["Enums"]["support_ticket_priority"]
+            | null
+          match_source?:
+            | Database["public"]["Enums"]["support_ticket_source"]
+            | null
+          name?: string
+          pause_on_pending_customer?: boolean
+          priority?: number
+          resolution_minutes?: number
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_sla_policies_match_category_id_fkey"
+            columns: ["match_category_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_sla_policies_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by_user_id: string | null
+          assigned_to_user_id: string | null
+          id: string
+          reason: string | null
+          team: string | null
+          ticket_id: string
+          unassigned_at: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          id?: string
+          reason?: string | null
+          team?: string | null
+          ticket_id: string
+          unassigned_at?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          id?: string
+          reason?: string | null
+          team?: string | null
+          ticket_id?: string
+          unassigned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_assignments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_categories: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_events: {
+        Row: {
+          actor_customer_id: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          occurred_at: string
+          payload: Json | null
+          ticket_id: string
+        }
+        Insert: {
+          actor_customer_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          payload?: Json | null
+          ticket_id: string
+        }
+        Update: {
+          actor_customer_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          payload?: Json | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_events_actor_customer_id_fkey"
+            columns: ["actor_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_message_attachments: {
+        Row: {
+          asset_id: string | null
+          created_at: string
+          filename: string
+          id: string
+          message_id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_url: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string
+          filename: string
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_url?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string
+          filename?: string
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_message_attachments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_messages: {
+        Row: {
+          attachments_count: number
+          author_customer_id: string | null
+          author_type: Database["public"]["Enums"]["support_message_author_type"]
+          author_user_id: string | null
+          body: string
+          body_format: string
+          created_at: string
+          id: string
+          idempotency_key: string | null
+          source: Database["public"]["Enums"]["support_ticket_source"] | null
+          ticket_id: string
+          visibility: Database["public"]["Enums"]["support_message_visibility"]
+        }
+        Insert: {
+          attachments_count?: number
+          author_customer_id?: string | null
+          author_type: Database["public"]["Enums"]["support_message_author_type"]
+          author_user_id?: string | null
+          body: string
+          body_format?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          source?: Database["public"]["Enums"]["support_ticket_source"] | null
+          ticket_id: string
+          visibility?: Database["public"]["Enums"]["support_message_visibility"]
+        }
+        Update: {
+          attachments_count?: number
+          author_customer_id?: string | null
+          author_type?: Database["public"]["Enums"]["support_message_author_type"]
+          author_user_id?: string | null
+          body?: string
+          body_format?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          source?: Database["public"]["Enums"]["support_ticket_source"] | null
+          ticket_id?: string
+          visibility?: Database["public"]["Enums"]["support_message_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_author_customer_id_fkey"
+            columns: ["author_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_watchers: {
+        Row: {
+          added_at: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_watchers_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_at: string | null
+          assigned_to_user_id: string | null
+          category_id: string | null
+          closed_at: string | null
+          created_at: string
+          created_by_user_id: string | null
+          customer_id: string | null
+          description: string | null
+          escalated_at: string | null
+          escalation_level: number
+          first_responded_at: string | null
+          first_response_due_at: string | null
+          id: string
+          idempotency_key: string | null
+          order_id: string | null
+          priority: Database["public"]["Enums"]["support_ticket_priority"]
+          reopened_at: string | null
+          resolution_due_at: string | null
+          resolved_at: string | null
+          satisfaction_feedback: string | null
+          satisfaction_score: number | null
+          sla_policy_id: string | null
+          sla_state: Database["public"]["Enums"]["support_sla_state"]
+          source: Database["public"]["Enums"]["support_ticket_source"]
+          status: Database["public"]["Enums"]["support_ticket_status"]
+          store_id: string | null
+          subject: string
+          team: string | null
+          ticket_number: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to_user_id?: string | null
+          category_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id?: string | null
+          description?: string | null
+          escalated_at?: string | null
+          escalation_level?: number
+          first_responded_at?: string | null
+          first_response_due_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          order_id?: string | null
+          priority?: Database["public"]["Enums"]["support_ticket_priority"]
+          reopened_at?: string | null
+          resolution_due_at?: string | null
+          resolved_at?: string | null
+          satisfaction_feedback?: string | null
+          satisfaction_score?: number | null
+          sla_policy_id?: string | null
+          sla_state?: Database["public"]["Enums"]["support_sla_state"]
+          source?: Database["public"]["Enums"]["support_ticket_source"]
+          status?: Database["public"]["Enums"]["support_ticket_status"]
+          store_id?: string | null
+          subject: string
+          team?: string | null
+          ticket_number?: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to_user_id?: string | null
+          category_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id?: string | null
+          description?: string | null
+          escalated_at?: string | null
+          escalation_level?: number
+          first_responded_at?: string | null
+          first_response_due_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          order_id?: string | null
+          priority?: Database["public"]["Enums"]["support_ticket_priority"]
+          reopened_at?: string | null
+          resolution_due_at?: string | null
+          resolved_at?: string | null
+          satisfaction_feedback?: string | null
+          satisfaction_score?: number | null
+          sla_policy_id?: string | null
+          sla_state?: Database["public"]["Enums"]["support_sla_state"]
+          source?: Database["public"]["Enums"]["support_ticket_source"]
+          status?: Database["public"]["Enums"]["support_ticket_status"]
+          store_id?: string | null
+          subject?: string
+          team?: string | null
+          ticket_number?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_sla_policy_id_fkey"
+            columns: ["sla_policy_id"]
+            isOneToOne: false
+            referencedRelation: "support_sla_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_logs: {
         Row: {
           context: Json | null
@@ -10218,6 +10707,10 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_support_sla_dates: {
+        Args: { p_ticket_id: string }
+        Returns: undefined
+      }
       _assert_fulfillment_permission: {
         Args: { p_permission: string; p_store_id: string; p_user_id: string }
         Returns: undefined
@@ -10226,6 +10719,15 @@ export type Database = {
       _recompute_notification_status: {
         Args: { p_notification_id: string }
         Returns: undefined
+      }
+      _resolve_support_sla_policy: {
+        Args: {
+          p_category_id: string
+          p_priority: Database["public"]["Enums"]["support_ticket_priority"]
+          p_source: Database["public"]["Enums"]["support_ticket_source"]
+          p_store_id: string
+        }
+        Returns: string
       }
       _seed_order_transition: {
         Args: {
@@ -11162,6 +11664,59 @@ export type Database = {
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
+      support_recompute_sla_states: { Args: never; Returns: number }
+      support_ticket_add_message: {
+        Args: {
+          p_author_type?: Database["public"]["Enums"]["support_message_author_type"]
+          p_body: string
+          p_idempotency_key?: string
+          p_ticket_id: string
+          p_visibility?: Database["public"]["Enums"]["support_message_visibility"]
+        }
+        Returns: string
+      }
+      support_ticket_assign: {
+        Args: {
+          p_assignee: string
+          p_reason?: string
+          p_team?: string
+          p_ticket_id: string
+          p_version?: number
+        }
+        Returns: undefined
+      }
+      support_ticket_change_status: {
+        Args: {
+          p_new_status: Database["public"]["Enums"]["support_ticket_status"]
+          p_reason?: string
+          p_ticket_id: string
+          p_version?: number
+        }
+        Returns: undefined
+      }
+      support_ticket_create: {
+        Args: {
+          p_category_id?: string
+          p_customer_id?: string
+          p_description: string
+          p_idempotency_key?: string
+          p_order_id?: string
+          p_priority?: Database["public"]["Enums"]["support_ticket_priority"]
+          p_source?: Database["public"]["Enums"]["support_ticket_source"]
+          p_store_id: string
+          p_subject: string
+        }
+        Returns: string
+      }
+      support_ticket_escalate: {
+        Args: {
+          p_raise_priority?: boolean
+          p_reason: string
+          p_ticket_id: string
+          p_version?: number
+        }
+        Returns: undefined
+      }
       tracking_event_ingest: {
         Args: {
           p_description?: string
@@ -11637,6 +12192,26 @@ export type Database = {
         | "failed"
       shipping_label_format: "pdf" | "png" | "zpl" | "epl"
       shipping_method_kind: "carrier" | "flat" | "free" | "pickup" | "table"
+      support_message_author_type: "customer" | "agent" | "system"
+      support_message_visibility: "public" | "internal"
+      support_sla_state: "on_track" | "at_risk" | "breached" | "paused"
+      support_ticket_priority: "low" | "normal" | "high" | "urgent"
+      support_ticket_source:
+        | "portal"
+        | "email"
+        | "whatsapp"
+        | "phone"
+        | "chat"
+        | "api"
+        | "internal"
+      support_ticket_status:
+        | "open"
+        | "pending_customer"
+        | "pending_internal"
+        | "on_hold"
+        | "resolved"
+        | "closed"
+        | "cancelled"
       tax_regime: "mei" | "simples" | "presumido" | "real" | "isento"
       tracking_event_kind:
         | "created"
@@ -12259,6 +12834,28 @@ export const Constants = {
       ],
       shipping_label_format: ["pdf", "png", "zpl", "epl"],
       shipping_method_kind: ["carrier", "flat", "free", "pickup", "table"],
+      support_message_author_type: ["customer", "agent", "system"],
+      support_message_visibility: ["public", "internal"],
+      support_sla_state: ["on_track", "at_risk", "breached", "paused"],
+      support_ticket_priority: ["low", "normal", "high", "urgent"],
+      support_ticket_source: [
+        "portal",
+        "email",
+        "whatsapp",
+        "phone",
+        "chat",
+        "api",
+        "internal",
+      ],
+      support_ticket_status: [
+        "open",
+        "pending_customer",
+        "pending_internal",
+        "on_hold",
+        "resolved",
+        "closed",
+        "cancelled",
+      ],
       tax_regime: ["mei", "simples", "presumido", "real", "isento"],
       tracking_event_kind: [
         "created",
