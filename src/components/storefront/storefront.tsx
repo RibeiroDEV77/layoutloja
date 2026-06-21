@@ -1058,14 +1058,37 @@ export function StorefrontFooter({
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className={hasCategories ? "md:col-span-4" : "md:col-span-12"}>
+        <div className={hasCategories ? "md:col-span-4" : "md:col-span-6"}>
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
+          <p className="mt-5 text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">{COMPANY.legalName}</p>
+          <dl className="mt-3 space-y-1 text-[13px] text-[#666] leading-relaxed">
+            <div><dt className="inline font-medium text-[#111]">CNPJ:</dt> <dd className="inline">{COMPANY.cnpj}</dd></div>
+            <div><dt className="inline font-medium text-[#111]">Inscrição Estadual:</dt> <dd className="inline">{COMPANY.stateRegistration}</dd></div>
+          </dl>
+        </div>
+
+        <div className={hasCategories ? "md:col-span-4" : "md:col-span-6"}>
+          <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Contato</p>
+          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
+            <li>
+              <a href={whatsappUrl()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-[var(--brand-red)] transition-colors">
+                <MessageCircle className="h-4 w-4" strokeWidth={1.5} /> WhatsApp {COMPANY.whatsapp.display}
+              </a>
+            </li>
+            <li>
+              <a href={mailtoUrl()} className="hover:text-[var(--brand-red)] transition-colors">{COMPANY.email}</a>
+            </li>
+            <li className="pt-2 text-[13px] leading-relaxed">
+              {COMPANY.address.street}, nº {COMPANY.address.number}<br />
+              {COMPANY.address.district} — CEP {COMPANY.address.zip}
+            </li>
+          </ul>
         </div>
 
         {hasCategories && (
-          <div className="md:col-span-8">
+          <div className="md:col-span-4">
             <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-            <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
+            <ul className="mt-5 grid grid-cols-2 gap-y-2.5 text-[14px] text-[#666]">
               {roots.map((c) => (
                 <li key={c.id}>
                   <Link
@@ -1082,8 +1105,9 @@ export function StorefrontFooter({
         )}
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
-          <span>© {new Date().getFullYear()} {storeName}</span>
+        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666] flex flex-wrap items-center justify-between gap-2">
+          <span>© {new Date().getFullYear()} {COMPANY.legalName} — CNPJ {COMPANY.cnpj}</span>
+          <span>Todos os direitos reservados</span>
         </div>
       </div>
     </footer>
