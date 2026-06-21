@@ -12,6 +12,7 @@ import logoAsset from "@/assets/layout-logo.png.asset.json";
 import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
 
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
+import { COMPANY, whatsappUrl, mailtoUrl } from "@/lib/company";
 
 
 // ---------------------------------------------------------------------------
@@ -46,15 +47,40 @@ function chunkColumns<T>(items: T[], maxCols = 4): T[][] {
   return out;
 }
 
+// Estrutura canônica de navegação. Cada item resolve para uma categoria real
+// (raiz ou subcategoria) cadastrada no Painel Administrativo via match por
+// slug/nome. Quando a categoria existir, mega menu e link usam os dados
+// reais; caso contrário, o item permanece como link funcional para manter a
+// navegação consistente até o cadastro.
+const CANONICAL_NAV: Array<{
+  key: string;
+  label: string;
+  match: string[];
+  kind: "cat" | "brands";
+  accent?: boolean;
+}> = [
+  { key: "masculino", label: "Masculino", match: ["masculino"], kind: "cat" },
+  { key: "feminino", label: "Feminino", match: ["feminino"], kind: "cat" },
+  { key: "country", label: "Country", match: ["country"], kind: "cat" },
+  { key: "sport-fino", label: "Sport Fino", match: ["sport-fino", "esporte-fino", "masc-esporte-fino"], kind: "cat" },
+  { key: "social", label: "Social", match: ["social", "masc-social"], kind: "cat" },
+  { key: "botas", label: "Botas", match: ["botas", "calc-botas"], kind: "cat" },
+  { key: "acessorios", label: "Acessórios", match: ["acessorios"], kind: "cat" },
+  { key: "brands", label: "Marcas", match: [], kind: "brands" },
+  { key: "promocoes", label: "Promoções", match: ["promocoes", "promocao", "promo"], kind: "cat", accent: true },
+  { key: "novidades", label: "Novidades", match: ["novidades"], kind: "cat" },
+];
+
 export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
 
-  // Árvore: raízes são categorias sem parent_id
-  const roots = useMemo(
-    () => categories.filter((c) => !c.parent_id).slice(0, 12),
-    [categories],
-  );
+  const bySlug = useMemo(() => {
+    const m = new Map<string, StorefrontCategory>();
+    for (const c of categories) m.set(c.slug.toLowerCase(), c);
+    return m;
+  }, [categories]);
+
   const childrenOf = useMemo(() => {
     const m = new Map<string, StorefrontCategory[]>();
     for (const c of categories) {
@@ -66,49 +92,69 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
     return m;
   }, [categories]);
 
-  // Itens do navbar — raízes do Painel Administrativo + Marcas + atalhos institucionais.
-  // Promoções/Novidades só aparecem como atalho se não existirem como raiz no admin.
-  type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
+  type NavItem = {
+    key: string;
+    label: string;
+    accent?: boolean;
+    kind: "cat" | "brands" | "link";
+    slug?: string;
+    categoryId?: string;
+  };
+
   const navItems: NavItem[] = useMemo(() => {
-    const items: NavItem[] = roots.map((r) => {
-      const slug = r.slug.toLowerCase();
-      const accent = slug === "promocoes" || slug === "promocao" || slug === "promo";
-      return { key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat", accent };
+    return CANONICAL_NAV.map((entry) => {
+      if (entry.kind === "brands") {
+        return { key: entry.key, label: entry.label, kind: "brands" as const };
+      }
+      let resolved: StorefrontCategory | undefined;
+      for (const slug of entry.match) {
+        const hit = bySlug.get(slug.toLowerCase());
+        if (hit) { resolved = hit; break; }
+      }
+      if (resolved) {
+        return {
+          key: entry.key,
+          label: entry.label,
+          accent: entry.accent,
+          kind: "cat" as const,
+          slug: resolved.slug,
+          categoryId: resolved.id,
+        };
+      }
+      // Sem categoria correspondente: mantemos o item como link funcional.
+      return {
+        key: entry.key,
+        label: entry.label,
+        accent: entry.accent,
+        kind: "link" as const,
+        slug: entry.match[0],
+      };
     });
-    if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
-    const rootSlugs = new Set(roots.map((r) => r.slug.toLowerCase()));
-    if (!rootSlugs.has("promocoes") && !rootSlugs.has("promocao")) {
-      items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
-    }
-    if (!rootSlugs.has("novidades")) {
-      items.push({ key: "new", label: "Novidades", kind: "link" });
-    }
-    return items;
-  }, [roots, brands.length]);
+  }, [bySlug]);
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
     const item = navItems.find((n) => n.key === hover);
     if (!item) return null;
-    if (item.kind === "cat") {
-      const root = roots.find((r) => r.slug === item.slug);
-      if (!root) return null;
-      const subs = childrenOf.get(root.id) ?? [];
+    if (item.kind === "cat" && item.categoryId) {
+      const subs = childrenOf.get(item.categoryId) ?? [];
       if (subs.length === 0) return null;
       const groups = subs.slice(0, 16).map((sub) => ({
         title: sub.name,
         slug: sub.slug,
         items: (childrenOf.get(sub.id) ?? []).slice(0, 8),
       }));
+      const root = categories.find((c) => c.id === item.categoryId);
       return {
-        tag: root.name,
-        cta: `Ver tudo de ${root.name}`,
-        ctaSlug: root.slug,
-        image: root.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(root.name.length) % FALLBACK_MEGA_IMAGES.length],
+        tag: item.label,
+        cta: `Ver tudo de ${item.label}`,
+        ctaSlug: item.slug,
+        image: root?.image_url ?? FALLBACK_MEGA_IMAGES[Math.abs(item.label.length) % FALLBACK_MEGA_IMAGES.length],
         groups,
       };
     }
     if (item.kind === "brands") {
+      if (brands.length === 0) return null;
       const cols = chunkColumns(brands, 4);
       return {
         tag: "Nossas marcas",
@@ -123,7 +169,8 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
       };
     }
     return null;
-  }, [hover, navItems, roots, childrenOf, brands]);
+  }, [hover, navItems, childrenOf, categories, brands]);
+
 
   return (
     <header className="sticky top-0 z-40 bg-white">
@@ -132,7 +179,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
         <div className="mx-auto max-w-[1440px] px-5 lg:px-10 h-9 flex items-center justify-between text-[12px] font-normal">
           <div className="flex items-center gap-6">
             <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Entrega para todo o Brasil</span>
-            <a href="#" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp</a>
+            <a href={whatsappUrl()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp {COMPANY.whatsapp.display}</a>
           </div>
           <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
             <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
@@ -162,7 +209,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
             {/* Categorias centralizadas — desktop sempre visíveis */}
             <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[15px] font-normal text-[#111]">
               {navItems.map((i) => {
-                const LinkOrA = i.kind === "cat" && i.slug ? (
+                const LinkOrA = (i.kind === "cat" || i.kind === "link") && i.slug ? (
                   <Link
                     to="/categoria/$slug"
                     params={{ slug: i.slug }}
@@ -284,7 +331,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
         <div className="lg:hidden border-t border-[#EFEFEF] bg-white">
           <nav className="px-5 py-4 grid gap-1 text-[15px]">
             {navItems.map((i) =>
-              i.kind === "cat" && i.slug ? (
+              (i.kind === "cat" || i.kind === "link") && i.slug ? (
                 <Link
                   key={i.key}
                   to="/categoria/$slug"
@@ -1011,14 +1058,37 @@ export function StorefrontFooter({
   return (
     <footer className="bg-white border-t border-[#EFEFEF]">
       <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-16 grid gap-12 md:grid-cols-12">
-        <div className={hasCategories ? "md:col-span-4" : "md:col-span-12"}>
+        <div className={hasCategories ? "md:col-span-4" : "md:col-span-6"}>
           <img src={logoAsset.url} alt={storeName} className="h-12 w-auto object-contain" />
+          <p className="mt-5 text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">{COMPANY.legalName}</p>
+          <dl className="mt-3 space-y-1 text-[13px] text-[#666] leading-relaxed">
+            <div><dt className="inline font-medium text-[#111]">CNPJ:</dt> <dd className="inline">{COMPANY.cnpj}</dd></div>
+            <div><dt className="inline font-medium text-[#111]">Inscrição Estadual:</dt> <dd className="inline">{COMPANY.stateRegistration}</dd></div>
+          </dl>
+        </div>
+
+        <div className={hasCategories ? "md:col-span-4" : "md:col-span-6"}>
+          <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Contato</p>
+          <ul className="mt-5 space-y-2.5 text-[14px] text-[#666]">
+            <li>
+              <a href={whatsappUrl()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-[var(--brand-red)] transition-colors">
+                <MessageCircle className="h-4 w-4" strokeWidth={1.5} /> WhatsApp {COMPANY.whatsapp.display}
+              </a>
+            </li>
+            <li>
+              <a href={mailtoUrl()} className="hover:text-[var(--brand-red)] transition-colors">{COMPANY.email}</a>
+            </li>
+            <li className="pt-2 text-[13px] leading-relaxed">
+              {COMPANY.address.street}, nº {COMPANY.address.number}<br />
+              {COMPANY.address.district} — CEP {COMPANY.address.zip}
+            </li>
+          </ul>
         </div>
 
         {hasCategories && (
-          <div className="md:col-span-8">
+          <div className="md:col-span-4">
             <p className="text-[13px] uppercase tracking-[0.14em] text-[#111] font-semibold">Categorias</p>
-            <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 text-[14px] text-[#666]">
+            <ul className="mt-5 grid grid-cols-2 gap-y-2.5 text-[14px] text-[#666]">
               {roots.map((c) => (
                 <li key={c.id}>
                   <Link
@@ -1035,8 +1105,9 @@ export function StorefrontFooter({
         )}
       </div>
       <div className="border-t border-[#EFEFEF] bg-[#F8F8F8]">
-        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666]">
-          <span>© {new Date().getFullYear()} {storeName}</span>
+        <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-5 text-[12px] text-[#666] flex flex-wrap items-center justify-between gap-2">
+          <span>© {new Date().getFullYear()} {COMPANY.legalName} — CNPJ {COMPANY.cnpj}</span>
+          <span>Todos os direitos reservados</span>
         </div>
       </div>
     </footer>
