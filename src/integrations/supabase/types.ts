@@ -2831,6 +2831,13 @@ export type Database = {
             foreignKeyName: "fiscal_invoices_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4271,6 +4278,13 @@ export type Database = {
             foreignKeyName: "order_addresses_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_addresses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4316,6 +4330,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -4376,6 +4397,13 @@ export type Database = {
             foreignKeyName: "order_audit_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_audit_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4427,6 +4455,13 @@ export type Database = {
             foreignKeyName: "order_coupon_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_coupon_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4466,6 +4501,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_customer_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -4535,6 +4577,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_fulfillments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -4611,6 +4660,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_holds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -4702,6 +4758,13 @@ export type Database = {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4776,6 +4839,13 @@ export type Database = {
             foreignKeyName: "order_ledger_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4821,6 +4891,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_locks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -4881,6 +4958,13 @@ export type Database = {
             foreignKeyName: "order_notes_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4926,6 +5010,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_payment_allocations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5024,6 +5115,13 @@ export type Database = {
             foreignKeyName: "order_payments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5063,6 +5161,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_pricing_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5120,6 +5225,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_return_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5215,6 +5327,13 @@ export type Database = {
             foreignKeyName: "order_returns_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5300,6 +5419,13 @@ export type Database = {
             foreignKeyName: "order_shipments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5370,6 +5496,13 @@ export type Database = {
             foreignKeyName: "order_shipping_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipping_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5412,6 +5545,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_split_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5501,6 +5641,13 @@ export type Database = {
             foreignKeyName: "order_splits_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_splits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5551,6 +5698,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tag_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5612,6 +5766,13 @@ export type Database = {
             foreignKeyName: "order_tax_snapshots_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_tax_snapshots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5663,6 +5824,13 @@ export type Database = {
             foreignKeyName: "order_timeline_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_timeline_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5703,6 +5871,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_workflow_instances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -5906,6 +6081,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: true
             referencedRelation: "customer_portal_orders_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_search_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "order_admin_list_v"
             referencedColumns: ["id"]
           },
           {
@@ -8398,6 +8580,13 @@ export type Database = {
             foreignKeyName: "product_reviews_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -10800,6 +10989,13 @@ export type Database = {
             foreignKeyName: "support_tickets_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_admin_list_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -12019,6 +12215,75 @@ export type Database = {
           },
         ]
       }
+      order_admin_list_v: {
+        Row: {
+          active_holds_count: number | null
+          assigned_user_id: string | null
+          cancelled_at: string | null
+          channel: string | null
+          created_at: string | null
+          currency: string | null
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          discount_total: number | null
+          fulfillments_count: number | null
+          id: string | null
+          items_count: number | null
+          order_number: string | null
+          paid_amount: number | null
+          payments_count: number | null
+          placed_at: string | null
+          refunded_amount: number | null
+          shipments_count: number | null
+          shipping_total: number | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          store_id: string | null
+          subtotal: number | null
+          tags: string[] | null
+          tax_total: number | null
+          total: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_timeline_unified_v: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string | null
+          event_type: string | null
+          id: string | null
+          order_id: string | null
+          payload: Json | null
+          source: string | null
+          store_id: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       orders_daily_v: {
         Row: {
           day: string | null
@@ -12069,6 +12334,20 @@ export type Database = {
         Returns: undefined
       }
       _is_customer_owner: { Args: { p_customer_id: string }; Returns: boolean }
+      _order_admin_log: {
+        Args: {
+          _actor: string
+          _audit_action: string
+          _event: Database["public"]["Enums"]["order_timeline_event"]
+          _label: string
+          _new: Json
+          _old: Json
+          _order_id: string
+          _payload: Json
+          _store_id: string
+        }
+        Returns: undefined
+      }
       _recompute_notification_status: {
         Args: { p_notification_id: string }
         Returns: undefined
@@ -12479,9 +12758,34 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      order_add_note: {
+        Args: {
+          _body: string
+          _order_id: string
+          _pinned?: boolean
+          _visibility?: string
+        }
+        Returns: string
+      }
+      order_add_tag: {
+        Args: { _order_id: string; _tag: string }
+        Returns: undefined
+      }
+      order_assign_user: {
+        Args: { _order_id: string; _role?: string; _user: string }
+        Returns: string
+      }
+      order_cancel: {
+        Args: { _order_id: string; _reason: string }
+        Returns: undefined
+      }
       order_persist_shipping_snapshot: {
         Args: { _cart_id: string; _order_id: string }
         Returns: string
+      }
+      order_remove_tag: {
+        Args: { _order_id: string; _tag: string }
+        Returns: undefined
       }
       order_store_id: { Args: { _order_id: string }; Returns: string }
       package_add_item: {
