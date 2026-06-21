@@ -50,9 +50,9 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
 
-  // Árvore: raízes são categorias sem parent_id (ou level 0/1)
+  // Árvore: raízes são categorias sem parent_id
   const roots = useMemo(
-    () => categories.filter((c) => !c.parent_id).slice(0, 8),
+    () => categories.filter((c) => !c.parent_id).slice(0, 12),
     [categories],
   );
   const childrenOf = useMemo(() => {
@@ -66,15 +66,23 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
     return m;
   }, [categories]);
 
-  // Itens do navbar — raízes do admin + "Marcas" se houver + atalhos Promoções/Novidades
+  // Itens do navbar — raízes do Painel Administrativo + Marcas + atalhos institucionais.
+  // Promoções/Novidades só aparecem como atalho se não existirem como raiz no admin.
   type NavItem = { key: string; label: string; slug?: string; accent?: boolean; kind: "cat" | "brands" | "link" };
   const navItems: NavItem[] = useMemo(() => {
-    const items: NavItem[] = roots.map((r) => ({
-      key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat",
-    }));
+    const items: NavItem[] = roots.map((r) => {
+      const slug = r.slug.toLowerCase();
+      const accent = slug === "promocoes" || slug === "promocao" || slug === "promo";
+      return { key: `c:${r.id}`, label: r.name, slug: r.slug, kind: "cat", accent };
+    });
     if (brands.length > 0) items.push({ key: "brands", label: "Marcas", kind: "brands" });
-    items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
-    items.push({ key: "new", label: "Novidades", kind: "link" });
+    const rootSlugs = new Set(roots.map((r) => r.slug.toLowerCase()));
+    if (!rootSlugs.has("promocoes") && !rootSlugs.has("promocao")) {
+      items.push({ key: "promo", label: "Promoções", kind: "link", accent: true });
+    }
+    if (!rootSlugs.has("novidades")) {
+      items.push({ key: "new", label: "Novidades", kind: "link" });
+    }
     return items;
   }, [roots, brands.length]);
 
