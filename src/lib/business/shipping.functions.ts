@@ -40,3 +40,16 @@ export const createShippingRate = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: Svc.RateInput) => d)
   .handler(withBusiness(async ({ data, context }) => Svc.createRate(context.supabase, context.userId, data)));
+
+/** Consulta de CEP via ViaCEP — usado no checkout para autocompletar endereço. */
+export const lookupPostalCode = createServerFn({ method: 'POST' })
+  .inputValidator((d: { postal_code: string }) => d)
+  .handler(withBusiness(async ({ data }) => Svc.lookupPostalCode(data.postal_code)));
+
+/** Persiste a cotação selecionada do carrinho no pedido recém-criado. */
+export const persistOrderShippingSnapshot = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { order_id: string; cart_id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Svc.persistOrderShippingSnapshot(context.supabase, data)));
+
