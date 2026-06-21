@@ -374,7 +374,14 @@ export type HeroBanner = {
   ctaSlug?: string;
 };
 
-const HERO_FALLBACK_IMAGES = [lookSocial, lookFeminino, lookCowboy];
+import bannerCountry from "@/assets/banner-country.jpg";
+import bannerMasculino from "@/assets/banner-masculino.jpg";
+import bannerFeminino from "@/assets/banner-feminino.jpg";
+import bannerSportFino from "@/assets/banner-sport-fino.jpg";
+
+const HERO_FALLBACK_IMAGES = [bannerCountry, bannerMasculino, bannerFeminino, bannerSportFino];
+// Keep legacy fallback imports referenced to avoid unused-import errors
+void lookSocial; void lookFeminino; void lookCowboy;
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const slides: HeroBanner[] = useMemo(() => {
