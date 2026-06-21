@@ -55,9 +55,11 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Vendas",
     items: [
       { title: "Pedidos", url: "/admin/orders", icon: ShoppingCart, permission: "orders.read" },
+      { title: "Carrinhos", url: "/admin/carts", icon: ShoppingCart, permission: "carts.read" },
       { title: "Clientes", url: "/admin/customers", icon: Users, permission: "customers.read" },
       { title: "Grupos de Clientes", url: "/admin/customer-groups", icon: Users, permission: "customers.read" },
       { title: "Listas de Preço", url: "/admin/price-lists", icon: Receipt, permission: "products.read" },
+      { title: "Cupons", url: "/admin/coupons", icon: Tags, permission: "pricing.manage" },
       { title: "Empresas", url: "/admin/companies", icon: Building2, permission: "customers.read" },
     ],
   },
