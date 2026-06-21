@@ -7,6 +7,11 @@ import {
   listShippingZones, createShippingZone, addShippingPostalRange,
   listShippingMethods, createShippingMethod, listShippingRates, createShippingRate,
 } from "@/lib/business/shipping.functions";
+import {
+  listShippingProviders, listShippingCarrierAccounts, createShippingCarrierAccount,
+  updateShippingCarrierAccount, deleteShippingCarrierAccount,
+  setShippingCarrierCredentials, testShippingCarrierAccount,
+} from "@/lib/business/shipping-carriers.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
