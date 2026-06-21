@@ -86,7 +86,7 @@ const FILTER_GROUPS: FilterGroup[] = [
 ];
 
 function CategoryPage() {
-  const { store, category, subcategories, parents, products } = Route.useLoaderData();
+  const { store, category, subcategories, parents, products, categories, brands } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
   const [sort, setSort] = useState("relevance");
 
@@ -100,7 +100,8 @@ function CategoryPage() {
   return (
     <StorefrontShell>
       <div className="min-h-screen flex flex-col bg-white">
-        <StorefrontNavbar />
+        <StorefrontNavbar categories={categories} brands={brands} />
+
         <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 lg:px-10 pt-8 pb-24">
           <Breadcrumb
             items={[
