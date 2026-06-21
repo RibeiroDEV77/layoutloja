@@ -1,79 +1,118 @@
+## Situação atual (auditoria do existente)
 
-# Fase 6.3 — Fechamento do Painel Administrativo
+A tela `/admin/users` e o service `users.server.ts` já existem com fluxo mínimo (listar, convidar, atribuir papel). Porém o RBAC chamado pelo código **não está completo no banco**:
 
-## Diagnóstico atual
+| Recurso citado | Existe? | Observação |
+|---|---|---|
+| Tabelas `profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`, `user_sessions` | Sim | OK |
+| RPC `is_super_admin` | **Não** | usado em `permissions.server.ts` → toda chamada de `requireUserManage` falha |
+| RPC `has_permission` | **Não** | usado em `requirePermission` |
+| RPC `user_store_ids` | **Não** | usado em `requireStoreAccess` |
+| RPC `current_user_context` / `claim_first_super_admin` | **Não** | citados no pedido |
+| Tabela `audit_log` colunas `actor_user_id`, `entity_type`, `entity_id`, `action`, `diff` | Existe (10 cols) | Confirmar nomes antes de gravar |
+| Hook `usePermissions`, componente `<Can>` | Existem (`src/hooks/use-permissions.tsx`) | OK |
+| `AuthProvider` / `useAuth` | Assumido existir; verificar | |
 
-Rotas hoje no `NAV_GROUPS` que retornam 404 (não há arquivo em `src/routes/_authenticated/`):
+Sem essas RPCs, o módulo atual já está quebrado em produção — qualquer ação responde "Falha ao verificar super admin". A Fase 6.3.5 (homologação) deveria ter pego isso.
 
-| # | Item do menu | URL | Tabelas backend existentes? |
-|---|---|---|---|
-| 1 | Empresas | `/admin/companies` | Não há tabela `companies` — só `customers` + `suppliers` |
-| 2 | Compras | `/admin/purchases` | Sim: `purchase_orders`, `purchase_order_items`, `goods_receipts` |
-| 3 | Notas Fiscais | `/admin/invoices` | Sim: `fiscal_invoices`, `fiscal_invoice_events`, `fiscal_providers`, `fiscal_webhook_inbox` |
-| 4 | Marketing | `/admin/marketing` | Parcial: `coupons` (já tem rota), faltam campanhas/automações |
-| 5 | Usuários & Papéis | `/admin/users` | Sim: `profiles`, `user_roles`, `roles`, `permissions`, `role_permissions` |
-| 6 | Funcionários | `/admin/employees` | Não há tabela dedicada — mapearia em `profiles` + `user_roles` + lojas |
-| 7 | Lojas | `/admin/stores` | Sim: `stores`, `store_settings` |
-| 8 | Configurações | `/admin/settings` | Sim: `system_settings`, `store_settings`, `feature_flags`, `feature_flag_overrides` |
-| 9 | Auditoria | `/admin/audit` | Sim: `audit_log`, `order_audit` |
-| 10 | Logs | `/admin/logs` | Sim: `system_logs`, `event_outbox`, `event_outbox_dead_letter`, `payment_webhook_inbox`, `fiscal_webhook_inbox`, `delivery_attempts` |
+## Escopo da entrega
 
-Itens 1 e 6 (Empresas, Funcionários) **não têm modelo de dados**; entregar “telas funcionais” exige antes uma decisão de modelagem (criar tabelas novas? reusar `customers`/`profiles`?) — não cabem em fase de “fechar 404”.
+Vou completar o módulo em duas frentes, **em uma migration única + código**.
 
-## Estratégia
+### Frente A — Backend RBAC (migration)
 
-- Reutilizar 100% da arquitetura existente: Repository → Service (`*.server.ts`) → Server Functions (`*.functions.ts`) → UI sob `src/routes/_authenticated/`.
-- Cada nova rota usa o `AdminShell` já existente (igual às rotas atuais).
-- RBAC já no menu (`permission`) — replicar no `requirePermission` de cada server fn.
-- Audit/Outbox/Observability: usar os dispatchers já presentes (`dispatchEvent`).
-- Para itens sem modelo de dados, abrir a rota com uma tela honesta de “Próximo passo: definir modelo” + botão de issue, em vez de fingir um CRUD.
+1. **Funções SECURITY DEFINER** (`search_path=public`):
+   - `is_super_admin(_user_id uuid) → bool`
+   - `has_role(_user_id uuid, _role_code text, _store_id uuid default null) → bool`
+   - `has_permission(_user_id uuid, _permission_code text, _store_id uuid default null) → bool`
+   - `user_store_ids(_user_id uuid) → setof uuid`
+   - `current_user_context() → jsonb` (roles + permissions + stores do `auth.uid()`)
+   - `claim_first_super_admin()` — concede `super_admin` ao primeiro `auth.uid()` se não existir nenhum
+   - `admin_invite_user`, `admin_set_user_active`, `admin_unlock_user`, `admin_force_password_change`, `admin_reset_password` — wrappers SECURITY DEFINER que verificam `is_super_admin(auth.uid())` e gravam em `audit_log`
+2. **Seed mínimo** de papéis/permissões padrão (super_admin, admin, manager, operator, viewer) com `is_system=true` — idempotente (`ON CONFLICT DO NOTHING`).
+3. **Campos faltantes** em `profiles`: `email text`, `is_active bool default true`, `is_blocked bool default false`, `must_change_password bool default false`, `last_login_at timestamptz` + trigger para sincronizar `email` com `auth.users` no signup.
+4. **Outbox**: usar tabela `event_outbox` existente — gatilho em `user_roles` (insert/delete) e em `profiles` (update de `is_active`/`is_blocked`) emite eventos `user.role_assigned`, `user.role_revoked`, `user.blocked`, `user.unblocked`.
 
-## Fases
+### Frente B — Service + Server Functions + UI
 
-### Fase A — CRUD direto sobre tabelas existentes (entrega imediata)
-Cobre 4 módulos completos, todas as telas com listagem real, busca, paginação, criar/editar/arquivar, sem mocks.
+Reaproveita `CrudPage`, `DataTable`, `CrudDrawer`, `StatusBadge`, `Can`, `usePermissions`, `Admin Shell`.
 
-1. **Lojas** (`/admin/stores`) — list/create/edit/archive `stores`, editar `store_settings` (chave→valor por aba), upload de logo via DAM já integrado.
-2. **Usuários & Papéis** (`/admin/users`) — list `profiles` + roles agregadas, atribuir/remover `user_roles`, ativar/inativar via flag em `profiles`, ver permissões efetivas via `has_role`. Convite por email: usar `supabaseAdmin.auth.admin.inviteUserByEmail` em server fn `requirePermission('users.manage')`.
-3. **Auditoria** (`/admin/audit`) — timeline paginada de `audit_log` com filtros (entidade, ação, usuário, período) e export CSV.
-4. **Logs** (`/admin/logs`) — abas: System logs, Outbox (pending/dlq com retry/discard), Webhooks (payment + fiscal), Delivery attempts. Reusa fns existentes de outbox; cria fn `retryOutboxEvent`/`discardOutboxEvent`.
+**Service (`services/users.server.ts`)** — expandido:
+- `listUsers({ q, page, pageSize, status, role_code, store_id })` — filtros + total
+- `getUser(user_id)` — perfil + papéis + permissões efetivas (origem) + lojas + sessões
+- `createUser` (via convite, redireciona para `inviteUser`)
+- `updateProfile(user_id, { full_name, phone, avatar_url, locale, email })`
+- `setUserActive(user_id, active)`
+- `blockUser(user_id, reason)` / `unblockUser(user_id)`
+- `forcePasswordChange(user_id)`
+- `resetPassword(user_id)` — Auth admin API gera link
+- `assignRole`, `revokeRole(user_role_id)`, `setDefaultStore(user_id, store_id)`
+- `listEffectivePermissions(user_id)` — JOIN role_permissions → mostra origem (qual role concedeu)
+- `usersDashboard()` — `{ active, super_admins, pending_invites, blocked }`
 
-### Fase B — CRUD sobre tabelas existentes + workflows
-5. **Compras** (`/admin/purchases`) — list/create `purchase_orders`, itens, ações de receber (`goods_receipts`) com lançamento de `stock_movements` (service de inventory já existe).
-6. **Notas Fiscais — somente consulta** (`/admin/invoices`) — listagem de `fiscal_invoices`, detalhes, timeline (`fiscal_invoice_events`), download XML/DANFE (URL persistida), webhooks inbox. As ações *emitir/cancelar/CC-e* dependem da Fase D.
+Todas as mutações chamam `requireUserManage` (→ `is_super_admin`) e gravam `audit_log` com `actor_user_id`, `entity_type='user'`, `entity_id`, `action`, `diff`.
 
-### Fase C — Configurações administrativas
-7. **Configurações** (`/admin/settings`) — abas:
-   - Geral (system_settings/store_settings em editor chave→valor tipado)
-   - SEO (subset em store_settings)
-   - E-mail (templates + canais já existentes em `notification_*`)
-   - Feature Flags (CRUD em `feature_flags` + overrides por store/role)
-   - Provedores (lista somente leitura de `fiscal_providers`, `payment_gateways`, `shipping_carrier_accounts` com link para fase D).
+**Server Functions (`users.functions.ts`)** — wraps com `requireSupabaseAuth` + `withBusiness`.
 
-### Fase D — Integrações externas (cada uma é um épico)
-Cada um destes precisa credenciais, sandbox e adapters próprios. Entregar com tela mas sem botão fake:
-- Mercado Pago (já há `payment_gateways` + `payment_adapters`)
-- Correios / Melhor Envio (já há `shipping_carrier_accounts`)
-- Nuvem Fiscal (já há `fiscal_providers` + `fiscal_webhook_inbox`)
-- Marketing avançado (campanhas, automações) — exige modelagem nova
-- Empresas / Funcionários — exige modelagem nova
+**UI (`/admin/users`)**:
+- Dashboard topo: 4 widgets (Ativos / Admins / Convites Pendentes / Bloqueados).
+- Toolbar: busca + filtro de status + filtro de papel + filtro de loja.
+- Tabela: avatar, nome, e-mail, papéis (chips), lojas, status, último login.
+- Drawer de detalhe (clicar na linha) com abas:
+  - **Perfil** — editar nome, telefone, avatar, locale, e-mail
+  - **Papéis** — atribuir/revogar (com `user_role_id`); botão "definir loja padrão"
+  - **Permissões** — lista efetiva read-only com badge da role de origem
+  - **Lojas** — vincular/desvincular (atalho que cria/remove um papel `viewer` na loja)
+  - **Segurança** — ativar/desativar, bloquear/desbloquear, forçar troca de senha, enviar reset
+  - **Sessões** — listar `user_sessions` ativas + botão revogar
+  - **Auditoria** — `audit_log` filtrado por `entity_type='user' AND entity_id=user_id`
+- Botão "Convidar usuário" no header (drawer existente, expandido com cargo/telefone).
 
-## O que NÃO entrego nesta fase
-- Tabela `companies` nova (precisa decisão de domínio antes).
-- Tela de Funcionários como entidade separada (será visão filtrada de Users).
-- Botões de “emitir NF-e/cancelar/CC-e” — sem o adapter Nuvem Fiscal eles seriam fake.
-- Campanhas/automações de marketing — sem modelo de dados.
+Todas as ações usam `runAction` (toast loading/success/error), `<Can permission="users.manage">` para ocultar botões, e invalidam `["admin-users"]` no React Query.
 
-Para esses 5 itens, crio a rota com uma tela honesta que diz exatamente o que falta para implementar (modelo + integração) e abre um link de “configurar provedor” onde aplicável. Zero placeholders silenciosos, zero botão sem ação.
+### Frente C — Bootstrap de acesso
+
+- Banner no topo de `/admin/users` quando `current_user_context().roles` está vazio **e** não há super admin no sistema → botão "Tornar-me super admin" chama `claim_first_super_admin()`. Some após o primeiro uso.
 
 ## Detalhes técnicos
 
-- Cada módulo: 1 arquivo `*.server.ts` (service), 1 `*.functions.ts` (server fns com `requireSupabaseAuth` + `requirePermission`), 1 ou mais rotas em `src/routes/_authenticated/admin.<modulo>.tsx`.
-- Padrão de UI igual aos módulos atuais (DataTable + dialog de criar/editar + side sheet de detalhes).
-- Convite de usuário: server fn isolada chamando `supabaseAdmin.auth.admin.inviteUserByEmail` (única operação privilegiada — verificada com `has_role('admin')`).
-- Export CSV: gerado server-side, baixado via `Blob`.
-- Performance: queries paginadas (50/página), índices já existem para `audit_log`, `system_logs`.
+- **RLS** mantida em `user_roles`, `profiles`, `audit_log`; novas policies usam `is_super_admin(auth.uid())` para leituras/escritas de admin.
+- **GRANTs** completos em novas funções (`GRANT EXECUTE ... TO authenticated`) e tabelas alteradas.
+- **Audit**: toda mutação → `audit_log` (já existente). Não duplica em outbox; outbox emite eventos para integração externa (e-mail, webhooks).
+- **Performance**: índices em `user_roles(user_id)`, `user_roles(store_id)`, `audit_log(entity_type, entity_id, created_at desc)`.
+- **Segurança**: nenhum `service_role_key` no client; `inviteUser`/`resetPassword` carregam `supabaseAdmin` via `await import` dentro do handler.
 
-## Conclusão
+## Arquivos
 
-Faz sentido entregar Fase A nesta interação? São ~10 arquivos, todos com CRUD real, sem placeholders, e levam o admin de "10 rotas 404" para "4 rotas 404 honestas + 6 totalmente funcionais". Depois sigo Fase B, C e D em turnos dedicados.
+**Criar**
+- migration única com tudo da Frente A
+- `src/components/admin/users/profile-tab.tsx`
+- `src/components/admin/users/roles-tab.tsx`
+- `src/components/admin/users/permissions-tab.tsx`
+- `src/components/admin/users/stores-tab.tsx`
+- `src/components/admin/users/security-tab.tsx`
+- `src/components/admin/users/sessions-tab.tsx`
+- `src/components/admin/users/audit-tab.tsx`
+- `src/components/admin/users/user-detail-drawer.tsx`
+- `src/components/admin/users/invite-drawer.tsx`
+- `src/components/admin/users/dashboard-widgets.tsx`
+
+**Alterar**
+- `src/lib/business/services/users.server.ts` — expandir
+- `src/lib/business/services/permissions.server.ts` — manter (passa a funcionar)
+- `src/lib/business/users.functions.ts` — adicionar funções
+- `src/routes/_authenticated/admin.users.tsx` — reescrever com abas/widgets
+
+## Fora de escopo (não vou fazer)
+
+- SSO/MFA (não pedido)
+- Criação de novos papéis/permissões pela UI (apenas atribuição) — pode virar Fase B
+- Edição de `role_permissions` (essa matriz fica como seed do sistema)
+
+## Ordem de execução
+
+1. **Migration** (Frente A) — aguarda aprovação.
+2. Após migration aprovada e types regenerados: services + functions + UI (Frente B) em paralelo.
+3. Smoke test: claim super admin → convidar usuário → atribuir papel → bloquear/desbloquear → ver auditoria.
+
+Posso prosseguir com a migration?
