@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminPriceListsRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated/admin.inventory'
+import { Route as AuthenticatedAdminEmployeesRouteImport } from './routes/_authenticated/admin.employees'
 import { Route as AuthenticatedAdminDamRouteImport } from './routes/_authenticated/admin.dam'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
 import { Route as AuthenticatedAdminCustomerGroupsRouteImport } from './routes/_authenticated/admin.customer-groups'
@@ -124,6 +125,12 @@ const AuthenticatedAdminInventoryRoute =
   AuthenticatedAdminInventoryRouteImport.update({
     id: '/inventory',
     path: '/inventory',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminEmployeesRoute =
+  AuthenticatedAdminEmployeesRouteImport.update({
+    id: '/employees',
+    path: '/employees',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminDamRoute = AuthenticatedAdminDamRouteImport.update({
@@ -262,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/dam': typeof AuthenticatedAdminDamRoute
+  '/admin/employees': typeof AuthenticatedAdminEmployeesRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
@@ -297,6 +305,7 @@ export interface FileRoutesByTo {
   '/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/dam': typeof AuthenticatedAdminDamRoute
+  '/admin/employees': typeof AuthenticatedAdminEmployeesRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
@@ -335,6 +344,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/customer-groups': typeof AuthenticatedAdminCustomerGroupsRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/_authenticated/admin/dam': typeof AuthenticatedAdminDamRoute
+  '/_authenticated/admin/employees': typeof AuthenticatedAdminEmployeesRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/admin/customer-groups'
     | '/admin/customers'
     | '/admin/dam'
+    | '/admin/employees'
     | '/admin/inventory'
     | '/admin/logs'
     | '/admin/orders'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/admin/customer-groups'
     | '/admin/customers'
     | '/admin/dam'
+    | '/admin/employees'
     | '/admin/inventory'
     | '/admin/logs'
     | '/admin/orders'
@@ -445,6 +457,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/customer-groups'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/dam'
+    | '/_authenticated/admin/employees'
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/logs'
     | '/_authenticated/admin/orders'
@@ -579,6 +592,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/admin/inventory'
       preLoaderRoute: typeof AuthenticatedAdminInventoryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/employees': {
+      id: '/_authenticated/admin/employees'
+      path: '/employees'
+      fullPath: '/admin/employees'
+      preLoaderRoute: typeof AuthenticatedAdminEmployeesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/dam': {
@@ -797,6 +817,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCustomerGroupsRoute: typeof AuthenticatedAdminCustomerGroupsRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRouteWithChildren
   AuthenticatedAdminDamRoute: typeof AuthenticatedAdminDamRoute
+  AuthenticatedAdminEmployeesRoute: typeof AuthenticatedAdminEmployeesRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRouteWithChildren
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRouteWithChildren
@@ -826,6 +847,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCustomersRoute:
     AuthenticatedAdminCustomersRouteWithChildren,
   AuthenticatedAdminDamRoute: AuthenticatedAdminDamRoute,
+  AuthenticatedAdminEmployeesRoute: AuthenticatedAdminEmployeesRoute,
   AuthenticatedAdminInventoryRoute:
     AuthenticatedAdminInventoryRouteWithChildren,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
