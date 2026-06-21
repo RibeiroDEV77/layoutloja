@@ -9393,6 +9393,10 @@ export type Database = {
       }
     }
     Functions: {
+      _assert_fulfillment_permission: {
+        Args: { p_permission: string; p_store_id: string; p_user_id: string }
+        Returns: undefined
+      }
       _seed_order_transition: {
         Args: {
           _code: string
@@ -9510,6 +9514,17 @@ export type Database = {
       }
       current_user_context: { Args: never; Returns: Json }
       customer_store_id: { Args: { _customer_id: string }; Returns: string }
+      delivery_attempt_register: {
+        Args: {
+          p_notes?: string
+          p_outcome: Database["public"]["Enums"]["delivery_attempt_outcome"]
+          p_proof_asset_id?: string
+          p_raw_payload?: Json
+          p_shipment_id: string
+          p_signed_by?: string
+        }
+        Returns: string
+      }
       emit_domain_event: {
         Args: {
           _aggregate_id: string
@@ -9540,6 +9555,36 @@ export type Database = {
         Returns: Json
       }
       expire_stale_cart_reservations: { Args: never; Returns: number }
+      fulfillment_allocate: {
+        Args: {
+          p_expected_version?: number
+          p_fulfillment_id: string
+          p_warehouse_id: string
+        }
+        Returns: undefined
+      }
+      fulfillment_create: {
+        Args: {
+          p_causation_id?: string
+          p_correlation_id?: string
+          p_customer_id?: string
+          p_fulfillable_id: string
+          p_fulfillable_type: Database["public"]["Enums"]["fulfillment_fulfillable_type"]
+          p_items?: Json
+          p_metadata?: Json
+          p_priority?: Database["public"]["Enums"]["fulfillment_priority"]
+          p_sla_due_at?: string
+          p_store_id: string
+          p_trace_id?: string
+          p_type?: Database["public"]["Enums"]["fulfillment_type"]
+          p_warehouse_id?: string
+        }
+        Returns: string
+      }
+      fulfillment_mark_delivered: {
+        Args: { p_fulfillment_id: string }
+        Returns: undefined
+      }
       gr_store_id: { Args: { _gr_id: string }; Returns: string }
       has_permission: {
         Args: { _permission_code: string; _store_id?: string; _user_id: string }
@@ -9586,6 +9631,29 @@ export type Database = {
         Returns: string
       }
       order_store_id: { Args: { _order_id: string }; Returns: string }
+      package_add_item: {
+        Args: {
+          p_fulfillment_item_id: string
+          p_package_id: string
+          p_quantity: number
+          p_serial_numbers?: Json
+        }
+        Returns: string
+      }
+      package_create: {
+        Args: { p_code?: string; p_fulfillment_id: string }
+        Returns: string
+      }
+      package_seal: {
+        Args: {
+          p_height_cm?: number
+          p_length_cm?: number
+          p_package_id: string
+          p_weight_g?: number
+          p_width_cm?: number
+        }
+        Returns: undefined
+      }
       payment_authorize: {
         Args: {
           _authorization_id: string
@@ -10048,6 +10116,36 @@ export type Database = {
         Args: { _duration_ms?: number; _webhook_id: string }
         Returns: undefined
       }
+      pick_list_assign: {
+        Args: { p_pick_list_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      pick_list_complete: {
+        Args: { p_pick_list_id: string }
+        Returns: undefined
+      }
+      pick_list_confirm_pick: {
+        Args: {
+          p_bin_location?: string
+          p_correlation_id?: string
+          p_pick_list_item_id: string
+          p_quantity_picked: number
+          p_trace_id?: string
+        }
+        Returns: undefined
+      }
+      pick_list_create: {
+        Args: {
+          p_correlation_id?: string
+          p_fulfillment_ids: string[]
+          p_store_id: string
+          p_strategy?: Database["public"]["Enums"]["picking_strategy"]
+          p_trace_id?: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      pick_list_start: { Args: { p_pick_list_id: string }; Returns: undefined }
       po_store_id: { Args: { _po_id: string }; Returns: string }
       product_store_id: { Args: { _product_id: string }; Returns: string }
       purge_expired_idempotency_keys: { Args: never; Returns: number }
@@ -10113,9 +10211,49 @@ export type Database = {
       }
       seed_order_workflow: { Args: { _store_id: string }; Returns: string }
       seed_payment_workflow: { Args: { _store_id: string }; Returns: string }
+      shipment_create_split: {
+        Args: {
+          p_carrier_code: string
+          p_correlation_id?: string
+          p_declared_value?: number
+          p_estimated_delivery_at?: string
+          p_fulfillment_id: string
+          p_package_ids: string[]
+          p_service_code: string
+          p_ship_from?: Json
+          p_ship_to?: Json
+          p_trace_id?: string
+        }
+        Returns: string
+      }
+      shipment_dispatch: { Args: { p_shipment_id: string }; Returns: undefined }
+      shipment_purchase_label: {
+        Args: {
+          p_carrier_label_id?: string
+          p_cost?: number
+          p_format?: Database["public"]["Enums"]["shipping_label_format"]
+          p_label_url: string
+          p_shipment_id: string
+          p_tracking_number: string
+          p_tracking_url: string
+        }
+        Returns: string
+      }
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
+      tracking_event_ingest: {
+        Args: {
+          p_description?: string
+          p_kind: Database["public"]["Enums"]["tracking_event_kind"]
+          p_location?: string
+          p_occurred_at: string
+          p_raw_payload?: Json
+          p_shipment_id: string
+          p_source?: string
+        }
+        Returns: string
+      }
       user_store_ids: { Args: { _user_id: string }; Returns: string[] }
       validate_coupon: {
         Args: { _cart_id: string; _coupon_id: string; _customer_id?: string }
