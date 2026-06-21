@@ -31,6 +31,7 @@ import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminAttributesRouteImport } from './routes/_authenticated/admin.attributes'
 import { Route as AuthenticatedAdminAttributeValuesRouteImport } from './routes/_authenticated/admin.attribute-values'
 import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes/api/public/hooks/shipping-tracking-sync'
+import { Route as ApiPublicHooksNuvemfiscalRouteImport } from './routes/api/public/hooks/nuvemfiscal'
 import { Route as ApiPublicHooksMercadopagoRouteImport } from './routes/api/public/hooks/mercadopago'
 import { Route as AuthenticatedAdminCustomersCustomerIdRouteImport } from './routes/_authenticated/admin.customers.$customerId'
 import { Route as AuthenticatedAdminProductsIdEditRouteImport } from './routes/_authenticated/admin.products.$id.edit'
@@ -158,6 +159,12 @@ const ApiPublicHooksShippingTrackingSyncRoute =
     path: '/api/public/hooks/shipping-tracking-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksNuvemfiscalRoute =
+  ApiPublicHooksNuvemfiscalRouteImport.update({
+    id: '/api/public/hooks/nuvemfiscal',
+    path: '/api/public/hooks/nuvemfiscal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksMercadopagoRoute =
   ApiPublicHooksMercadopagoRouteImport.update({
     id: '/api/public/hooks/mercadopago',
@@ -200,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
+  '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
@@ -225,6 +233,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
+  '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
@@ -253,6 +262,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
+  '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
   '/_authenticated/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/customers/$customerId'
     | '/api/public/hooks/mercadopago'
+    | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
     | '/admin/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/customers/$customerId'
     | '/api/public/hooks/mercadopago'
+    | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
     | '/admin/products/$id/edit'
   id:
@@ -333,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/admin/customers/$customerId'
     | '/api/public/hooks/mercadopago'
+    | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
     | '/_authenticated/admin/products/$id/edit'
   fileRoutesById: FileRoutesById
@@ -343,6 +356,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicHooksMercadopagoRoute: typeof ApiPublicHooksMercadopagoRoute
+  ApiPublicHooksNuvemfiscalRoute: typeof ApiPublicHooksNuvemfiscalRoute
   ApiPublicHooksShippingTrackingSyncRoute: typeof ApiPublicHooksShippingTrackingSyncRoute
 }
 
@@ -502,6 +516,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksShippingTrackingSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/nuvemfiscal': {
+      id: '/api/public/hooks/nuvemfiscal'
+      path: '/api/public/hooks/nuvemfiscal'
+      fullPath: '/api/public/hooks/nuvemfiscal'
+      preLoaderRoute: typeof ApiPublicHooksNuvemfiscalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/mercadopago': {
       id: '/api/public/hooks/mercadopago'
       path: '/api/public/hooks/mercadopago'
@@ -617,19 +638,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicHooksMercadopagoRoute: ApiPublicHooksMercadopagoRoute,
+  ApiPublicHooksNuvemfiscalRoute: ApiPublicHooksNuvemfiscalRoute,
   ApiPublicHooksShippingTrackingSyncRoute:
     ApiPublicHooksShippingTrackingSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
