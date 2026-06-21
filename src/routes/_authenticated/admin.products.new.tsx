@@ -789,8 +789,9 @@ function VariationsBlock({
     if (onlyPadrao) {
       const padrao = colors[0];
       try {
-        const media = (await fnListMediaForMigration({ data: { color_id: padrao.id } })) as MediaRow[];
-        if (Array.isArray(media) && media.length > 0) {
+        const r = await fnListMediaForMigration({ data: { color_id: padrao.id } });
+        const media = r.ok ? (r.data as MediaRow[]) : [];
+        if (media.length > 0) {
           setMigration({ padraoId: padrao.id, media, pendingName: name, pendingHex: newColor.hex });
           return;
         }
@@ -804,9 +805,11 @@ function VariationsBlock({
     if (!migration) return;
     setMigrating(true);
     try {
-      const created = await fnCreateColor({ data: {
+      const createdResp = await fnCreateColor({ data: {
         product_id: productId, name: migration.pendingName, hex: migration.pendingHex, is_default: mode === "move",
-      } }) as ColorRow;
+      } });
+      if (!createdResp.ok) throw new Error(createdResp.error.message);
+      const created = createdResp.data as ColorRow;
       if (!created?.id) throw new Error("Falha ao criar cor");
 
       for (const m of migration.media) {
