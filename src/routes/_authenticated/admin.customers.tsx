@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MasterCrudPage } from "@/components/admin/master-crud-page";
 import { FormField, FormRow, FormSection } from "@/components/admin/form-field";
 import { StatusBadge } from "@/components/admin/status-badge";
