@@ -380,46 +380,52 @@ function BasicBlock({
         </FormField>
       </FormRow>
 
-      <FormRow>
-        <SelectField
-          label="Departamento"
-          value={form.department_id || "__none__"}
-          onChange={(v) => patch({ department_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Selecionar —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-          hint="Use sua categoria-raiz como departamento."
-        />
-        <SelectField
-          label="Categoria" required
-          value={form.category_id}
-          onChange={(v) => patch({ category_id: v })}
-          options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-          placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
-        />
-      </FormRow>
-
-      <FormRow>
-        <SelectField
-          label="Subcategoria"
-          value={form.subcategory_id || "__none__"}
-          onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Opcional —" },
-            ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        <SelectField
-          label="Marca"
-          value={form.brand_id || "__none__"}
-          onChange={(v) => patch({ brand_id: v === "__none__" ? "" : v })}
-          options={[
-            { value: "__none__", label: "— Sem marca —" },
-            ...(brands.data ?? []).map((b) => ({ value: b.id, label: b.name })),
-          ]}
-        />
-      </FormRow>
+      <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Hierarquia</h3>
+          <span className="text-[11px] text-muted-foreground">Departamento → Categoria → Subcategoria</span>
+        </div>
+        <FormRow>
+          <SelectField
+            label="Departamento"
+            value={form.department_id || "__none__"}
+            onChange={(v) => patch({ department_id: v === "__none__" ? "" : v, category_id: "", subcategory_id: "" })}
+            options={[
+              { value: "__none__", label: "— Selecionar —" },
+              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            hint="Estrutura em cascata será habilitada em breve."
+          />
+          <SelectField
+            label="Categoria" required
+            value={form.category_id}
+            onChange={(v) => patch({ category_id: v, subcategory_id: "" })}
+            options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
+          />
+        </FormRow>
+        <FormRow>
+          <SelectField
+            label="Subcategoria"
+            value={form.subcategory_id || "__none__"}
+            onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
+            disabled={!form.category_id}
+            options={[
+              { value: "__none__", label: form.category_id ? "— Opcional —" : "— Escolha a categoria primeiro —" },
+              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <SelectField
+            label="Marca"
+            value={form.brand_id || "__none__"}
+            onChange={(v) => patch({ brand_id: v === "__none__" ? "" : v })}
+            options={[
+              { value: "__none__", label: "— Sem marca —" },
+              ...(brands.data ?? []).map((b) => ({ value: b.id, label: b.name })),
+            ]}
+          />
+        </FormRow>
+      </div>
 
       <SelectField
         label="Coleção"
