@@ -140,16 +140,16 @@ export async function purchaseShippingLabel(
     const latency = Date.now() - started;
 
     // Persistência via RPC SECURITY DEFINER (única escrita autorizada).
+    const carrierLabelId = typeof result.raw?.cart === 'object' && result.raw?.cart
+      ? String((result.raw.cart as Record<string, unknown>).id ?? '')
+      : '';
     const { data: labelId, error } = await supabase.rpc('shipment_purchase_label', {
       p_shipment_id: shipment.id,
       p_tracking_number: result.tracking_code,
-      p_tracking_url: null,
-      p_label_url: result.label_url ?? null,
+      p_tracking_url: '',
+      p_label_url: result.label_url ?? '',
       p_format: (result.label_format ?? 'pdf') as never,
-      p_cost: null,
-      p_carrier_label_id: typeof result.raw?.cart === 'object' && result.raw?.cart
-        ? String((result.raw.cart as Record<string, unknown>).id ?? '')
-        : null,
+      ...(carrierLabelId ? { p_carrier_label_id: carrierLabelId } : {}),
     });
     if (error) throw Errors.internal('Falha ao persistir etiqueta', { error: error.message });
 
