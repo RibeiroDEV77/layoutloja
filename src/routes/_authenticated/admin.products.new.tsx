@@ -1332,10 +1332,6 @@ function OrganizationBlock({
     </BlockCard>
   );
 }
-      />
-    </BlockCard>
-  );
-}
 
 // =============================================================================
 // BLOCO 7 — Publicação
