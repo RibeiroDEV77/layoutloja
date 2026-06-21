@@ -930,13 +930,16 @@ export type Database = {
       categories: {
         Row: {
           created_at: string
+          depth: number | null
           description: string | null
           id: string
           image_url: string | null
           is_active: boolean
+          level: number | null
           name: string
           parent_id: string | null
           path: string | null
+          path_ids: string[] | null
           seo_description: string | null
           seo_title: string | null
           slug: string
@@ -946,13 +949,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          depth?: number | null
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          level?: number | null
           name: string
           parent_id?: string | null
           path?: string | null
+          path_ids?: string[] | null
           seo_description?: string | null
           seo_title?: string | null
           slug: string
@@ -962,13 +968,16 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          depth?: number | null
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          level?: number | null
           name?: string
           parent_id?: string | null
           path?: string | null
+          path_ids?: string[] | null
           seo_description?: string | null
           seo_title?: string | null
           slug?: string
@@ -982,6 +991,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories_tree"
             referencedColumns: ["id"]
           },
           {
@@ -1034,6 +1050,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_attributes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories_tree"
             referencedColumns: ["id"]
           },
         ]
@@ -8857,6 +8880,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories_tree"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
@@ -11945,6 +11975,76 @@ export type Database = {
       }
     }
     Views: {
+      categories_tree: {
+        Row: {
+          children_count: number | null
+          depth: number | null
+          id: string | null
+          is_active: boolean | null
+          is_leaf: boolean | null
+          level: number | null
+          name: string | null
+          parent_id: string | null
+          path: string | null
+          path_ids: string[] | null
+          slug: string | null
+          sort_order: number | null
+          store_id: string | null
+        }
+        Insert: {
+          children_count?: never
+          depth?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          is_leaf?: never
+          level?: number | null
+          name?: string | null
+          parent_id?: string | null
+          path?: string | null
+          path_ids?: string[] | null
+          slug?: string | null
+          sort_order?: number | null
+          store_id?: string | null
+        }
+        Update: {
+          children_count?: never
+          depth?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          is_leaf?: never
+          level?: number | null
+          name?: string | null
+          parent_id?: string | null
+          path?: string | null
+          path_ids?: string[] | null
+          slug?: string | null
+          sort_order?: number | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories_tree"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_dashboard_daily_v: {
         Row: {
           active_customers: number | null
@@ -12429,6 +12529,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories_tree"
             referencedColumns: ["id"]
           },
           {
