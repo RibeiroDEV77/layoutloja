@@ -37,7 +37,7 @@ export async function listAudit(supabase: SbClient, userId: string, input: ListA
   const from = (page - 1) * size;
   const to = from + size - 1;
 
-  let q = supabase.from('audit_log').select('*', { count: 'exact' });
+  let q = supabase.from('audit_log').select('id,store_id,actor_user_id,entity_type,entity_id,action,diff,user_agent,created_at', { count: 'exact' });
   if (input.store_id) q = q.eq('store_id', input.store_id);
   if (input.entity_type) q = q.eq('entity_type', input.entity_type);
   if (input.action) q = q.eq('action', input.action);
