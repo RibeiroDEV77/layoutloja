@@ -18,7 +18,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2, Sparkles, Library, Star, Save, Send,
-  Image as ImageIcon, Loader2, GripVertical,
+  Image as ImageIcon, Loader2, GripVertical, CheckCircle2, Circle, AlertTriangle, X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
