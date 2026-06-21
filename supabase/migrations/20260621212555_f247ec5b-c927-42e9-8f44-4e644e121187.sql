@@ -1,0 +1,1 @@
+ALTER VIEW public.categories_tree SET (security_invoker = true);
