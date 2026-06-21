@@ -46,11 +46,12 @@ function HomePage() {
 
   // Banners do Hero: apenas categorias raiz que possuem imagem cadastrada no admin
   const heroBanners: HeroBanner[] = categories
-    .filter((c) => !c.parent_id && c.image_url)
+    .filter((c: typeof categories[number]) => !c.parent_id && c.image_url)
     .slice(0, 5)
-    .map((c) => ({ image: c.image_url as string, tag: c.name, title: c.name, ctaSlug: c.slug }));
+    .map((c: typeof categories[number]) => ({ image: c.image_url as string, tag: c.name, title: c.name, ctaSlug: c.slug }));
 
-  const hasRootCategories = categories.some((c) => !c.parent_id);
+  const hasRootCategories = categories.some((c: typeof categories[number]) => !c.parent_id);
+
 
   return (
     <StorefrontShell>
