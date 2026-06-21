@@ -248,3 +248,125 @@ export async function createRate(supabase: SbClient, userId: string, input: Rate
   if (error) throw Errors.internal('Falha', { error: error.message });
   return data;
 }
+
+// ============================================================
+// Adapter integration (Correios e demais providers)
+// ============================================================
+
+import { getShippingAdapter } from './shipping/registry.server';
+import type { AdapterCredentials } from './shipping/adapter';
+
+interface CarrierQuoteResult {
+  provider_code: string;
+  carrier_account_id: string;
+  carrier_name: string;
+  service_code: string;
+  service_name: string;
+  price: number;
+  estimated_days_min: number | null;
+  estimated_days_max: number | null;
+  raw?: Record<string, unknown> | null;
+}
+
+/**
+ * Coleta cotações de todas as contas de transportadora ativas da loja
+ * usando seus adapters. Falhas individuais são logadas mas não propagadas
+ * (cotação interna sempre completa, mesmo que um carrier esteja indisponível).
+ */
+async function quoteFromActiveCarriers(
+  supabase: SbClient,
+  input: {
+    store_id: string;
+    origin_postal_code: string | null;
+    destination_postal_code: string;
+    weight_g: number;
+    declared_value?: number;
+  },
+): Promise<CarrierQuoteResult[]> {
+  const { data: accounts } = await supabase
+    .from('shipping_carrier_accounts')
+    .select('id, store_id, provider_code, display_name, sandbox, config, capabilities')
+    .eq('store_id', input.store_id).eq('is_active', true);
+  if (!accounts || accounts.length === 0) return [];
+
+  const out: CarrierQuoteResult[] = [];
+  for (const acc of accounts) {
+    const adapter = getShippingAdapter(acc.provider_code);
+    if (!adapter || !adapter.capabilities.quote || !adapter.quote) continue;
+    const cfg = (acc.config ?? {}) as Record<string, unknown>;
+    const origin = input.origin_postal_code
+      ?? (typeof cfg.origin_postal_code === 'string' ? cfg.origin_postal_code : null);
+    if (!origin) continue;
+
+    // Decifra credenciais via admin client + RPC restrita
+    let creds: AdapterCredentials | null = null;
+    try {
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { data: c } = await supabaseAdmin.rpc('shipping_get_credentials', { _account_id: acc.id });
+      creds = (c as AdapterCredentials | null) ?? null;
+    } catch (err) {
+      console.error('[shipping] decrypt creds falhou', acc.id, err);
+      continue;
+    }
+
+    try {
+      const options = await adapter.quote({
+        account: {
+          id: acc.id, store_id: acc.store_id, provider_code: acc.provider_code,
+          display_name: acc.display_name, sandbox: acc.sandbox,
+          config: cfg, capabilities: (acc.capabilities ?? {}) as Record<string, unknown>,
+        },
+        credentials: creds,
+      }, {
+        origin_postal_code: origin,
+        destination_postal_code: input.destination_postal_code,
+        weight_g: input.weight_g,
+        declared_value: input.declared_value,
+      });
+      for (const o of options) {
+        out.push({
+          provider_code: acc.provider_code,
+          carrier_account_id: acc.id,
+          carrier_name: adapter.displayName,
+          service_code: o.service_code,
+          service_name: o.service_name,
+          price: o.price,
+          estimated_days_min: o.estimated_days_min,
+          estimated_days_max: o.estimated_days_max,
+          raw: o.raw ?? null,
+        });
+      }
+    } catch (err) {
+      console.error(`[shipping] adapter ${acc.provider_code} falhou`, err);
+      await supabase.from('shipping_carrier_accounts').update({
+        last_test_at: new Date().toISOString(),
+        last_test_ok: false,
+        last_test_error: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+      }).eq('id', acc.id);
+    }
+  }
+  return out;
+}
+
+/**
+ * Persiste a cotação selecionada do carrinho no pedido recém-criado
+ * (carrier, service, price, eta, quoted_at, provider, account).
+ * Idempotente — `order_shipping_snapshots` é UNIQUE por order_id.
+ */
+export async function persistOrderShippingSnapshot(
+  supabase: SbClient,
+  input: { order_id: string; cart_id: string },
+) {
+  const { data, error } = await supabase.rpc('order_persist_shipping_snapshot', {
+    _order_id: input.order_id, _cart_id: input.cart_id,
+  });
+  if (error) throw Errors.internal('Falha ao persistir cotação no pedido', { error: error.message });
+  return { snapshot_id: (data as string | null) ?? null };
+}
+
+// ---- CEP lookup ----
+import { lookupViaCep, type PostalLookup } from './shipping/cep.server';
+export async function lookupPostalCode(postalCode: string): Promise<PostalLookup> {
+  return lookupViaCep(postalCode);
+}
+
