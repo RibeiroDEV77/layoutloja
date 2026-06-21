@@ -78,15 +78,16 @@ export async function listRoles(supabase: SbClient, userId: string) {
 export interface AssignRoleInput {
   user_id: string;
   role_id: string;
-  store_id?: string | null;
+  store_id: string;
 }
 
 export async function assignRole(supabase: SbClient, userId: string, input: AssignRoleInput) {
   await requireUserManage(supabase, userId);
+  if (!input.store_id) throw Errors.validation('Loja obrigatória para atribuição de papel');
   const { data, error } = await supabase.from('user_roles').insert({
     user_id: input.user_id,
     role_id: input.role_id,
-    store_id: input.store_id ?? null,
+    store_id: input.store_id,
     granted_by: userId,
   }).select().single();
   if (error) {
