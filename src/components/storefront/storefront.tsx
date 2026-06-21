@@ -479,23 +479,21 @@ export function Section({ children, tone = "white", id }: {
 }
 
 export function SectionHeader({
-  title, description, action, align = "left",
+  title, description, action,
 }: {
   title: string; description?: string;
   action?: { label: string; href?: string };
+  /** @deprecated mantido por compatibilidade — todas as seções usam left */
   align?: "left" | "center";
 }) {
   return (
-    <div className={cn(
-      "mb-10 md:mb-12 flex flex-col gap-3 md:flex-row md:items-end md:gap-6",
-      align === "center" ? "md:flex-col md:items-center text-center" : "md:justify-between",
-    )}>
-      <div className={cn(align === "center" && "flex flex-col items-center")}>
+    <div className="mb-10 md:mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-8">
+      <div className="max-w-2xl">
         <h2 className="text-[32px] md:text-[44px] leading-tight font-semibold tracking-tight text-[#111]">
           {title}
         </h2>
         {description && (
-          <p className={cn("mt-2 text-[15px] text-[#666] max-w-xl", align === "center" && "mx-auto")}>
+          <p className="mt-2 text-[15px] text-[#666]">
             {description}
           </p>
         )}
@@ -503,7 +501,7 @@ export function SectionHeader({
       {action && (
         <a
           href={action.href ?? "#"}
-          className="inline-flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.16em] text-[#111] border-b border-[#111] pb-1 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors"
+          className="self-start md:self-end shrink-0 inline-flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.16em] text-[#111] border-b border-[#111] pb-1 hover:text-[var(--brand-red)] hover:border-[var(--brand-red)] transition-colors"
         >
           {action.label} →
         </a>
