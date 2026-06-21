@@ -43,32 +43,35 @@ function HomePage() {
   const { store, categories, novidades, promocoes, destaques } = Route.useLoaderData();
   const storeName = store?.name ?? "Layout";
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <StorefrontNavbar storeName={storeName} />
-      <main className="flex-1">
-        <StorefrontHero storeName={storeName} />
-        <LooksSlider />
-        <CategoryCards categories={categories} />
-        <ProductSection
-          title="Novidades"
-          subtitle="Acabou de chegar"
-          products={novidades}
-          emptyMessage="Nenhuma novidade publicada ainda."
-        />
-        <ProductSection
-          title="Promoções"
-          subtitle="Ofertas por tempo limitado"
-          products={promocoes}
-          emptyMessage="Nenhum produto em promoção no momento."
-        />
-        <ProductSection
-          title="Produtos em destaque"
-          subtitle="Selecionados pela curadoria"
-          products={destaques}
-          emptyMessage="Nenhum destaque selecionado ainda."
-        />
-      </main>
-      <StorefrontFooter storeName={storeName} />
-    </div>
+    <StorefrontShell>
+      <div className="min-h-screen flex flex-col bg-white">
+        <StorefrontNavbar storeName={storeName} />
+        <main className="flex-1">
+          <StorefrontHero storeName={storeName} />
+          <LooksSlider />
+          <CategoryCards categories={categories} />
+          <ProductSection
+            title="Novidades"
+            subtitle="Acaba de chegar"
+            products={novidades}
+            emptyMessage="Em breve, novas peças."
+          />
+          <ProductSection
+            title="Seleção em oferta"
+            subtitle="Por tempo limitado"
+            products={promocoes}
+            emptyMessage="Nenhuma peça em oferta no momento."
+            tone="soft"
+          />
+          <ProductSection
+            title="Destaques"
+            subtitle="Curadoria"
+            products={destaques}
+            emptyMessage="Em breve, peças em destaque."
+          />
+        </main>
+        <StorefrontFooter storeName={storeName} />
+      </div>
+    </StorefrontShell>
   );
 }
