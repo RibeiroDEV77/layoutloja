@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, UserPlus, Trash2 } from "lucide-react";
 import { runAction } from "@/components/admin/notify";
-import { listUsers, listRoles, assignRole, revokeRole, inviteUser } from "@/lib/business/users.functions";
+import { listUsers, listRoles, assignRole, inviteUser } from "@/lib/business/users.functions";
 import { listStores } from "@/lib/business/stores.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
@@ -35,7 +35,6 @@ function UsersPage() {
   const listRolesFn = useServerFn(listRoles);
   const listStoresFn = useServerFn(listStores);
   const assign = useServerFn(assignRole);
-  const revoke = useServerFn(revokeRole);
   const invite = useServerFn(inviteUser);
 
   const [q, setQ] = useState("");
