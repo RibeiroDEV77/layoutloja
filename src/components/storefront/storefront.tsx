@@ -330,7 +330,7 @@ export function StorefrontNavbar({ categories = [], brands = [] }: NavbarProps) 
         <div className="lg:hidden border-t border-[#EFEFEF] bg-white">
           <nav className="px-5 py-4 grid gap-1 text-[15px]">
             {navItems.map((i) =>
-              i.kind === "cat" && i.slug ? (
+              (i.kind === "cat" || i.kind === "link") && i.slug ? (
                 <Link
                   key={i.key}
                   to="/categoria/$slug"
