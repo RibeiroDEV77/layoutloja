@@ -99,7 +99,7 @@ export async function updateCarrierAccount(
   if (input.config !== undefined) patch.config = input.config;
   const { data, error } = await supabase
     .from('shipping_carrier_accounts')
-    .update(patch).eq('id', input.id)
+    .update(patch as never).eq('id', input.id)
     .select('id, store_id, provider_code, display_name, is_active, sandbox, config, capabilities, updated_at')
     .single();
   if (error) throw Errors.internal('Falha ao atualizar conta', { error: error.message });
