@@ -250,11 +250,13 @@ export async function createRate(supabase: SbClient, userId: string, input: Rate
 }
 
 // ============================================================
-// Adapter integration (Correios e demais providers)
+// Adapter integration via ShippingProviderRegistry
 // ============================================================
-
-import { getShippingAdapter } from './shipping/registry.server';
-import type { AdapterCredentials } from './shipping/adapter';
+//
+// O ShippingService nunca importa um adapter concreto. Toda integração com
+// transportadoras (Correios hoje, Melhor Envio amanhã) passa pelo Registry.
+//
+import { calculateQuote as registryCalculateQuote } from './shipping/provider-registry.server';
 
 interface CarrierQuoteResult {
   provider_code: string;
@@ -269,9 +271,8 @@ interface CarrierQuoteResult {
 }
 
 /**
- * Coleta cotações de todas as contas de transportadora ativas da loja
- * usando seus adapters. Falhas individuais são logadas mas não propagadas
- * (cotação interna sempre completa, mesmo que um carrier esteja indisponível).
+ * Wrapper fino que delega ao ShippingProviderRegistry. Mantido para evitar
+ * mudanças no contrato interno usado por `quoteShippingForCart`.
  */
 async function quoteFromActiveCarriers(
   supabase: SbClient,
@@ -281,71 +282,30 @@ async function quoteFromActiveCarriers(
     destination_postal_code: string;
     weight_g: number;
     declared_value?: number;
+    cart_id?: string | null;
   },
 ): Promise<CarrierQuoteResult[]> {
-  const { data: accounts } = await supabase
-    .from('shipping_carrier_accounts')
-    .select('id, store_id, provider_code, display_name, sandbox, config, capabilities')
-    .eq('store_id', input.store_id).eq('is_active', true);
-  if (!accounts || accounts.length === 0) return [];
-
-  const out: CarrierQuoteResult[] = [];
-  for (const acc of accounts) {
-    const adapter = getShippingAdapter(acc.provider_code);
-    if (!adapter || !adapter.capabilities.quote || !adapter.quote) continue;
-    const cfg = (acc.config ?? {}) as Record<string, unknown>;
-    const origin = input.origin_postal_code
-      ?? (typeof cfg.origin_postal_code === 'string' ? cfg.origin_postal_code : null);
-    if (!origin) continue;
-
-    // Decifra credenciais via admin client + RPC restrita
-    let creds: AdapterCredentials | null = null;
-    try {
-      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-      const { data: c } = await supabaseAdmin.rpc('shipping_get_credentials', { _account_id: acc.id });
-      creds = (c as AdapterCredentials | null) ?? null;
-    } catch (err) {
-      console.error('[shipping] decrypt creds falhou', acc.id, err);
-      continue;
-    }
-
-    try {
-      const options = await adapter.quote({
-        account: {
-          id: acc.id, store_id: acc.store_id, provider_code: acc.provider_code,
-          display_name: acc.display_name, sandbox: acc.sandbox,
-          config: cfg, capabilities: (acc.capabilities ?? {}) as Record<string, unknown>,
-        },
-        credentials: creds,
-      }, {
-        origin_postal_code: origin,
-        destination_postal_code: input.destination_postal_code,
-        weight_g: input.weight_g,
-        declared_value: input.declared_value,
-      });
-      for (const o of options) {
-        out.push({
-          provider_code: acc.provider_code,
-          carrier_account_id: acc.id,
-          carrier_name: adapter.displayName,
-          service_code: o.service_code,
-          service_name: o.service_name,
-          price: o.price,
-          estimated_days_min: o.estimated_days_min,
-          estimated_days_max: o.estimated_days_max,
-          raw: o.raw ?? null,
-        });
-      }
-    } catch (err) {
-      console.error(`[shipping] adapter ${acc.provider_code} falhou`, err);
-      await supabase.from('shipping_carrier_accounts').update({
-        last_test_at: new Date().toISOString(),
-        last_test_ok: false,
-        last_test_error: (err instanceof Error ? err.message : String(err)).slice(0, 500),
-      }).eq('id', acc.id);
-    }
-  }
-  return out;
+  const result = await registryCalculateQuote(supabase, {
+    store_id: input.store_id,
+    origin_postal_code: input.origin_postal_code,
+    destination_postal_code: input.destination_postal_code,
+    weight_g: input.weight_g,
+    declared_value: input.declared_value,
+    source_aggregate_type: input.cart_id ? 'cart' : undefined,
+    source_aggregate_id: input.cart_id ?? null,
+    correlation_id: input.cart_id ?? null,
+  });
+  return result.options.map((o) => ({
+    provider_code: o.provider_code,
+    carrier_account_id: o.carrier_account_id,
+    carrier_name: o.carrier_name,
+    service_code: o.service_code,
+    service_name: o.service_name,
+    price: o.price,
+    estimated_days_min: o.estimated_days_min,
+    estimated_days_max: o.estimated_days_max,
+    raw: o.raw ?? null,
+  }));
 }
 
 /**
