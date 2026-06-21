@@ -42,7 +42,7 @@ export const Route = createFileRoute('/api/public/hooks/shipping-tracking-sync')
             limit: typeof body.limit === 'number' ? body.limit : 50,
             stale_minutes: typeof body.stale_minutes === 'number' ? body.stale_minutes : 30,
           });
-          return new Response(JSON.stringify({ ok: true, ...result }), {
+          return new Response(JSON.stringify({ ...result, success: true }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           });
