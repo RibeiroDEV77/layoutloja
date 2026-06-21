@@ -66,6 +66,7 @@ function ShippingPage() {
           <TabsTrigger value="zones">Zonas</TabsTrigger>
           <TabsTrigger value="methods">Métodos</TabsTrigger>
           <TabsTrigger value="rates">Tarifas</TabsTrigger>
+          <TabsTrigger value="providers">Transportadoras</TabsTrigger>
         </TabsList>
 
         <TabsContent value="zones" className="space-y-4">
