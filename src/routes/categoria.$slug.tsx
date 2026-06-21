@@ -170,10 +170,10 @@ function CategoryPage() {
     return products.filter((p: { id: string }) => {
       const owned = new Set(productAttrs[p.id] ?? []);
       for (const code of activeCodes) {
-        const group = filters.find((g: StorefrontFilterGroup) => g.code === code);
+        const group = (filters as StorefrontFilterGroup[]).find((g) => g.code === code);
         if (!group) continue;
         const required = selected[code];
-        const has = group.values.some((v) => required.has(v.id) && owned.has(v.id));
+        const has = group.values.some((v: { id: string }) => required.has(v.id) && owned.has(v.id));
         if (!has) return false;
       }
       return true;
