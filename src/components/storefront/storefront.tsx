@@ -342,18 +342,43 @@ function IconBtn({ label, children, badge }: { label: string; children: ReactNod
 }
 
 // ---------------------------------------------------------------------------
-// Hero — imagem grande + logo centralizada
+// Hero — slider em fade com logo centralizada
 // ---------------------------------------------------------------------------
 
-export function StorefrontHero() {
+export type HeroBanner = { image: string; tag?: string; title?: string; ctaSlug?: string };
+
+export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
+  const slides: HeroBanner[] = useMemo(() => {
+    const list = (banners ?? []).filter((b) => !!b.image);
+    if (list.length > 0) return list.slice(0, 6);
+    return [
+      { image: lookSocial, tag: "Coleção Social" },
+      { image: lookFeminino, tag: "Coleção Feminina" },
+      { image: lookCowboy, tag: "Coleção Country" },
+    ];
+  }, [banners]);
+
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), 5500);
+    return () => clearInterval(id);
+  }, [slides.length]);
+
   return (
     <section className="relative w-full overflow-hidden bg-[#111]">
       <div className="relative aspect-[16/8] md:aspect-[21/9] min-h-[420px] md:min-h-[560px]">
-        <img
-          src={lookSocial}
-          alt="Coleção Layout"
-          className="absolute inset-0 h-full w-full object-cover opacity-90"
-        />
+        {slides.map((s, i) => (
+          <img
+            key={`${s.image}-${i}`}
+            src={s.image}
+            alt={s.tag ?? "Coleção Layout"}
+            className={cn(
+              "absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out",
+              i === active ? "opacity-100" : "opacity-0",
+            )}
+          />
+        ))}
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
           <div className="bg-white/95 px-8 py-6 md:px-12 md:py-8 backdrop-blur-sm">
@@ -364,7 +389,7 @@ export function StorefrontHero() {
             />
           </div>
           <p className="mt-7 text-sm md:text-base font-normal max-w-xl tracking-wide opacity-95">
-            Coleção atual · Moda autoral com a qualidade da indústria Layout.
+            {slides[active]?.title ?? "Coleção atual · Moda autoral com a qualidade da indústria Layout."}
           </p>
           <a
             href="#novidades"
@@ -373,10 +398,29 @@ export function StorefrontHero() {
             Explorar coleção
           </a>
         </div>
+
+        {/* Dots */}
+        {slides.length > 1 && (
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Banner ${i + 1}`}
+                onClick={() => setActive(i)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-300",
+                  i === active ? "w-8 bg-white" : "w-3 bg-white/45 hover:bg-white/70",
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Section primitives
