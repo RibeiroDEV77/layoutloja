@@ -17,7 +17,6 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { SelectField } from "@/components/admin/select-field";
 import { useActiveStore } from "@/hooks/use-active-store";
 import { listProducts } from "@/lib/business/products.functions";
-import { ProductAssistantDrawer } from "@/components/admin/products/product-assistant-drawer";
 import { ProductOperationsMenu, type ProductLite } from "@/components/admin/products/product-operations-menu";
 
 export const Route = createFileRoute("/_authenticated/admin/products")({
