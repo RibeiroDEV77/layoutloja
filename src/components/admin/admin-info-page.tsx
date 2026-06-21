@@ -56,9 +56,9 @@ export function AdminInfoPage(props: AdminInfoPageProps) {
               <div className="flex flex-wrap gap-2">
                 {props.alternatives.map((a) => (
                   <Button key={a.to} asChild variant="outline" size="sm">
-                    <Link to={a.to}>
+                    <a href={a.to}>
                       {a.label} <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                    </Link>
+                    </a>
                   </Button>
                 ))}
               </div>
