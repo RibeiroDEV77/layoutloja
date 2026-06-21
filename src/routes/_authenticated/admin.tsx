@@ -1,10 +1,11 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouter, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield } from "lucide-react";
+import { Shield, AlertCircle, FileQuestion } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,11 +13,59 @@ import { BreadcrumbProvider } from "@/components/admin/breadcrumb-context";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { FullPageLoading } from "@/components/admin/loading";
 import { ActiveStoreProvider } from "@/hooks/use-active-store";
+import { FeatureFlagProvider } from "@/hooks/use-feature-flag";
+import { RouterProgress } from "@/components/admin/router-progress";
+import { reportLovableError } from "@/lib/lovable-error-reporting";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin" }] }),
   component: AdminLayout,
+  errorComponent: AdminErrorBoundary,
+  notFoundComponent: AdminNotFound,
 });
+
+function AdminErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+  useEffect(() => {
+    reportLovableError(error, { boundary: "admin_layout_error" });
+    // eslint-disable-next-line no-console
+    console.error("[admin]", error);
+  }, [error]);
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" /> Erro no painel
+          </CardTitle>
+          <CardDescription>{error.message || "Algo deu errado ao carregar esta área."}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-2">
+          <Button onClick={() => { router.invalidate(); reset(); }}>Tentar novamente</Button>
+          <Button asChild variant="outline"><Link to="/admin">Voltar ao Dashboard</Link></Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminNotFound() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <Card className="max-w-md w-full text-center">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-center gap-2">
+            <FileQuestion className="h-5 w-5" /> Página não encontrada
+          </CardTitle>
+          <CardDescription>A rota administrativa solicitada não existe.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild><Link to="/admin">Ir para o Dashboard</Link></Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function AdminLayout() {
   const { ctx, loading, refresh } = useAuth();
@@ -65,20 +114,23 @@ function AdminLayout() {
   }
 
   return (
-    <BreadcrumbProvider>
-      <ActiveStoreProvider>
-        <SidebarProvider>
-          <div className="min-h-screen flex w-full">
-            <AppSidebar />
-            <div className="flex-1 flex flex-col min-w-0">
-              <AdminHeader />
-              <main className="flex-1 p-4 sm:p-6 bg-muted/20">
-                <Outlet />
-              </main>
+    <FeatureFlagProvider>
+      <BreadcrumbProvider>
+        <ActiveStoreProvider>
+          <SidebarProvider>
+            <RouterProgress />
+            <div className="min-h-screen flex w-full">
+              <AppSidebar />
+              <div className="flex-1 flex flex-col min-w-0">
+                <AdminHeader />
+                <main className="flex-1 p-4 sm:p-6 bg-muted/20">
+                  <Outlet />
+                </main>
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
-      </ActiveStoreProvider>
-    </BreadcrumbProvider>
+          </SidebarProvider>
+        </ActiveStoreProvider>
+      </BreadcrumbProvider>
+    </FeatureFlagProvider>
   );
 }

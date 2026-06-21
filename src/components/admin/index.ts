@@ -36,3 +36,9 @@ export * from "./notify";
 
 // Widgets
 export * from "./widget";
+
+// Shell v2
+export * from "./command-palette";
+export * from "./notifications-menu";
+export * from "./router-progress";
+export * from "./nav-registry";
