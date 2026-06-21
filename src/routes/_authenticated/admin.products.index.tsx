@@ -19,7 +19,7 @@ import { useActiveStore } from "@/hooks/use-active-store";
 import { listProducts } from "@/lib/business/products.functions";
 import { ProductOperationsMenu, type ProductLite } from "@/components/admin/products/product-operations-menu";
 
-export const Route = createFileRoute("/_authenticated/admin/products")({
+export const Route = createFileRoute("/_authenticated/admin/products/")({
   head: () => ({ meta: [{ title: "Produtos — Admin" }] }),
   component: ProductsPage,
 });

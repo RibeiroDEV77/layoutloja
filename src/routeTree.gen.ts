@@ -21,7 +21,6 @@ import { Route as AuthenticatedAdminStoresRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminShippingRouteImport } from './routes/_authenticated/admin.shipping'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminPurchasesRouteImport } from './routes/_authenticated/admin.purchases'
-import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin.products'
 import { Route as AuthenticatedAdminPriceListsRouteImport } from './routes/_authenticated/admin.price-lists'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
@@ -42,6 +41,7 @@ import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin.audit'
 import { Route as AuthenticatedAdminAttributesRouteImport } from './routes/_authenticated/admin.attributes'
 import { Route as AuthenticatedAdminAttributeValuesRouteImport } from './routes/_authenticated/admin.attribute-values'
+import { Route as AuthenticatedAdminProductsIndexRouteImport } from './routes/_authenticated/admin.products.index'
 import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes/api/public/hooks/shipping-tracking-sync'
 import { Route as ApiPublicHooksNuvemfiscalRouteImport } from './routes/api/public/hooks/nuvemfiscal'
 import { Route as ApiPublicHooksMercadopagoRouteImport } from './routes/api/public/hooks/mercadopago'
@@ -115,12 +115,6 @@ const AuthenticatedAdminPurchasesRoute =
   AuthenticatedAdminPurchasesRouteImport.update({
     id: '/purchases',
     path: '/purchases',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminProductsRoute =
-  AuthenticatedAdminProductsRouteImport.update({
-    id: '/products',
-    path: '/products',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPriceListsRoute =
@@ -239,6 +233,12 @@ const AuthenticatedAdminAttributeValuesRoute =
     path: '/attribute-values',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminProductsIndexRoute =
+  AuthenticatedAdminProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const ApiPublicHooksShippingTrackingSyncRoute =
   ApiPublicHooksShippingTrackingSyncRouteImport.update({
     id: '/api/public/hooks/shipping-tracking-sync',
@@ -265,9 +265,9 @@ const AuthenticatedAdminPurchasesPoIdRoute =
   } as any)
 const AuthenticatedAdminProductsNewRoute =
   AuthenticatedAdminProductsNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => AuthenticatedAdminProductsRoute,
+    id: '/products/new',
+    path: '/products/new',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOrdersOrderIdRoute =
   AuthenticatedAdminOrdersOrderIdRouteImport.update({
@@ -295,9 +295,9 @@ const AuthenticatedAdminCustomersCustomerIdRoute =
   } as any)
 const AuthenticatedAdminProductsIdEditRoute =
   AuthenticatedAdminProductsIdEditRouteImport.update({
-    id: '/$id/edit',
-    path: '/$id/edit',
-    getParentRoute: () => AuthenticatedAdminProductsRoute,
+    id: '/products/$id/edit',
+    path: '/products/$id/edit',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -325,7 +325,6 @@ export interface FileRoutesByFullPath {
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
-  '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/shipping': typeof AuthenticatedAdminShippingRoute
@@ -342,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
+  '/admin/products/': typeof AuthenticatedAdminProductsIndexRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -368,7 +368,6 @@ export interface FileRoutesByTo {
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
-  '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/shipping': typeof AuthenticatedAdminShippingRoute
@@ -385,6 +384,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
+  '/admin/products': typeof AuthenticatedAdminProductsIndexRoute
   '/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRoutesById {
@@ -414,7 +414,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/_authenticated/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
-  '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/_authenticated/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/shipping': typeof AuthenticatedAdminShippingRoute
@@ -431,6 +430,7 @@ export interface FileRoutesById {
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
+  '/_authenticated/admin/products/': typeof AuthenticatedAdminProductsIndexRoute
   '/_authenticated/admin/products/$id/edit': typeof AuthenticatedAdminProductsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -460,7 +460,6 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/orders'
     | '/admin/price-lists'
-    | '/admin/products'
     | '/admin/purchases'
     | '/admin/settings'
     | '/admin/shipping'
@@ -477,6 +476,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
+    | '/admin/products/'
     | '/admin/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -503,7 +503,6 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/orders'
     | '/admin/price-lists'
-    | '/admin/products'
     | '/admin/purchases'
     | '/admin/settings'
     | '/admin/shipping'
@@ -520,6 +519,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
+    | '/admin/products'
     | '/admin/products/$id/edit'
   id:
     | '__root__'
@@ -548,7 +548,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/price-lists'
-    | '/_authenticated/admin/products'
     | '/_authenticated/admin/purchases'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/shipping'
@@ -565,6 +564,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
+    | '/_authenticated/admin/products/'
     | '/_authenticated/admin/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -662,13 +662,6 @@ declare module '@tanstack/react-router' {
       path: '/purchases'
       fullPath: '/admin/purchases'
       preLoaderRoute: typeof AuthenticatedAdminPurchasesRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/products': {
-      id: '/_authenticated/admin/products'
-      path: '/products'
-      fullPath: '/admin/products'
-      preLoaderRoute: typeof AuthenticatedAdminProductsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/price-lists': {
@@ -811,6 +804,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAttributeValuesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/products/': {
+      id: '/_authenticated/admin/products/'
+      path: '/products'
+      fullPath: '/admin/products/'
+      preLoaderRoute: typeof AuthenticatedAdminProductsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/api/public/hooks/shipping-tracking-sync': {
       id: '/api/public/hooks/shipping-tracking-sync'
       path: '/api/public/hooks/shipping-tracking-sync'
@@ -841,10 +841,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/products/new': {
       id: '/_authenticated/admin/products/new'
-      path: '/new'
+      path: '/products/new'
       fullPath: '/admin/products/new'
       preLoaderRoute: typeof AuthenticatedAdminProductsNewRouteImport
-      parentRoute: typeof AuthenticatedAdminProductsRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/orders/$orderId': {
       id: '/_authenticated/admin/orders/$orderId'
@@ -876,10 +876,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/products/$id/edit': {
       id: '/_authenticated/admin/products/$id/edit'
-      path: '/$id/edit'
+      path: '/products/$id/edit'
       fullPath: '/admin/products/$id/edit'
       preLoaderRoute: typeof AuthenticatedAdminProductsIdEditRouteImport
-      parentRoute: typeof AuthenticatedAdminProductsRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
   }
 }
@@ -943,23 +943,6 @@ const AuthenticatedAdminOrdersRouteWithChildren =
     AuthenticatedAdminOrdersRouteChildren,
   )
 
-interface AuthenticatedAdminProductsRouteChildren {
-  AuthenticatedAdminProductsNewRoute: typeof AuthenticatedAdminProductsNewRoute
-  AuthenticatedAdminProductsIdEditRoute: typeof AuthenticatedAdminProductsIdEditRoute
-}
-
-const AuthenticatedAdminProductsRouteChildren: AuthenticatedAdminProductsRouteChildren =
-  {
-    AuthenticatedAdminProductsNewRoute: AuthenticatedAdminProductsNewRoute,
-    AuthenticatedAdminProductsIdEditRoute:
-      AuthenticatedAdminProductsIdEditRoute,
-  }
-
-const AuthenticatedAdminProductsRouteWithChildren =
-  AuthenticatedAdminProductsRoute._addFileChildren(
-    AuthenticatedAdminProductsRouteChildren,
-  )
-
 interface AuthenticatedAdminPurchasesRouteChildren {
   AuthenticatedAdminPurchasesPoIdRoute: typeof AuthenticatedAdminPurchasesPoIdRoute
 }
@@ -995,7 +978,6 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRouteWithChildren
   AuthenticatedAdminPriceListsRoute: typeof AuthenticatedAdminPriceListsRoute
-  AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
   AuthenticatedAdminPurchasesRoute: typeof AuthenticatedAdminPurchasesRouteWithChildren
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminShippingRoute: typeof AuthenticatedAdminShippingRoute
@@ -1003,6 +985,9 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminProductsNewRoute: typeof AuthenticatedAdminProductsNewRoute
+  AuthenticatedAdminProductsIndexRoute: typeof AuthenticatedAdminProductsIndexRoute
+  AuthenticatedAdminProductsIdEditRoute: typeof AuthenticatedAdminProductsIdEditRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -1030,7 +1015,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRouteWithChildren,
   AuthenticatedAdminPriceListsRoute: AuthenticatedAdminPriceListsRoute,
-  AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRouteWithChildren,
   AuthenticatedAdminPurchasesRoute:
     AuthenticatedAdminPurchasesRouteWithChildren,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
@@ -1039,6 +1023,9 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminProductsNewRoute: AuthenticatedAdminProductsNewRoute,
+  AuthenticatedAdminProductsIndexRoute: AuthenticatedAdminProductsIndexRoute,
+  AuthenticatedAdminProductsIdEditRoute: AuthenticatedAdminProductsIdEditRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
