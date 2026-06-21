@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Search, Heart, User, ShoppingBag, Menu, X, Instagram, Facebook, Youtube,
@@ -10,7 +10,8 @@ import lookCowboy from "@/assets/look-cowboy.jpg";
 import lookFeminino from "@/assets/look-feminino.jpg";
 import lookSocial from "@/assets/look-social.jpg";
 import logoAsset from "@/assets/layout-logo.png.asset.json";
-import type { StorefrontCategory, StorefrontProduct } from "@/lib/business/storefront.functions";
+import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
+
 
 // ---------------------------------------------------------------------------
 // Shell
