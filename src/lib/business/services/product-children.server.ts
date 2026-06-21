@@ -297,6 +297,61 @@ export async function deleteVariant(supabase: SbClient, userId: string, variantI
   return { ok: true as const, id: variantId };
 }
 
+export interface UpdateVariantPatch {
+  sku?: string;
+  barcode?: string | null;
+  internal_reference?: string | null;
+  weight_grams?: number | null;
+  length_mm?: number | null;
+  width_mm?: number | null;
+  height_mm?: number | null;
+  is_active?: boolean;
+}
+
+/**
+ * Edição inline da matriz de variantes — usada pela aba "Variantes".
+ * Reutiliza RBAC/RLS/auditoria do Product Engine. Estoque, preços e mídia
+ * continuam fluindo pelos seus engines próprios.
+ */
+export async function updateVariant(
+  supabase: SbClient, userId: string, variantId: string, patch: UpdateVariantPatch,
+) {
+  const { data: v } = await supabase
+    .from('product_variants').select('product_id').eq('id', variantId).maybeSingle();
+  if (!v) throw Errors.notFound('product_variant', variantId);
+  const storeId = await productStoreId(supabase, v.product_id);
+  await requirePermission(supabase, userId, 'products.update', storeId);
+
+  const sanitized: UpdateVariantPatch = {};
+  if (patch.sku !== undefined) {
+    if (!patch.sku.trim()) throw Errors.validation('SKU não pode ficar vazio');
+    sanitized.sku = patch.sku.trim().toUpperCase();
+  }
+  if (patch.barcode !== undefined) sanitized.barcode = patch.barcode?.trim() || null;
+  if (patch.internal_reference !== undefined) sanitized.internal_reference = patch.internal_reference?.trim() || null;
+  if (patch.weight_grams !== undefined) sanitized.weight_grams = patch.weight_grams != null ? Math.max(0, patch.weight_grams) : null;
+  if (patch.length_mm !== undefined) sanitized.length_mm = patch.length_mm != null ? Math.max(0, patch.length_mm) : null;
+  if (patch.width_mm !== undefined) sanitized.width_mm = patch.width_mm != null ? Math.max(0, patch.width_mm) : null;
+  if (patch.height_mm !== undefined) sanitized.height_mm = patch.height_mm != null ? Math.max(0, patch.height_mm) : null;
+  if (patch.is_active !== undefined) sanitized.is_active = patch.is_active;
+
+  const { data, error } = await supabase
+    .from('product_variants').update(sanitized).eq('id', variantId).select('*').single();
+  if (error) {
+    if (error.code === '23505') throw Errors.conflict('SKU já em uso nesta loja', { error: error.message });
+    throw Errors.internal('Falha ao atualizar variante', { error: error.message });
+  }
+
+  await dispatchEvent(supabase, {
+    event_type: DomainEvent.ProductUpdated,
+    aggregate_type: 'product',
+    aggregate_id: v.product_id,
+    store_id: storeId,
+    payload: { action: 'variant_updated', variant_id: variantId, fields: Object.keys(sanitized) },
+  });
+  return data;
+}
+
 // ============== PREÇOS ==============
 
 export async function listProductPrices(supabase: SbClient, userId: string, productId: string) {

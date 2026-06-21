@@ -102,6 +102,13 @@ export const deleteProductVariant = createServerFn({ method: 'POST' })
     C.deleteVariant(context.supabase, context.userId, data.id),
   ));
 
+export const updateProductVariant = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; patch: C.UpdateVariantPatch }) => input)
+  .handler(withBusiness(async ({ data, context }) =>
+    C.updateVariant(context.supabase, context.userId, data.id, data.patch),
+  ));
+
 // ---- Preços
 export const listProductPrices = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
