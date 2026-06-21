@@ -945,6 +945,285 @@ export type Database = {
           },
         ]
       }
+      event_delivery_log: {
+        Row: {
+          attempt: number
+          delivered_at: string
+          duration_ms: number | null
+          error: string | null
+          http_status: number | null
+          id: string
+          outbox_id: string
+          response_excerpt: string | null
+          status: string
+          subscription_id: string | null
+        }
+        Insert: {
+          attempt: number
+          delivered_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          outbox_id: string
+          response_excerpt?: string | null
+          status: string
+          subscription_id?: string | null
+        }
+        Update: {
+          attempt?: number
+          delivered_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          outbox_id?: string
+          response_excerpt?: string | null
+          status?: string
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_delivery_log_outbox_id_fkey"
+            columns: ["outbox_id"]
+            isOneToOne: false
+            referencedRelation: "event_outbox"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_delivery_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "domain_event_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_outbox: {
+        Row: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          available_at: string
+          causation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          locked_by: string | null
+          locked_until: string | null
+          max_attempts: number
+          metadata: Json
+          occurred_at: string
+          ordered: boolean
+          payload: Json
+          published_at: string | null
+          status: Database["public"]["Enums"]["outbox_status"]
+          store_id: string | null
+        }
+        Insert: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts?: number
+          available_at?: string
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          locked_by?: string | null
+          locked_until?: string | null
+          max_attempts?: number
+          metadata?: Json
+          occurred_at?: string
+          ordered?: boolean
+          payload?: Json
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          store_id?: string | null
+        }
+        Update: {
+          aggregate_id?: string
+          aggregate_type?: string
+          attempts?: number
+          available_at?: string
+          causation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          locked_by?: string | null
+          locked_until?: string | null
+          max_attempts?: number
+          metadata?: Json
+          occurred_at?: string
+          ordered?: boolean
+          payload?: Json
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_outbox_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_outbox_dead_letter: {
+        Row: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          event_type: string
+          failed_at: string
+          id: string
+          last_error: string | null
+          metadata: Json
+          original_outbox_id: string
+          payload: Json
+          reprocessed_at: string | null
+          reprocessed_by: string | null
+          store_id: string | null
+        }
+        Insert: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          event_type: string
+          failed_at?: string
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          original_outbox_id: string
+          payload: Json
+          reprocessed_at?: string | null
+          reprocessed_by?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          aggregate_id?: string
+          aggregate_type?: string
+          attempts?: number
+          event_type?: string
+          failed_at?: string
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          original_outbox_id?: string
+          payload?: Json
+          reprocessed_at?: string | null
+          reprocessed_by?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_outbox_dead_letter_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flag_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          flag_id: string
+          id: string
+          reason: string | null
+          scope_id: string | null
+          scope_type: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          flag_id: string
+          id?: string
+          reason?: string | null
+          scope_id?: string | null
+          scope_type: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          flag_id?: string
+          id?: string
+          reason?: string | null
+          scope_id?: string | null
+          scope_type?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flag_overrides_flag_id_fkey"
+            columns: ["flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_value: Json
+          description: string | null
+          enabled: boolean
+          id: string
+          key: string
+          metadata: Json
+          name: string
+          rollout_strategy: Json
+          store_scope: boolean
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_value?: Json
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key: string
+          metadata?: Json
+          name: string
+          rollout_strategy?: Json
+          store_scope?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_value?: Json
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          key?: string
+          metadata?: Json
+          name?: string
+          rollout_strategy?: Json
+          store_scope?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goods_receipt_items: {
         Row: {
           created_at: string
@@ -1076,6 +1355,101 @@ export type Database = {
           },
         ]
       }
+      health_checks: {
+        Row: {
+          checked_at: string
+          component: string
+          details: Json
+          id: string
+          latency_ms: number | null
+          status: Database["public"]["Enums"]["health_status"]
+        }
+        Insert: {
+          checked_at?: string
+          component: string
+          details?: Json
+          id?: string
+          latency_ms?: number | null
+          status: Database["public"]["Enums"]["health_status"]
+        }
+        Update: {
+          checked_at?: string
+          component?: string
+          details?: Json
+          id?: string
+          latency_ms?: number | null
+          status?: Database["public"]["Enums"]["health_status"]
+        }
+        Relationships: []
+      }
+      idempotency_keys: {
+        Row: {
+          actor_user_id: string | null
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          expires_at: string
+          id: string
+          key: string
+          request_hash: string
+          resource_id: string | null
+          resource_type: string | null
+          response_body: Json | null
+          response_hash: string | null
+          response_status: number | null
+          scope: string
+          status: Database["public"]["Enums"]["idempotency_status"]
+          store_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          expires_at: string
+          id?: string
+          key: string
+          request_hash: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_body?: Json | null
+          response_hash?: string | null
+          response_status?: number | null
+          scope: string
+          status?: Database["public"]["Enums"]["idempotency_status"]
+          store_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          expires_at?: string
+          id?: string
+          key?: string
+          request_hash?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_body?: Json | null
+          response_hash?: string | null
+          response_status?: number | null
+          scope?: string
+          status?: Database["public"]["Enums"]["idempotency_status"]
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idempotency_keys_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_count_items: {
         Row: {
           counted_at: string | null
@@ -1198,6 +1572,47 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      metrics: {
+        Row: {
+          id: string
+          name: string
+          recorded_at: string
+          scope: string
+          store_id: string | null
+          tags: Json
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          recorded_at?: string
+          scope: string
+          store_id?: string | null
+          tags?: Json
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          recorded_at?: string
+          scope?: string
+          store_id?: string | null
+          tags?: Json
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -2511,6 +2926,56 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_secret: boolean
+          key: string
+          scope: Database["public"]["Enums"]["setting_scope"]
+          store_id: string | null
+          updated_at: string
+          updated_by: string | null
+          value: Json
+          value_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_secret?: boolean
+          key: string
+          scope?: Database["public"]["Enums"]["setting_scope"]
+          store_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+          value_type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_secret?: boolean
+          key?: string
+          scope?: Database["public"]["Enums"]["setting_scope"]
+          store_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+          value_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           created_at: string
@@ -2536,6 +3001,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tags_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      traces: {
+        Row: {
+          actor_user_id: string | null
+          attributes: Json
+          created_at: string
+          duration_ms: number | null
+          ended_at: string | null
+          error: string | null
+          id: string
+          kind: string
+          operation: string
+          parent_span_id: string | null
+          span_id: string
+          started_at: string
+          status: string
+          store_id: string | null
+          trace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          attributes?: Json
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error?: string | null
+          id?: string
+          kind?: string
+          operation: string
+          parent_span_id?: string | null
+          span_id: string
+          started_at: string
+          status?: string
+          store_id?: string | null
+          trace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          attributes?: Json
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error?: string | null
+          id?: string
+          kind?: string
+          operation?: string
+          parent_span_id?: string | null
+          span_id?: string
+          started_at?: string
+          status?: string
+          store_id?: string | null
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traces_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -2708,6 +3235,314 @@ export type Database = {
           },
         ]
       }
+      workflow_definitions: {
+        Row: {
+          aggregate_type: string
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          metadata: Json
+          name: string
+          store_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          aggregate_type: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          name: string
+          store_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          aggregate_type?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          name?: string
+          store_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_definitions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_instances: {
+        Row: {
+          aggregate_id: string
+          aggregate_type: string
+          completed_at: string | null
+          context: Json
+          created_at: string
+          current_state_id: string
+          definition_id: string
+          id: string
+          sla_due_at: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["workflow_instance_status"]
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          aggregate_id: string
+          aggregate_type: string
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          current_state_id: string
+          definition_id: string
+          id?: string
+          sla_due_at?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_instance_status"]
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aggregate_id?: string
+          aggregate_type?: string
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          current_state_id?: string
+          definition_id?: string
+          id?: string
+          sla_due_at?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["workflow_instance_status"]
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_instances_current_state_id_fkey"
+            columns: ["current_state_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_instances_definition_id_fkey"
+            columns: ["definition_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_instances_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_state_history: {
+        Row: {
+          actor_user_id: string | null
+          duration_ms: number | null
+          from_state_id: string | null
+          id: string
+          instance_id: string
+          occurred_at: string
+          payload: Json
+          reason: string | null
+          to_state_id: string
+          transition_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          duration_ms?: number | null
+          from_state_id?: string | null
+          id?: string
+          instance_id: string
+          occurred_at?: string
+          payload?: Json
+          reason?: string | null
+          to_state_id: string
+          transition_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          duration_ms?: number | null
+          from_state_id?: string | null
+          id?: string
+          instance_id?: string
+          occurred_at?: string
+          payload?: Json
+          reason?: string | null
+          to_state_id?: string
+          transition_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_state_history_from_state_id_fkey"
+            columns: ["from_state_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_state_history_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_state_history_to_state_id_fkey"
+            columns: ["to_state_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_state_history_transition_id_fkey"
+            columns: ["transition_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_transitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_states: {
+        Row: {
+          code: string
+          color: string | null
+          created_at: string
+          definition_id: string
+          id: string
+          is_final: boolean
+          is_initial: boolean
+          label: string
+          metadata: Json
+          sla_minutes: number | null
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          color?: string | null
+          created_at?: string
+          definition_id: string
+          id?: string
+          is_final?: boolean
+          is_initial?: boolean
+          label: string
+          metadata?: Json
+          sla_minutes?: number | null
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          color?: string | null
+          created_at?: string
+          definition_id?: string
+          id?: string
+          is_final?: boolean
+          is_initial?: boolean
+          label?: string
+          metadata?: Json
+          sla_minutes?: number | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_states_definition_id_fkey"
+            columns: ["definition_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_transitions: {
+        Row: {
+          code: string
+          created_at: string
+          definition_id: string
+          from_state_id: string
+          guard_expression: string | null
+          id: string
+          is_automatic: boolean
+          label: string
+          metadata: Json
+          on_enter_actions: Json
+          required_permission: string | null
+          to_state_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          definition_id: string
+          from_state_id: string
+          guard_expression?: string | null
+          id?: string
+          is_automatic?: boolean
+          label: string
+          metadata?: Json
+          on_enter_actions?: Json
+          required_permission?: string | null
+          to_state_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          definition_id?: string
+          from_state_id?: string
+          guard_expression?: string | null
+          id?: string
+          is_automatic?: boolean
+          label?: string
+          metadata?: Json
+          on_enter_actions?: Json
+          required_permission?: string | null
+          to_state_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_transitions_definition_id_fkey"
+            columns: ["definition_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_transitions_from_state_id_fkey"
+            columns: ["from_state_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_transitions_to_state_id_fkey"
+            columns: ["to_state_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2716,6 +3551,41 @@ export type Database = {
       asset_store_id: { Args: { _asset_id: string }; Returns: string }
       assets_usage_count: { Args: { _asset_id: string }; Returns: number }
       claim_first_super_admin: { Args: never; Returns: Json }
+      claim_outbox_batch: {
+        Args: {
+          _batch_size?: number
+          _lock_seconds?: number
+          _worker_id: string
+        }
+        Returns: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          available_at: string
+          causation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          locked_by: string | null
+          locked_until: string | null
+          max_attempts: number
+          metadata: Json
+          occurred_at: string
+          ordered: boolean
+          payload: Json
+          published_at: string | null
+          status: Database["public"]["Enums"]["outbox_status"]
+          store_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "event_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       color_store_id: { Args: { _color_id: string }; Returns: string }
       current_user_context: { Args: never; Returns: Json }
       emit_domain_event: {
@@ -2729,6 +3599,24 @@ export type Database = {
         }
         Returns: string
       }
+      enqueue_outbox_event: {
+        Args: {
+          _aggregate_id: string
+          _aggregate_type: string
+          _causation_id?: string
+          _correlation_id?: string
+          _event_type: string
+          _metadata?: Json
+          _ordered?: boolean
+          _payload?: Json
+          _store_id: string
+        }
+        Returns: string
+      }
+      evaluate_feature_flag: {
+        Args: { _key: string; _store_id?: string; _user_id?: string }
+        Returns: Json
+      }
       gr_store_id: { Args: { _gr_id: string }; Returns: string }
       has_permission: {
         Args: { _permission_code: string; _store_id?: string; _user_id: string }
@@ -2739,9 +3627,60 @@ export type Database = {
         Returns: boolean
       }
       ic_store_id: { Args: { _ic_id: string }; Returns: string }
+      idempotency_begin: {
+        Args: {
+          _actor_user_id: string
+          _key: string
+          _request_hash: string
+          _scope: string
+          _store_id: string
+          _ttl_seconds?: number
+        }
+        Returns: Json
+      }
+      idempotency_complete: {
+        Args: {
+          _error_code?: string
+          _id: string
+          _resource_id?: string
+          _resource_type?: string
+          _response_body: Json
+          _response_hash: string
+          _response_status: number
+          _status: Database["public"]["Enums"]["idempotency_status"]
+        }
+        Returns: undefined
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_outbox_failed: {
+        Args: { _error: string; _id: string }
+        Returns: undefined
+      }
+      mark_outbox_published: { Args: { _id: string }; Returns: undefined }
       po_store_id: { Args: { _po_id: string }; Returns: string }
       product_store_id: { Args: { _product_id: string }; Returns: string }
+      purge_expired_idempotency_keys: { Args: never; Returns: number }
+      record_health_check: {
+        Args: {
+          _component: string
+          _details?: Json
+          _latency_ms?: number
+          _status: Database["public"]["Enums"]["health_status"]
+        }
+        Returns: string
+      }
+      record_metric: {
+        Args: {
+          _name: string
+          _scope: string
+          _store_id?: string
+          _tags?: Json
+          _unit?: string
+          _value: number
+        }
+        Returns: string
+      }
+      release_stale_outbox_locks: { Args: never; Returns: number }
       st_store_id: { Args: { _st_id: string }; Returns: string }
       super_admin_exists: { Args: never; Returns: boolean }
       supplier_store_id: { Args: { _supplier_id: string }; Returns: string }
@@ -2785,10 +3724,15 @@ export type Database = {
         | "representante"
         | "distribuidor"
         | "revendedor"
+      health_status: "ok" | "degraded" | "down" | "unknown"
+      idempotency_status: "in_flight" | "succeeded" | "failed"
       media_type: "image" | "video" | "youtube" | "vimeo"
+      outbox_status: "pending" | "processing" | "published" | "failed" | "dead"
       product_status: "draft" | "published" | "archived"
       product_visibility: "published" | "hidden" | "private" | "catalog_only"
       sale_channel: "varejo" | "atacado" | "ambos"
+      setting_scope: "global" | "store"
+      workflow_instance_status: "active" | "completed" | "cancelled" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2947,10 +3891,15 @@ export const Constants = {
         "distribuidor",
         "revendedor",
       ],
+      health_status: ["ok", "degraded", "down", "unknown"],
+      idempotency_status: ["in_flight", "succeeded", "failed"],
       media_type: ["image", "video", "youtube", "vimeo"],
+      outbox_status: ["pending", "processing", "published", "failed", "dead"],
       product_status: ["draft", "published", "archived"],
       product_visibility: ["published", "hidden", "private", "catalog_only"],
       sale_channel: ["varejo", "atacado", "ambos"],
+      setting_scope: ["global", "store"],
+      workflow_instance_status: ["active", "completed", "cancelled", "failed"],
     },
   },
 } as const
