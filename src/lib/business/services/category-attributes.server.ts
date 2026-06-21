@@ -80,6 +80,8 @@ export async function create(supabase: SbClient, userId: string, input: CreateIn
       is_required: input.is_required ?? false,
       is_variant_axis: input.is_variant_axis ?? false,
       sort_order: input.sort_order ?? 0,
+      show_in_filters: input.show_in_filters ?? true,
+      filter_order: input.filter_order ?? 0,
     })
     .select('*')
     .single();
