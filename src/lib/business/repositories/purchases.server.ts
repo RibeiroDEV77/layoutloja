@@ -76,3 +76,88 @@ export async function insertGoodsReceiptItems(supabase: SbClient, items: GRitemI
   if (error) throw Errors.internal('Falha ao registrar itens recebidos', { error: error.message });
   return data ?? [];
 }
+
+// =============================== Reads (Admin) ===============================
+
+export interface POListFilters {
+  store_id: string;
+  q?: string;
+  status?: string[];
+  supplier_id?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface POListRow extends POrow {
+  supplier_name: string | null;
+  items_count: number;
+}
+
+export async function listAdmin(supabase: SbClient, f: POListFilters) {
+  const page = Math.max(1, f.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 25));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let q = supabase
+    .from('purchase_orders')
+    .select('*, suppliers(legal_name, trade_name), purchase_order_items(id)', { count: 'exact' })
+    .eq('store_id', f.store_id)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (f.q) q = q.ilike('po_number', `%${f.q}%`);
+  if (f.status?.length) q = q.in('status', f.status);
+  if (f.supplier_id) q = q.eq('supplier_id', f.supplier_id);
+
+  const { data, error, count } = await q;
+  if (error) throw Errors.internal('Falha ao listar ordens de compra', { error: error.message });
+
+  const rows: POListRow[] = (data ?? []).map((r: any) => ({
+    ...r,
+    supplier_name: r.suppliers?.trade_name ?? r.suppliers?.legal_name ?? null,
+    items_count: Array.isArray(r.purchase_order_items) ? r.purchase_order_items.length : 0,
+  }));
+
+  return { rows, total: count ?? 0, page, pageSize };
+}
+
+export async function listReceipts(supabase: SbClient, poId: string) {
+  const { data, error } = await supabase
+    .from('goods_receipts')
+    .select('*, goods_receipt_items(*)')
+    .eq('purchase_order_id', poId)
+    .order('received_at', { ascending: false });
+  if (error) throw Errors.internal('Falha ao listar recebimentos', { error: error.message });
+  return data ?? [];
+}
+
+export async function listAudit(supabase: SbClient, poId: string) {
+  const { data, error } = await supabase
+    .from('audit_log')
+    .select('id, store_id, actor_user_id, entity_type, entity_id, action, diff, created_at')
+    .eq('entity_type', 'purchase_order')
+    .eq('entity_id', poId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw Errors.internal('Falha ao buscar auditoria', { error: error.message });
+  return data ?? [];
+}
+
+export async function listTimeline(supabase: SbClient, poId: string) {
+  const { data, error } = await supabase
+    .from('domain_events')
+    .select('id, event_type, aggregate_type, aggregate_id, payload, occurred_at')
+    .eq('aggregate_type', 'purchase_order')
+    .eq('aggregate_id', poId)
+    .order('occurred_at', { ascending: false })
+    .limit(200);
+  if (error) throw Errors.internal('Falha ao buscar timeline', { error: error.message });
+  return data ?? [];
+}
+
+export async function findSupplier(supabase: SbClient, id: string) {
+  const { data, error } = await supabase.from('suppliers').select('*').eq('id', id).maybeSingle();
+  if (error) throw Errors.internal('Falha ao buscar fornecedor', { error: error.message });
+  return data;
+}

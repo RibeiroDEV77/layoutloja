@@ -315,3 +315,40 @@ export async function receivePurchaseOrder(
 
   return { receipt: gr, items: grItems, status: newStatus };
 }
+
+// =============================== Reads (Admin) ===============================
+import { requireStoreAccess } from './permissions.server';
+
+export type ListInput = Repo.POListFilters;
+
+export async function list(supabase: SbClient, userId: string, input: ListInput) {
+  if (!input.store_id) throw Errors.validation('store_id obrigatório');
+  await requireStoreAccess(supabase, userId, input.store_id);
+  return Repo.listAdmin(supabase, input);
+}
+
+export async function get(supabase: SbClient, userId: string, id: string) {
+  const po = await Repo.findPO(supabase, id);
+  if (!po) throw Errors.notFound('Ordem de compra', id);
+  await requireStoreAccess(supabase, userId, po.store_id);
+  const [items, receipts, supplier] = await Promise.all([
+    Repo.findPOItems(supabase, id),
+    Repo.listReceipts(supabase, id),
+    po.supplier_id ? Repo.findSupplier(supabase, po.supplier_id) : Promise.resolve(null),
+  ]);
+  return { po, items, receipts, supplier };
+}
+
+export async function timeline(supabase: SbClient, userId: string, id: string) {
+  const po = await Repo.findPO(supabase, id);
+  if (!po) throw Errors.notFound('Ordem de compra', id);
+  await requireStoreAccess(supabase, userId, po.store_id);
+  return Repo.listTimeline(supabase, id);
+}
+
+export async function audit(supabase: SbClient, userId: string, id: string) {
+  const po = await Repo.findPO(supabase, id);
+  if (!po) throw Errors.notFound('Ordem de compra', id);
+  await requireStoreAccess(supabase, userId, po.store_id);
+  return Repo.listAudit(supabase, id);
+}

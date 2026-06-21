@@ -112,4 +112,35 @@ export const setFiscalWebhookSecret = createServerFn({ method: 'POST' })
     });
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
+});
+
+// ============ Reads (Admin) =============================================
+import { withBusiness } from './with-business';
+
+export const listInvoices = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: Svc.InvoiceListFilters) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    toJSON(await Svc.listInvoices(context.supabase, context.userId, data)),
+  ));
+
+export const getInvoice = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    toJSON(await Svc.getInvoice(context.supabase, context.userId, data.id)),
+  ));
+
+export const getInvoiceTimeline = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    toJSON(await Svc.getInvoiceTimeline(context.supabase, context.userId, data.id)),
+  ));
+
+export const getInvoiceAudit = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    toJSON(await Svc.getInvoiceAudit(context.supabase, context.userId, data.id)),
+  ));
