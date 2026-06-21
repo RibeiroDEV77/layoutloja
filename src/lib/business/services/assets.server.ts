@@ -89,20 +89,29 @@ export async function listAssets(supabase: SbClient, userId: string, p: ListAsse
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar assets', { error: error.message });
 
-  // Resolve URLs via driver
+  // Resolve URLs via driver (com fallback inline para storage_driver='supabase')
   const driver = getStorageDriver();
   const rows = await Promise.all(
     (data ?? []).map(async (a) => ({
       ...a,
-      preview_url: await driver.resolveUrl({
-        bucket: a.bucket,
-        path: a.thumb_path ?? a.storage_path,
-        externalUrl: a.external_url,
-      }),
+      preview_url: await resolvePreviewUrl(supabase, a),
     })),
   );
 
   return { rows, page, page_size: size, total: count ?? 0 };
+}
+
+async function resolvePreviewUrl(
+  supabase: SbClient,
+  a: { storage_driver: AssetDriver; bucket: string | null; storage_path: string | null; thumb_path: string | null; external_url: string | null },
+): Promise<string | null> {
+  const path = a.thumb_path ?? a.storage_path;
+  if (a.storage_driver === 'supabase' && a.bucket && path) {
+    const { data } = await supabase.storage.from(a.bucket).createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  }
+  const driver = getStorageDriver();
+  return driver.resolveUrl({ bucket: a.bucket, path, externalUrl: a.external_url });
 }
 
 export async function getAsset(supabase: SbClient, userId: string, id: string) {
@@ -110,10 +119,10 @@ export async function getAsset(supabase: SbClient, userId: string, id: string) {
   if (error) throw Errors.internal('Falha ao carregar asset', { error: error.message });
   if (!data) throw Errors.notFound('Asset', id);
   await ensureRead(supabase, userId, data.store_id);
-  const driver = getStorageDriver();
-  const url = await driver.resolveUrl({ bucket: data.bucket, path: data.storage_path, externalUrl: data.external_url });
+  const url = await resolvePreviewUrl(supabase, data);
   return { ...data, preview_url: url };
 }
+
 
 export async function getAssetUsage(supabase: SbClient, userId: string, id: string) {
   const asset = await getAsset(supabase, userId, id);
