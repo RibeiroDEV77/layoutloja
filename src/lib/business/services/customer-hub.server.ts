@@ -136,7 +136,7 @@ export async function addNote(
     customer_id: input.customer_id, body: input.body, pinned: !!input.pinned, author_user_id: userId,
   }).select().single();
   if (error) throw Errors.internal('Falha ao adicionar nota', { error: error.message });
-  await recordMetric('customers', 'customer.note.added', 1, 'count', {}, c.store_id);
+  await recordMetric(supabase, { scope: 'customers', name: 'note_added', value: 1, storeId: c.store_id });
   return data;
 }
 
