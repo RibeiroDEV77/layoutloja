@@ -123,10 +123,52 @@ interface PrecoItem {
   msgErro?: string;
 }
 
+/**
+ * Mapeia o "tipo" do evento do SRO Rastro para o enum
+ * `tracking_event_kind` que o módulo Fulfillment utiliza.
+ * Referência: https://cws.correios.com.br/ (SRO Rastro v1).
+ */
+function mapCorreiosEventKind(tipo: string, status: string, descricao: string): string {
+  const t = (tipo || '').toUpperCase();
+  const s = String(status ?? '');
+  const d = (descricao || '').toLowerCase();
+  // Entrega efetuada
+  if (['BDE', 'BDI', 'BDR'].includes(t)) return 'delivered';
+  // Saiu para entrega
+  if (t === 'OEC') return 'out_for_delivery';
+  // Tentativa de entrega
+  if (['LDE', 'LDI', 'TRI', 'EST'].includes(t)) return 'delivery_attempted';
+  // Devolução
+  if (t === 'RDV' || d.includes('devolvido')) return 'returned';
+  // Extravio/objeto perdido
+  if (t === 'PAR' || d.includes('extravio')) return 'lost';
+  // Restrição / exceção
+  if (['IDC', 'FC', 'AL', 'IE'].includes(t)) return 'exception';
+  // Postagem
+  if (t === 'PO' && s === '01') return 'pickup_scheduled';
+  if (t === 'PO') return 'picked_up';
+  // Encaminhamento / trânsito
+  if (['RO', 'DO', 'TRI', 'PMT'].includes(t)) return 'in_transit';
+  return 'in_transit';
+}
+
+interface SroEvento {
+  codigo?: string;
+  tipo?: string;
+  descricao?: string;
+  dtHrCriado?: string;
+  unidade?: { endereco?: { cidade?: string; uf?: string }; tipo?: string };
+}
+interface SroObjeto {
+  codObjeto?: string;
+  mensagem?: string;
+  eventos?: SroEvento[];
+}
+
 export const correiosAdapter: ShippingAdapter = {
   code: 'correios',
   displayName: 'Correios',
-  capabilities: { quote: true, label: false, tracking: false, sandbox: true },
+  capabilities: { quote: true, label: false, tracking: true, sandbox: true },
   credentialSchema: CREDENTIAL_SCHEMA,
   configSchema: CONFIG_SCHEMA,
 

@@ -11874,6 +11874,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      fulfillment_apply_tracking: {
+        Args: {
+          _delivered?: boolean
+          _events: Json
+          _shipment_id: string
+          _source?: string
+          _tracking_code?: string
+        }
+        Returns: Json
+      }
       fulfillment_create: {
         Args: {
           p_causation_id?: string
@@ -12658,6 +12668,15 @@ export type Database = {
         Returns: string
       }
       shipping_get_credentials: { Args: { _account_id: string }; Returns: Json }
+      shipping_list_pending_tracking: {
+        Args: { _limit?: number; _stale_minutes?: number; _store_id?: string }
+        Returns: {
+          carrier_code: string
+          shipment_id: string
+          store_id: string
+          tracking_number: string
+        }[]
+      }
       shipping_set_credentials: {
         Args: { _account_id: string; _creds: Json }
         Returns: undefined
