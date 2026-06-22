@@ -107,10 +107,16 @@ function buildIdempotencyKey(input: CalculateQuoteInput): string {
  * registrado, está inativo ou não suporta `calculateQuote` são filtrados.
  */
 export async function resolveActiveProviders(
-  supabase: SbClient,
+  _supabase: SbClient,
   storeId: string,
 ): Promise<ResolvedProvider[]> {
-  const { data: accounts } = await supabase
+  // Usa admin client: checkout anônimo precisa listar contas ativas para
+  // cotar frete, mas a tabela `shipping_carrier_accounts` não é exposta a
+  // `anon` por RLS (e nem deve ser — contém config sensível). Aqui só
+  // projetamos campos não-sensíveis; credenciais continuam vindo do RPC
+  // `shipping_get_credentials` (decifrado pelo keyring).
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { data: accounts } = await supabaseAdmin
     .from('shipping_carrier_accounts')
     .select('id, store_id, provider_code, display_name, sandbox, config, is_active')
     .eq('store_id', storeId)
@@ -134,6 +140,7 @@ export async function resolveActiveProviders(
   }
   return out;
 }
+
 
 /** Apenas para diagnóstico / admin UI — lista providers conhecidos pelo registry. */
 export function listKnownProviders() {
