@@ -52,6 +52,32 @@ type MegaColumn = { title: string; items: MegaListItem[]; linkToCategory?: boole
 export function StorefrontNavbar({ categories = [], brands = [], products = [] }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => searchInputRef.current?.focus(), 30);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSearchOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [searchOpen]);
+
+  const normalized = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const searchResults = useMemo(() => {
+    const q = normalized(searchTerm.trim());
+    if (!q) return [] as StorefrontProduct[];
+    return products
+      .filter((p) => normalized(p.name).includes(q) || normalized(p.short_description ?? "").includes(q))
+      .slice(0, 20);
+  }, [searchTerm, products]);
+  const categoryById = useMemo(() => {
+    const m = new Map<string, StorefrontCategory>();
+    for (const c of categories) m.set(c.id, c);
+    return m;
+  }, [categories]);
+
 
   const childrenOf = useMemo(() => {
     const m = new Map<string, StorefrontCategory[]>();
