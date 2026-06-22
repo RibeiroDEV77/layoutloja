@@ -115,12 +115,21 @@ export async function resolveActiveProviders(
   // `anon` por RLS (e nem deve ser — contém config sensível). Aqui só
   // projetamos campos não-sensíveis; credenciais continuam vindo do RPC
   // `shipping_get_credentials` (decifrado pelo keyring).
-  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-  const { data: accounts } = await supabaseAdmin
-    .from('shipping_carrier_accounts')
-    .select('id, store_id, provider_code, display_name, sandbox, config, is_active')
-    .eq('store_id', storeId)
-    .eq('is_active', true);
+  let accounts: Array<{ id: string; store_id: string; provider_code: string; display_name: string; sandbox: boolean; config: Record<string, unknown> | null; is_active: boolean }> | null = null;
+  try {
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const res = await supabaseAdmin
+      .from('shipping_carrier_accounts')
+      .select('id, store_id, provider_code, display_name, sandbox, config, is_active')
+      .eq('store_id', storeId)
+      .eq('is_active', true);
+    if (res.error) console.error('[shipping] resolveActiveProviders query error:', res.error.message);
+    accounts = (res.data as never) ?? null;
+    console.log('[shipping] resolveActiveProviders store=', storeId, 'rows=', accounts?.length ?? 0);
+  } catch (err) {
+    console.error('[shipping] resolveActiveProviders admin client error:', err instanceof Error ? err.message : err);
+    return [];
+  }
   if (!accounts || accounts.length === 0) return [];
 
   const out: ResolvedProvider[] = [];
