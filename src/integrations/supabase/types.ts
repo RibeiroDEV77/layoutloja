@@ -9704,6 +9704,63 @@ export type Database = {
           },
         ]
       }
+      shipping_oauth_states: {
+        Row: {
+          account_id: string | null
+          code_verifier: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          provider_code: string
+          redirect_uri: string
+          return_to: string | null
+          state: string
+          store_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          code_verifier: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider_code: string
+          redirect_uri: string
+          return_to?: string | null
+          state: string
+          store_id: string
+        }
+        Update: {
+          account_id?: string | null
+          code_verifier?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider_code?: string
+          redirect_uri?: string
+          return_to?: string | null
+          state?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_oauth_states_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_carrier_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_oauth_states_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipping_quotes: {
         Row: {
           carrier: string | null
@@ -13698,6 +13755,18 @@ export type Database = {
           shipment_id: string
           store_id: string
           tracking_number: string
+        }[]
+      }
+      shipping_oauth_consume_state: {
+        Args: { _state: string }
+        Returns: {
+          account_id: string
+          code_verifier: string
+          id: string
+          provider_code: string
+          redirect_uri: string
+          return_to: string
+          store_id: string
         }[]
       }
       shipping_set_credentials: {
