@@ -27,7 +27,7 @@ export const getMelhorEnvioStatus = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const env = (() => {
@@ -49,7 +49,7 @@ export const startMelhorEnvioOAuth = createServerFn({ method: 'POST' })
     withBusiness(async ({ data, context }) => {
       console.log('[ME OAuth START] step=enter', { store_id: data.store_id, return_to: data.return_to, user_id: context.userId });
       try {
-        await assertManage(context.supabase, context.userId, data.store_id);
+        await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
         console.log('[ME OAuth START] step=permission_ok');
 
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
@@ -89,7 +89,7 @@ export const refreshMelhorEnvioToken = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const accountId = await oauth.getMelhorEnvioAccountId(supabaseAdmin, data.store_id);
@@ -104,7 +104,7 @@ export const disconnectMelhorEnvio = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const accountId = await oauth.getMelhorEnvioAccountId(supabaseAdmin, data.store_id);
@@ -130,7 +130,7 @@ export const calculateMelhorEnvioQuote = createServerFn({ method: 'POST' })
   }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const { melhorEnvioAdapter } = await import('./services/shipping/providers/melhor-envio.server');
