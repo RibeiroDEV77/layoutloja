@@ -20,12 +20,9 @@ import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as ApiPublicDiagShippingRouteImport } from './routes/api/public/diag-shipping'
-import { Route as ApiPublicDiagMeRouteImport } from './routes/api/public/diag-me'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin.suppliers'
 import { Route as AuthenticatedAdminStoresRouteImport } from './routes/_authenticated/admin.stores'
-import { Route as AuthenticatedAdminShippingRouteImport } from './routes/_authenticated/admin.shipping'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminPurchasesRouteImport } from './routes/_authenticated/admin.purchases'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin.products'
@@ -118,16 +115,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const ApiPublicDiagShippingRoute = ApiPublicDiagShippingRouteImport.update({
-  id: '/api/public/diag-shipping',
-  path: '/api/public/diag-shipping',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicDiagMeRoute = ApiPublicDiagMeRouteImport.update({
-  id: '/api/public/diag-me',
-  path: '/api/public/diag-me',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -143,12 +130,6 @@ const AuthenticatedAdminStoresRoute =
   AuthenticatedAdminStoresRouteImport.update({
     id: '/stores',
     path: '/stores',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminShippingRoute =
-  AuthenticatedAdminShippingRouteImport.update({
-    id: '/shipping',
-    path: '/shipping',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminSettingsRoute =
@@ -404,12 +385,9 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
-  '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -457,12 +435,9 @@ export interface FileRoutesByTo {
   '/admin/price-lists': typeof AuthenticatedAdminPriceListsRoute
   '/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
-  '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -514,12 +489,9 @@ export interface FileRoutesById {
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/_authenticated/admin/purchases': typeof AuthenticatedAdminPurchasesRouteWithChildren
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/_authenticated/admin/shipping': typeof AuthenticatedAdminShippingRoute
   '/_authenticated/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
-  '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/_authenticated/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -571,12 +543,9 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/purchases'
     | '/admin/settings'
-    | '/admin/shipping'
     | '/admin/stores'
     | '/admin/suppliers'
     | '/admin/users'
-    | '/api/public/diag-me'
-    | '/api/public/diag-shipping'
     | '/admin/'
     | '/admin/customers/$customerId'
     | '/admin/inventory/$stockLevelId'
@@ -624,12 +593,9 @@ export interface FileRouteTypes {
     | '/admin/price-lists'
     | '/admin/purchases'
     | '/admin/settings'
-    | '/admin/shipping'
     | '/admin/stores'
     | '/admin/suppliers'
     | '/admin/users'
-    | '/api/public/diag-me'
-    | '/api/public/diag-shipping'
     | '/admin'
     | '/admin/customers/$customerId'
     | '/admin/inventory/$stockLevelId'
@@ -680,12 +646,9 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/purchases'
     | '/_authenticated/admin/settings'
-    | '/_authenticated/admin/shipping'
     | '/_authenticated/admin/stores'
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/users'
-    | '/api/public/diag-me'
-    | '/api/public/diag-shipping'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/customers/$customerId'
     | '/_authenticated/admin/inventory/$stockLevelId'
@@ -712,8 +675,6 @@ export interface RootRouteChildren {
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   PedidoIdRoute: typeof PedidoIdRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
-  ApiPublicDiagMeRoute: typeof ApiPublicDiagMeRoute
-  ApiPublicDiagShippingRoute: typeof ApiPublicDiagShippingRoute
   ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
   ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
   ApiPublicHooksMercadopagoRoute: typeof ApiPublicHooksMercadopagoRoute
@@ -800,20 +761,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/api/public/diag-shipping': {
-      id: '/api/public/diag-shipping'
-      path: '/api/public/diag-shipping'
-      fullPath: '/api/public/diag-shipping'
-      preLoaderRoute: typeof ApiPublicDiagShippingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/diag-me': {
-      id: '/api/public/diag-me'
-      path: '/api/public/diag-me'
-      fullPath: '/api/public/diag-me'
-      preLoaderRoute: typeof ApiPublicDiagMeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -833,13 +780,6 @@ declare module '@tanstack/react-router' {
       path: '/stores'
       fullPath: '/admin/stores'
       preLoaderRoute: typeof AuthenticatedAdminStoresRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/shipping': {
-      id: '/_authenticated/admin/shipping'
-      path: '/shipping'
-      fullPath: '/admin/shipping'
-      preLoaderRoute: typeof AuthenticatedAdminShippingRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/settings': {
@@ -1221,7 +1161,6 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
   AuthenticatedAdminPurchasesRoute: typeof AuthenticatedAdminPurchasesRouteWithChildren
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
-  AuthenticatedAdminShippingRoute: typeof AuthenticatedAdminShippingRoute
   AuthenticatedAdminStoresRoute: typeof AuthenticatedAdminStoresRoute
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -1258,7 +1197,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPurchasesRoute:
     AuthenticatedAdminPurchasesRouteWithChildren,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
-  AuthenticatedAdminShippingRoute: AuthenticatedAdminShippingRoute,
   AuthenticatedAdminStoresRoute: AuthenticatedAdminStoresRoute,
   AuthenticatedAdminSuppliersRoute: AuthenticatedAdminSuppliersRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
@@ -1289,8 +1227,6 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriaSlugRoute: CategoriaSlugRoute,
   PedidoIdRoute: PedidoIdRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
-  ApiPublicDiagMeRoute: ApiPublicDiagMeRoute,
-  ApiPublicDiagShippingRoute: ApiPublicDiagShippingRoute,
   ApiPublicHooksMelhorEnvioCallbackRoute:
     ApiPublicHooksMelhorEnvioCallbackRoute,
   ApiPublicHooksMelhorEnvioWebhookRoute: ApiPublicHooksMelhorEnvioWebhookRoute,

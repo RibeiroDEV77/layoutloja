@@ -53,10 +53,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Expedição & Fiscal",
+    label: "Fiscal",
     items: [
-      { title: "Expedição", url: "/admin/shipping", icon: Truck, permission: "shipping.manage" },
-      { title: "Integrações", url: "/admin/integracoes", icon: Plug, permission: "shipping.manage" },
       { title: "Notas Fiscais", url: "/admin/invoices", icon: Receipt, permission: "finance.manage" },
     ],
   },
