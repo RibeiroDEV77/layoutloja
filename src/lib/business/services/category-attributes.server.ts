@@ -47,12 +47,13 @@ export async function list(supabase: SbClient, userId: string, input: ListInput)
     if (error) throw Errors.internal('Falha ao listar atributos da categoria', { error: error.message });
     if ((data ?? []).length > 0) return { rows: data ?? [], total: data?.length ?? 0 };
 
-    const { data: parent } = await supabase
+    const parentRes = await supabase
       .from('categories')
       .select('parent_id')
       .eq('id', currentId)
-      .maybeSingle<{ parent_id: string | null }>();
-    currentId = parent?.parent_id ?? null;
+      .maybeSingle();
+    const parentRow = parentRes.data as { parent_id: string | null } | null;
+    currentId = parentRow?.parent_id ?? null;
   }
   return { rows: [], total: 0 };
 }
