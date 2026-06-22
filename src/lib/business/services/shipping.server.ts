@@ -62,27 +62,31 @@ export async function quoteShippingForCart(
   const { cart, weight_g } = await cartTotals(supabase, input.cart_id);
   if (!cart) throw Errors.notFound('Carrinho', input.cart_id);
   const zoneId = await findZoneByPostal(supabase, cart.store_id, input.postal_code);
-  if (!zoneId) throw Errors.rule('Nenhuma zona de entrega para o CEP', { postal_code: input.postal_code });
+  // Zona é opcional: se não houver tarifa interna configurada, ainda assim
+  // tentamos cotar via carrier adapters (Melhor Envio, Correios, etc.).
 
-  const { data: rates } = await supabase.from('shipping_rates')
-    .select('*, shipping_methods(id, code, name, carrier, estimated_days_min, estimated_days_max, active)')
-    .eq('zone_id', zoneId).eq('active', true);
   const subtotal = Number(cart.subtotal ?? 0);
   const candidates: QuoteRow[] = [];
-  for (const r of rates ?? []) {
-    const m = r.shipping_methods as { id: string; code: string; name: string; carrier: string | null; estimated_days_min: number | null; estimated_days_max: number | null; active: boolean } | null;
-    if (!m || !m.active) continue;
-    if (weight_g < r.min_weight_g) continue;
-    if (r.max_weight_g != null && weight_g > r.max_weight_g) continue;
-    if (r.min_subtotal != null && subtotal < Number(r.min_subtotal)) continue;
-    if (r.max_subtotal != null && subtotal > Number(r.max_subtotal)) continue;
-    let price = Number(r.price);
-    if (r.free_above_subtotal != null && subtotal >= Number(r.free_above_subtotal)) price = 0;
-    candidates.push({
-      method_id: m.id, method_code: m.code, method_name: m.name, carrier: m.carrier,
-      price, estimated_days_min: m.estimated_days_min, estimated_days_max: m.estimated_days_max,
-    });
+  if (zoneId) {
+    const { data: rates } = await supabase.from('shipping_rates')
+      .select('*, shipping_methods(id, code, name, carrier, estimated_days_min, estimated_days_max, active)')
+      .eq('zone_id', zoneId).eq('active', true);
+    for (const r of rates ?? []) {
+      const m = r.shipping_methods as { id: string; code: string; name: string; carrier: string | null; estimated_days_min: number | null; estimated_days_max: number | null; active: boolean } | null;
+      if (!m || !m.active) continue;
+      if (weight_g < r.min_weight_g) continue;
+      if (r.max_weight_g != null && weight_g > r.max_weight_g) continue;
+      if (r.min_subtotal != null && subtotal < Number(r.min_subtotal)) continue;
+      if (r.max_subtotal != null && subtotal > Number(r.max_subtotal)) continue;
+      let price = Number(r.price);
+      if (r.free_above_subtotal != null && subtotal >= Number(r.free_above_subtotal)) price = 0;
+      candidates.push({
+        method_id: m.id, method_code: m.code, method_name: m.name, carrier: m.carrier,
+        price, estimated_days_min: m.estimated_days_min, estimated_days_max: m.estimated_days_max,
+      });
+    }
   }
+
 
   // limpa cotações anteriores ativas (não-selecionadas)
   await supabase.from('shipping_quotes').delete().eq('cart_id', input.cart_id).eq('selected', false);
