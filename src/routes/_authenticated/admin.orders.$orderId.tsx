@@ -6,6 +6,7 @@ import {
   getOrder, getOrderTimeline, getOrderAudit,
   cancelOrder, addOrderNote, addOrderTag, removeOrderTag,
 } from "@/lib/business/orders.functions";
+import { purchaseOrderLabel } from "@/lib/business/checkout.functions";
 import { Can } from "@/hooks/use-permissions";
 import { StatusBadge, type StatusTone } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/admin/empty-state";
