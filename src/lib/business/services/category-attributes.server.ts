@@ -51,7 +51,7 @@ export async function list(supabase: SbClient, userId: string, input: ListInput)
       .from('categories')
       .select('parent_id')
       .eq('id', currentId)
-      .maybeSingle();
+      .maybeSingle<{ parent_id: string | null }>();
     currentId = parent?.parent_id ?? null;
   }
   return { rows: [], total: 0 };
