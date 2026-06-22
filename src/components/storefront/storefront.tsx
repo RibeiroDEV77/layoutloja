@@ -326,8 +326,82 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
           </nav>
         </div>
       )}
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setSearchOpen(false)}>
+          <div
+            className="absolute inset-x-0 top-0 bg-white shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-6">
+              <div className="flex items-center gap-3 border-b border-[#EFEFEF] pb-3">
+                <Search className="h-5 w-5 text-[#111]" strokeWidth={1.5} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar produtos…"
+                  className="flex-1 bg-transparent outline-none text-[16px] text-[#111] placeholder:text-[#999]"
+                />
+                <button
+                  type="button"
+                  aria-label="Fechar busca"
+                  onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+                  className="p-1.5 text-[#666] hover:text-[#111] transition-colors"
+                >
+                  <X className="h-5 w-5" strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                {searchTerm.trim() === "" ? (
+                  <p className="py-6 text-center text-[14px] text-[#666]">Digite para buscar produtos.</p>
+                ) : searchResults.length === 0 ? (
+                  <p className="py-6 text-center text-[14px] text-[#666]">Nenhum produto encontrado para "{searchTerm}".</p>
+                ) : (
+                  <ul className="grid gap-1">
+                    {searchResults.map((p) => {
+                      const cat = p.category_id ? categoryById.get(p.category_id) : undefined;
+                      const content = (
+                        <div className="flex items-center justify-between gap-3 px-3 py-3 rounded hover:bg-[#F8F8F8] transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-[14px] text-[#111] truncate">{p.name}</p>
+                            {p.short_description && (
+                              <p className="text-[12px] text-[#666] truncate">{p.short_description}</p>
+                            )}
+                          </div>
+                          {cat && (
+                            <span className="text-[11px] uppercase tracking-[0.12em] text-[#999] whitespace-nowrap">{cat.name}</span>
+                          )}
+                        </div>
+                      );
+                      return (
+                        <li key={p.id}>
+                          {cat ? (
+                            <Link
+                              to="/categoria/$slug"
+                              params={{ slug: cat.slug }}
+                              onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+                            >
+                              {content}
+                            </Link>
+                          ) : (
+                            <div>{content}</div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
+
 }
 
 function MegaImage({ src, alt, tag, cta }: { src: string; alt: string; tag: string; cta: string }) {
