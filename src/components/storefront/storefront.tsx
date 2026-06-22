@@ -1169,4 +1169,43 @@ export function StorefrontFooter({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Cart count badge + Add-to-bag (storefront-side hooks)
+// ---------------------------------------------------------------------------
+
+import { useStorefrontCart } from "@/hooks/use-storefront-cart";
+
+function CartCountBadge() {
+  const cart = useStorefrontCart();
+  if (!cart.ready || cart.itemsCount <= 0) return null;
+  return (
+    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] grid place-items-center rounded-full bg-[var(--brand-red)] text-white text-[10px] font-semibold px-1">
+      {cart.itemsCount}
+    </span>
+  );
+}
+
+export function AddToBagButton({ productId, className = "" }: { productId: string; className?: string }) {
+  const cart = useStorefrontCart();
+  const [adding, setAdding] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={adding || !cart.ready}
+      onClick={async (e) => {
+        e.preventDefault();
+        if (!cart.ready) return;
+        setAdding(true);
+        try { await cart.add(productId, 1); } finally { setAdding(false); }
+      }}
+      className={cn(
+        "block w-full text-center bg-[#111] text-white py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors disabled:opacity-60",
+        className,
+      )}
+    >
+      {adding ? "Adicionando…" : "Adicionar à sacola"}
+    </button>
+  );
+}
+
 
