@@ -11,9 +11,11 @@ import {
   anonGetOrCreateCart,
   anonGetCart,
   anonAddProductToCart,
+  anonAddCartItem,
   anonUpdateCartItemQty,
   anonRemoveCartItem,
 } from '@/lib/business/checkout.functions';
+
 import { getStorefrontStore } from '@/lib/business/storefront.functions';
 
 const SESSION_KEY = 'storefront.cart.session';
