@@ -10,7 +10,10 @@ export const Route = createFileRoute('/api/public/diag-me')({
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
           const creds = await supabaseAdmin.rpc('shipping_get_credentials', { _account_id: ME_ACCOUNT_ID });
+          out.rpc_error = creds.error?.message ?? null;
+          out.rpc_data_type = typeof creds.data;
           const c = (creds.data as Record<string, unknown> | null) ?? null;
+          out.cred_keys = c ? Object.keys(c) : null;
           out.has_creds = Boolean(c);
           const token = c?.access_token as string | undefined;
           out.has_token = Boolean(token);
