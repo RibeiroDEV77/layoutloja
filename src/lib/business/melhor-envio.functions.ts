@@ -132,6 +132,9 @@ export const calculateMelhorEnvioQuote = createServerFn({ method: 'POST' })
           dimensions_cm: data.dimensions_cm,
         },
       );
-      return quotes.sort((a, b) => a.price - b.price);
+      // Remove `raw` (Record<string, unknown>) — não é serializável pelo RPC.
+      return quotes
+        .map(({ raw: _raw, ...q }) => q)
+        .sort((a, b) => a.price - b.price);
     }),
   );

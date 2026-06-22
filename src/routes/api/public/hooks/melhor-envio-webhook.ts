@@ -61,7 +61,7 @@ export const Route = createFileRoute('/api/public/hooks/melhor-envio-webhook')({
               const { data: ship } = await supabaseAdmin
                 .from('shipments')
                 .select('id')
-                .eq('tracking_code', String(code))
+                .eq('tracking_number', String(code))
                 .maybeSingle();
               if (ship?.id) {
                 const { syncShipmentTracking } = await import(
