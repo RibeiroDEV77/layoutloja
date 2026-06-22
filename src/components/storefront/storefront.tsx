@@ -814,7 +814,7 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
 
   return (
     <div className="group block">
-      <Link to="/" className="block relative overflow-hidden bg-[#F8F8F8] aspect-[3/4]">
+      <Link to="/produto/$slug" params={{ slug: p.slug }} className="block relative overflow-hidden bg-[#F8F8F8] aspect-[3/4]">
         {/* Badges */}
         <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
           {p.on_sale && (

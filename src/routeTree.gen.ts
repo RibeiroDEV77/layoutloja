@@ -15,6 +15,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -88,6 +89,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
+  id: '/produto/$slug',
+  path: '/produto/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PedidoIdRoute = PedidoIdRouteImport.update({
@@ -361,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
+  '/produto/$slug': typeof ProdutoSlugRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByTo {
   '/sacola': typeof SacolaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
+  '/produto/$slug': typeof ProdutoSlugRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -465,6 +473,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
+  '/produto/$slug': typeof ProdutoSlugRoute
   '/_authenticated/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/_authenticated/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -519,6 +528,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/categoria/$slug'
     | '/pedido/$id'
+    | '/produto/$slug'
     | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/audit'
@@ -570,6 +580,7 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/categoria/$slug'
     | '/pedido/$id'
+    | '/produto/$slug'
     | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/audit'
@@ -622,6 +633,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/categoria/$slug'
     | '/pedido/$id'
+    | '/produto/$slug'
     | '/_authenticated/admin/attribute-values'
     | '/_authenticated/admin/attributes'
     | '/_authenticated/admin/audit'
@@ -675,6 +687,7 @@ export interface RootRouteChildren {
   SacolaRoute: typeof SacolaRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   PedidoIdRoute: typeof PedidoIdRoute
+  ProdutoSlugRoute: typeof ProdutoSlugRoute
   ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
   ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
   ApiPublicHooksMercadopagoRoute: typeof ApiPublicHooksMercadopagoRoute
@@ -724,6 +737,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produto/$slug': {
+      id: '/produto/$slug'
+      path: '/produto/$slug'
+      fullPath: '/produto/$slug'
+      preLoaderRoute: typeof ProdutoSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pedido/$id': {
@@ -1228,6 +1248,7 @@ const rootRouteChildren: RootRouteChildren = {
   SacolaRoute: SacolaRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
   PedidoIdRoute: PedidoIdRoute,
+  ProdutoSlugRoute: ProdutoSlugRoute,
   ApiPublicHooksMelhorEnvioCallbackRoute:
     ApiPublicHooksMelhorEnvioCallbackRoute,
   ApiPublicHooksMelhorEnvioWebhookRoute: ApiPublicHooksMelhorEnvioWebhookRoute,
