@@ -52,6 +52,32 @@ type MegaColumn = { title: string; items: MegaListItem[]; linkToCategory?: boole
 export function StorefrontNavbar({ categories = [], brands = [], products = [] }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => searchInputRef.current?.focus(), 30);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSearchOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [searchOpen]);
+
+  const normalized = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const searchResults = useMemo(() => {
+    const q = normalized(searchTerm.trim());
+    if (!q) return [] as StorefrontProduct[];
+    return products
+      .filter((p) => normalized(p.name).includes(q) || normalized(p.short_description ?? "").includes(q))
+      .slice(0, 20);
+  }, [searchTerm, products]);
+  const categoryById = useMemo(() => {
+    const m = new Map<string, StorefrontCategory>();
+    for (const c of categories) m.set(c.id, c);
+    return m;
+  }, [categories]);
+
 
   const childrenOf = useMemo(() => {
     const m = new Map<string, StorefrontCategory[]>();
@@ -207,7 +233,15 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
 
             {/* Right icons */}
             <div className="ml-auto flex items-center gap-1">
-              <IconBtn label="Pesquisar"><Search className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <button
+                type="button"
+                aria-label="Pesquisar"
+                onClick={() => setSearchOpen(true)}
+                className="relative p-2.5 text-[#111] hover:text-[var(--brand-red)] transition-colors duration-200"
+              >
+                <Search className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+
               <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Sacola"><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
@@ -292,8 +326,82 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
           </nav>
         </div>
       )}
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setSearchOpen(false)}>
+          <div
+            className="absolute inset-x-0 top-0 bg-white shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto max-w-[1440px] px-5 lg:px-10 py-6">
+              <div className="flex items-center gap-3 border-b border-[#EFEFEF] pb-3">
+                <Search className="h-5 w-5 text-[#111]" strokeWidth={1.5} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar produtos…"
+                  className="flex-1 bg-transparent outline-none text-[16px] text-[#111] placeholder:text-[#999]"
+                />
+                <button
+                  type="button"
+                  aria-label="Fechar busca"
+                  onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+                  className="p-1.5 text-[#666] hover:text-[#111] transition-colors"
+                >
+                  <X className="h-5 w-5" strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                {searchTerm.trim() === "" ? (
+                  <p className="py-6 text-center text-[14px] text-[#666]">Digite para buscar produtos.</p>
+                ) : searchResults.length === 0 ? (
+                  <p className="py-6 text-center text-[14px] text-[#666]">Nenhum produto encontrado para "{searchTerm}".</p>
+                ) : (
+                  <ul className="grid gap-1">
+                    {searchResults.map((p) => {
+                      const cat = p.category_id ? categoryById.get(p.category_id) : undefined;
+                      const content = (
+                        <div className="flex items-center justify-between gap-3 px-3 py-3 rounded hover:bg-[#F8F8F8] transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-[14px] text-[#111] truncate">{p.name}</p>
+                            {p.short_description && (
+                              <p className="text-[12px] text-[#666] truncate">{p.short_description}</p>
+                            )}
+                          </div>
+                          {cat && (
+                            <span className="text-[11px] uppercase tracking-[0.12em] text-[#999] whitespace-nowrap">{cat.name}</span>
+                          )}
+                        </div>
+                      );
+                      return (
+                        <li key={p.id}>
+                          {cat ? (
+                            <Link
+                              to="/categoria/$slug"
+                              params={{ slug: cat.slug }}
+                              onClick={() => { setSearchOpen(false); setSearchTerm(""); }}
+                            >
+                              {content}
+                            </Link>
+                          ) : (
+                            <div>{content}</div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
+
 }
 
 function MegaImage({ src, alt, tag, cta }: { src: string; alt: string; tag: string; cta: string }) {
