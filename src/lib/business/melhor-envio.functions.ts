@@ -11,9 +11,14 @@ import { Errors } from './errors';
 import { hasPermission, isSuperAdmin } from './services/permissions.server';
 import type { SbClient } from './events/dispatcher.server';
 
-async function assertManage(supabase: SbClient, userId: string, storeId: string) {
-  if (await isSuperAdmin(supabase, userId)) return;
-  if (await hasPermission(supabase, userId, 'shipping.manage', storeId)) return;
+async function assertManage(supabase: SbClient, userId: string, storeId: string, email?: string) {
+  console.log('[assertManage]', { userId, storeId, email });
+  const superOk = await isSuperAdmin(supabase, userId);
+  console.log('[assertManage] isSuperAdmin =', superOk);
+  if (superOk) return;
+  const permOk = await hasPermission(supabase, userId, 'shipping.manage', storeId);
+  console.log('[assertManage] hasPermission(shipping.manage) =', permOk);
+  if (permOk) return;
   throw Errors.forbidden('Permissão necessária: shipping.manage');
 }
 
