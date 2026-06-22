@@ -21,6 +21,7 @@ import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicDiagShippingRouteImport } from './routes/api/public/diag-shipping'
+import { Route as ApiPublicDiagMeRouteImport } from './routes/api/public/diag-me'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin.suppliers'
 import { Route as AuthenticatedAdminStoresRouteImport } from './routes/_authenticated/admin.stores'
@@ -120,6 +121,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
 const ApiPublicDiagShippingRoute = ApiPublicDiagShippingRouteImport.update({
   id: '/api/public/diag-shipping',
   path: '/api/public/diag-shipping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDiagMeRoute = ApiPublicDiagMeRouteImport.update({
+  id: '/api/public/diag-me',
+  path: '/api/public/diag-me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
@@ -402,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
   '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
   '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
@@ -510,6 +518,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/stores': typeof AuthenticatedAdminStoresRoute
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/diag-me': typeof ApiPublicDiagMeRoute
   '/api/public/diag-shipping': typeof ApiPublicDiagShippingRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
@@ -566,6 +575,7 @@ export interface FileRouteTypes {
     | '/admin/stores'
     | '/admin/suppliers'
     | '/admin/users'
+    | '/api/public/diag-me'
     | '/api/public/diag-shipping'
     | '/admin/'
     | '/admin/customers/$customerId'
@@ -618,6 +628,7 @@ export interface FileRouteTypes {
     | '/admin/stores'
     | '/admin/suppliers'
     | '/admin/users'
+    | '/api/public/diag-me'
     | '/api/public/diag-shipping'
     | '/admin'
     | '/admin/customers/$customerId'
@@ -673,6 +684,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/stores'
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/users'
+    | '/api/public/diag-me'
     | '/api/public/diag-shipping'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/customers/$customerId'
@@ -700,6 +712,7 @@ export interface RootRouteChildren {
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   PedidoIdRoute: typeof PedidoIdRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
+  ApiPublicDiagMeRoute: typeof ApiPublicDiagMeRoute
   ApiPublicDiagShippingRoute: typeof ApiPublicDiagShippingRoute
   ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
   ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
@@ -792,6 +805,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/diag-shipping'
       fullPath: '/api/public/diag-shipping'
       preLoaderRoute: typeof ApiPublicDiagShippingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diag-me': {
+      id: '/api/public/diag-me'
+      path: '/api/public/diag-me'
+      fullPath: '/api/public/diag-me'
+      preLoaderRoute: typeof ApiPublicDiagMeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/users': {
@@ -1269,6 +1289,7 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriaSlugRoute: CategoriaSlugRoute,
   PedidoIdRoute: PedidoIdRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
+  ApiPublicDiagMeRoute: ApiPublicDiagMeRoute,
   ApiPublicDiagShippingRoute: ApiPublicDiagShippingRoute,
   ApiPublicHooksMelhorEnvioCallbackRoute:
     ApiPublicHooksMelhorEnvioCallbackRoute,
