@@ -401,7 +401,7 @@ export async function getConnectionStatus(
 }> {
   const { data: acc } = await admin
     .from('shipping_carrier_accounts')
-    .select('id, sandbox, last_test_at, last_test_ok')
+    .select('id, sandbox, is_active, credentials_set_at, credentials_fingerprint, last_test_at, last_test_ok')
     .eq('store_id', storeId)
     .eq('provider_code', PROVIDER_CODE)
     .maybeSingle();
@@ -409,9 +409,19 @@ export async function getConnectionStatus(
     return { connected: false, account_id: null, sandbox: true, expires_at: null,
              last_test_at: null, last_test_ok: null, scope: null };
   }
-  const tokens = await loadTokens(admin, acc.id).catch(() => null);
+  const tokens = await loadTokens(admin, acc.id).catch((err) => {
+    console.warn('[Melhor Envio status] falha ao decifrar credenciais; usando metadados da conta', {
+      account_id: acc.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  });
+  const hasStoredCredentials = Boolean(acc.credentials_set_at && acc.credentials_fingerprint);
+  const connected = Boolean(
+    acc.is_active && (tokens?.access_token || (hasStoredCredentials && acc.last_test_ok === true)),
+  );
   return {
-    connected: !!tokens?.access_token,
+    connected,
     account_id: acc.id,
     sandbox: !!acc.sandbox,
     expires_at: tokens?.expires_at ?? null,
