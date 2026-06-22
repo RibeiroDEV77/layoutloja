@@ -53,7 +53,7 @@ function PedidoPage() {
               <div>
                 <h2 className="text-[13px] uppercase tracking-[0.18em] font-semibold">Itens</h2>
                 <ul className="mt-3 divide-y divide-[#EFEFEF]">
-                  {state.data.items.map((it, i) => (
+                  {state.data.items.map((it: { name: string; qty: number; line_total: number }, i: number) => (
                     <li key={i} className="py-3 flex justify-between text-[14px]">
                       <span>{it.name} × {it.qty}</span>
                       <span>{formatBRL(Number(it.line_total), state.data!.order?.currency ?? 'BRL')}</span>

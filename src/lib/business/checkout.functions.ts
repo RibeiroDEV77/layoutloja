@@ -9,7 +9,7 @@
  * Geração de etiqueta é AUTENTICADA (admin) e usa `purchaseShippingLabel`.
  */
 import { createServerFn } from '@tanstack/react-start';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { withBusiness } from './with-business';
@@ -17,12 +17,18 @@ import * as Cart from './services/cart.server';
 import * as Shipping from './services/shipping.server';
 import { Errors } from './errors';
 
-function publicClient(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
+/**
+ * Cliente admin (service_role) carregado dinamicamente dentro do handler.
+ *
+ * Necessário porque as policies RLS de `carts`/`cart_items` exigem um GUC
+ * (`request.cart_session_token`) que o PostgREST anônimo não define. A
+ * validação de propriedade do carrinho continua sendo feita via
+ * `session_token` em `Cart.*` (assertCartAccess). A chave service_role
+ * permanece exclusivamente no runtime do servidor.
+ */
+async function publicClient(): Promise<SupabaseClient<Database>> {
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  return supabaseAdmin as unknown as SupabaseClient<Database>;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +41,7 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
     if (!data.store_id || !data.session_token) {
       throw Errors.validation('store_id e session_token obrigatórios');
     }
-    const sb = publicClient() as unknown as Parameters<typeof Cart.getOrCreateCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.getOrCreateCart>[0];
     return Cart.getOrCreateCart(sb, null, {
       store_id: data.store_id,
       session_token: data.session_token,
@@ -45,14 +51,14 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
 export const anonGetCart = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.getCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.getCart>[0];
     return Cart.getCart(sb, null, data.cart_id, data.session_token);
   });
 
 export const anonAddCartItem = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; variant_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.addItem>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.addItem>[0];
     return Cart.addItem(sb, null, data);
   });
 
@@ -60,7 +66,7 @@ export const anonAddCartItem = createServerFn({ method: 'POST' })
 export const anonAddProductToCart = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; product_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     const { data: variant, error } = await sb
       .from('product_variants')
       .select('id')
@@ -84,14 +90,14 @@ export const anonAddProductToCart = createServerFn({ method: 'POST' })
 export const anonUpdateCartItemQty = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.updateItemQty>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.updateItemQty>[0];
     return Cart.updateItemQty(sb, null, data);
   });
 
 export const anonRemoveCartItem = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.removeItem>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.removeItem>[0];
     return Cart.removeItem(sb, null, data);
   });
 
@@ -104,7 +110,7 @@ export const anonQuoteShipping = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const cep = data.postal_code.replace(/\D/g, '');
     if (cep.length !== 8) throw Errors.validation('CEP inválido');
-    const sb = publicClient() as unknown as Parameters<typeof Shipping.quoteShippingForCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Shipping.quoteShippingForCart>[0];
     const rows = await Shipping.quoteShippingForCart(sb, null, {
       cart_id: data.cart_id,
       postal_code: cep,
@@ -115,7 +121,7 @@ export const anonQuoteShipping = createServerFn({ method: 'POST' })
 export const anonSelectShipping = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; quote_id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Shipping.selectShippingQuote>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Shipping.selectShippingQuote>[0];
     return Shipping.selectShippingQuote(sb, null, data);
   });
 
@@ -142,7 +148,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     };
   }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     // valida que o session_token confere com o carrinho
     const { data: cart, error: cartErr } = await sb
       .from('carts')
@@ -171,7 +177,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
 export const getPublicOrder = createServerFn({ method: 'POST' })
   .inputValidator((d: { order_id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     const { data: order } = await sb
       .from('orders')
       .select('id, order_number, status, total, subtotal, shipping_total, currency, customer_email, placed_at')
