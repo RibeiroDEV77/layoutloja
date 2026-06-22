@@ -15,6 +15,7 @@ import { Errors } from '../errors';
 import { isSuperAdmin, hasPermission } from './permissions.server';
 import { enqueueOutbox } from '@/lib/foundations/outbox.functions';
 import { recordMetric } from '@/lib/foundations/observability.functions';
+import { calculateQuotes as calculateMeQuotes } from './shipping/melhor-envio-direct.server';
 
 interface QuoteRow {
   method_id: string;
