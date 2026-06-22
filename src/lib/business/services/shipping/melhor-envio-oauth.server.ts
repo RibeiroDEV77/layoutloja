@@ -203,18 +203,51 @@ interface TokenResponse {
   scope?: string;
 }
 
+function maskSecret(v: string | undefined): string {
+  if (!v) return '<undefined>';
+  if (v.length <= 8) return '***';
+  return `${v.slice(0, 4)}***${v.slice(-2)} (len=${v.length})`;
+}
+
 async function postToken(body: Record<string, string>): Promise<TokenResponse> {
   const env = getEnv();
-  const res = await fetch(`${env.host}/oauth/token`, {
+  const url = `${env.host}/oauth/token`;
+  const headers = {
+    accept: 'application/json',
+    'content-type': 'application/json',
+  };
+  const maskedBody: Record<string, string> = {};
+  for (const [k, v] of Object.entries(body)) {
+    maskedBody[k] = (k === 'client_secret' || k === 'code' || k === 'code_verifier' || k === 'refresh_token')
+      ? maskSecret(v)
+      : v;
+  }
+  console.info('[Melhor Envio OAuth REQUEST]', {
+    url,
     method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-    },
+    headers,
+    body: maskedBody,
+    client_id_preview: maskSecret(env.client_id),
+    client_secret_preview: maskSecret(env.client_secret),
+    redirect_uri: env.redirect_uri,
+    sandbox: env.sandbox,
+  });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(15_000),
   });
   const text = await res.text();
+  const respHeaders: Record<string, string> = {};
+  res.headers.forEach((v, k) => { respHeaders[k] = v; });
+  console.info('[Melhor Envio OAuth RESPONSE]', {
+    url,
+    status: res.status,
+    statusText: res.statusText,
+    headers: respHeaders,
+    body: text,
+  });
   let parsed: unknown = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
   if (!res.ok) {
