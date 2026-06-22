@@ -42,20 +42,40 @@ export const startMelhorEnvioOAuth = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string; return_to?: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
-      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-      const oauth = await import('./services/shipping/melhor-envio-oauth.server');
-      const env = oauth.getEnv();
-      const accountId = await oauth.ensureMelhorEnvioAccount(supabaseAdmin, data.store_id, {
-        sandbox: env.sandbox,
-        createdBy: context.userId,
-      });
-      const { url } = await oauth.buildAuthorizationUrl(supabaseAdmin, {
-        storeId: data.store_id,
-        accountId,
-        returnTo: data.return_to,
-      });
-      return { authorize_url: url };
+      console.log('[ME OAuth START] step=enter', { store_id: data.store_id, return_to: data.return_to, user_id: context.userId });
+      try {
+        await assertManage(context.supabase, context.userId, data.store_id);
+        console.log('[ME OAuth START] step=permission_ok');
+
+        const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        console.log('[ME OAuth START] step=admin_client_loaded');
+
+        const oauth = await import('./services/shipping/melhor-envio-oauth.server');
+        const env = oauth.getEnv();
+        console.log('[ME OAuth START] step=env_loaded', { sandbox: env.sandbox, redirect_uri: env.redirect_uri });
+
+        const accountId = await oauth.ensureMelhorEnvioAccount(supabaseAdmin, data.store_id, {
+          sandbox: env.sandbox,
+          createdBy: context.userId,
+        });
+        console.log('[ME OAuth START] step=account_ensured', { account_id: accountId });
+
+        console.log('[ME OAuth START] step=before_build_url');
+        const { url } = await oauth.buildAuthorizationUrl(supabaseAdmin, {
+          storeId: data.store_id,
+          accountId,
+          returnTo: data.return_to,
+        });
+        const urlHost = (() => { try { return new URL(url).host; } catch { return 'invalid'; } })();
+        console.log('[ME OAuth START] step=url_built', { url_length: url.length, url_host: urlHost });
+
+        console.log('[ME OAuth START] step=returning_to_client');
+        return { authorize_url: url };
+      } catch (e) {
+        const err = e as Error;
+        console.error('[ME OAuth START] step=EXCEPTION', { name: err.name, message: err.message, stack: err.stack });
+        throw e;
+      }
     }),
   );
 

@@ -71,12 +71,18 @@ function MelhorEnvioCard({ storeId }: { storeId: string }) {
   }, [qc, storeId]);
 
   const connectMut = useMutation({
-    mutationFn: async () => startOAuth({ data: { store_id: storeId, return_to: "/admin/integracoes" } }),
+    mutationFn: async () => {
+      console.log('[ME OAuth CLIENT] step=button_click', { store_id: storeId });
+      const r = await startOAuth({ data: { store_id: storeId, return_to: "/admin/integracoes" } });
+      console.log('[ME OAuth CLIENT] step=server_fn_returned', { ok: r.ok, has_url: r.ok ? !!r.data?.authorize_url : false, error: !r.ok ? r.error : undefined });
+      return r;
+    },
     onSuccess: (r) => {
-      if (!r.ok) { toast.error(r.error.message); return; }
+      if (!r.ok) { console.error('[ME OAuth CLIENT] step=server_returned_error', r.error); toast.error(r.error.message); return; }
+      console.log('[ME OAuth CLIENT] step=before_redirect', { url: r.data.authorize_url });
       window.location.href = r.data.authorize_url;
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => { console.error('[ME OAuth CLIENT] step=mutation_exception', e); toast.error((e as Error).message); },
   });
 
   const refreshMut = useMutation({
