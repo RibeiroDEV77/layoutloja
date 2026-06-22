@@ -177,13 +177,15 @@ export async function createProductDraft(
       category_id: input.category_id ?? null,
       brand_id: input.brand_id ?? null,
       short_description: input.short_description ?? null,
-      status: 'draft',
-      visibility: 'hidden',
+      // Produto já nasce publicado: aparece imediatamente na loja, sem etapa manual.
+      status: 'published',
+      visibility: 'published',
       sale_channel: 'ambos',
       featured: false,
-      new_product: false,
+      new_product: true,
       best_seller: false,
       on_sale: false,
+      published_at: new Date().toISOString(),
     })
     .select('*')
     .single();
