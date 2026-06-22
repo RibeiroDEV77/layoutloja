@@ -673,16 +673,22 @@ export function ProductCarousel({ products }: { products: StorefrontProduct[] })
   };
 
   // Mouse drag (desktop). Touch já funciona nativamente via overflow-x.
+  const DRAG_THRESHOLD = 6;
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse") return;
     const el = ref.current; if (!el) return;
+    // Não capturamos o pointer aqui — só quando o movimento ultrapassar o threshold,
+    // caracterizando drag. Isso preserva cliques em Links/Buttons internos.
     drag.current = { active: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false };
-    el.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = ref.current; if (!el || !drag.current.active) return;
     const dx = e.clientX - drag.current.startX;
-    if (Math.abs(dx) > 4) drag.current.moved = true;
+    if (!drag.current.moved) {
+      if (Math.abs(dx) <= DRAG_THRESHOLD) return;
+      drag.current.moved = true;
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    }
     el.scrollLeft = drag.current.startLeft - dx;
   };
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
