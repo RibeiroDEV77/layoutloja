@@ -41,7 +41,7 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
     if (!data.store_id || !data.session_token) {
       throw Errors.validation('store_id e session_token obrigatórios');
     }
-    const sb = publicClient() as unknown as Parameters<typeof Cart.getOrCreateCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.getOrCreateCart>[0];
     return Cart.getOrCreateCart(sb, null, {
       store_id: data.store_id,
       session_token: data.session_token,
@@ -51,14 +51,14 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
 export const anonGetCart = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.getCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.getCart>[0];
     return Cart.getCart(sb, null, data.cart_id, data.session_token);
   });
 
 export const anonAddCartItem = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; variant_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.addItem>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.addItem>[0];
     return Cart.addItem(sb, null, data);
   });
 
@@ -66,7 +66,7 @@ export const anonAddCartItem = createServerFn({ method: 'POST' })
 export const anonAddProductToCart = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; product_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     const { data: variant, error } = await sb
       .from('product_variants')
       .select('id')
@@ -90,14 +90,14 @@ export const anonAddProductToCart = createServerFn({ method: 'POST' })
 export const anonUpdateCartItemQty = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.updateItemQty>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.updateItemQty>[0];
     return Cart.updateItemQty(sb, null, data);
   });
 
 export const anonRemoveCartItem = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Cart.removeItem>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Cart.removeItem>[0];
     return Cart.removeItem(sb, null, data);
   });
 
@@ -110,7 +110,7 @@ export const anonQuoteShipping = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const cep = data.postal_code.replace(/\D/g, '');
     if (cep.length !== 8) throw Errors.validation('CEP inválido');
-    const sb = publicClient() as unknown as Parameters<typeof Shipping.quoteShippingForCart>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Shipping.quoteShippingForCart>[0];
     const rows = await Shipping.quoteShippingForCart(sb, null, {
       cart_id: data.cart_id,
       postal_code: cep,
@@ -121,7 +121,7 @@ export const anonQuoteShipping = createServerFn({ method: 'POST' })
 export const anonSelectShipping = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; quote_id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient() as unknown as Parameters<typeof Shipping.selectShippingQuote>[0];
+    const sb = await publicClient() as unknown as Parameters<typeof Shipping.selectShippingQuote>[0];
     return Shipping.selectShippingQuote(sb, null, data);
   });
 
@@ -148,7 +148,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     };
   }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     // valida que o session_token confere com o carrinho
     const { data: cart, error: cartErr } = await sb
       .from('carts')
@@ -177,7 +177,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
 export const getPublicOrder = createServerFn({ method: 'POST' })
   .inputValidator((d: { order_id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = publicClient();
+    const sb = await publicClient();
     const { data: order } = await sb
       .from('orders')
       .select('id, order_number, status, total, subtotal, shipping_total, currency, customer_email, placed_at')
