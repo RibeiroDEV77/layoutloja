@@ -190,8 +190,20 @@ export function useStorefrontCart() {
     }
   }, [state.cartId, state.sessionToken, fnRemove, refresh]);
 
-  return useMemo(() => ({ ...state, add, update, remove, refresh }), [state, add, update, remove, refresh]);
+  const addVariant = useCallback(async (variantId: string, qty = 1) => {
+    if (!state.cartId) return;
+    setState((s) => ({ ...s, loading: true }));
+    try {
+      await fnAddVariant({ data: { cart_id: state.cartId, variant_id: variantId, qty, session_token: state.sessionToken } });
+      await refresh();
+    } finally {
+      setState((s) => ({ ...s, loading: false }));
+    }
+  }, [state.cartId, state.sessionToken, fnAddVariant, refresh]);
+
+  return useMemo(() => ({ ...state, add, addVariant, update, remove, refresh }), [state, add, addVariant, update, remove, refresh]);
 }
+
 
 export function formatBRL(n: number, currency = 'BRL'): string {
   try {
