@@ -310,7 +310,20 @@ export async function persistTokens(
     _account_id: accountId,
     _creds: tokens as unknown as never,
   } as never);
-  if (error) throw new Error(`Falha ao persistir tokens: ${error.message}`);
+  if (error) {
+    const stack = new Error('persistTokens trace').stack;
+    console.error('[persistTokens THROW]', {
+      fn: 'persistTokens',
+      accountId,
+      rpc: 'shipping_set_credentials',
+      pg_code: (error as { code?: string }).code,
+      pg_details: (error as { details?: string }).details,
+      pg_hint: (error as { hint?: string }).hint,
+      message: error.message,
+      stack,
+    });
+    throw new Error(`Falha ao persistir tokens: ${error.message}`);
+  }
   await admin.from('shipping_carrier_accounts').update({
     last_test_at: new Date().toISOString(),
     last_test_ok: true,
