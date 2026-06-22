@@ -233,7 +233,15 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
 
             {/* Right icons */}
             <div className="ml-auto flex items-center gap-1">
-              <IconBtn label="Pesquisar"><Search className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <button
+                type="button"
+                aria-label="Pesquisar"
+                onClick={() => setSearchOpen(true)}
+                className="relative p-2.5 text-[#111] hover:text-[var(--brand-red)] transition-colors duration-200"
+              >
+                <Search className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+
               <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Sacola"><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
