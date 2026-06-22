@@ -34,13 +34,27 @@ export async function list(supabase: SbClient, userId: string, input: ListInput)
     if (!ok) throw Errors.forbidden('Permissão necessária: products.read');
   }
 
-  const { data, error } = await supabase
-    .from('category_attributes')
-    .select('*, attribute:attributes(id, name, code, input_type, is_color, is_size)')
-    .eq('category_id', input.category_id)
-    .order('sort_order', { ascending: true });
-  if (error) throw Errors.internal('Falha ao listar atributos da categoria', { error: error.message });
-  return { rows: data ?? [], total: data?.length ?? 0 };
+  // Subcategorias herdam os atributos da categoria pai quando não possuem
+  // atributos próprios. Sobe na árvore até encontrar uma categoria que tenha
+  // atributos definidos (ou até a raiz).
+  let currentId: string | null = input.category_id;
+  for (let hops = 0; hops < 8 && currentId; hops++) {
+    const { data, error } = await supabase
+      .from('category_attributes')
+      .select('*, attribute:attributes(id, name, code, input_type, is_color, is_size)')
+      .eq('category_id', currentId)
+      .order('sort_order', { ascending: true });
+    if (error) throw Errors.internal('Falha ao listar atributos da categoria', { error: error.message });
+    if ((data ?? []).length > 0) return { rows: data ?? [], total: data?.length ?? 0 };
+
+    const { data: parent } = await supabase
+      .from('categories')
+      .select('parent_id')
+      .eq('id', currentId)
+      .maybeSingle();
+    currentId = parent?.parent_id ?? null;
+  }
+  return { rows: [], total: 0 };
 }
 
 export interface CreateInput {
