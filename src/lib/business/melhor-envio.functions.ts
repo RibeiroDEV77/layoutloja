@@ -26,7 +26,10 @@ export const getMelhorEnvioStatus = createServerFn({ method: 'POST' })
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const env = (() => {
-        try { return { configured: true, sandbox: oauth.getEnv().sandbox, redirect_uri: oauth.getEnv().redirect_uri }; }
+        try {
+          const melhorEnvioEnv = oauth.getEnv();
+          return { configured: true, sandbox: melhorEnvioEnv.sandbox, redirect_uri: melhorEnvioEnv.redirect_uri };
+        }
         catch (e) { return { configured: false, sandbox: true, redirect_uri: null, error: (e as Error).message }; }
       })();
       const status = await oauth.getConnectionStatus(supabaseAdmin, data.store_id);

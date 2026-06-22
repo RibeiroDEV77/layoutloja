@@ -51,8 +51,21 @@ export function getEnv() {
   const client_id = process.env.MELHOR_ENVIO_CLIENT_ID;
   const client_secret = process.env.MELHOR_ENVIO_CLIENT_SECRET;
   const redirect_uri = process.env.MELHOR_ENVIO_REDIRECT_URI;
-  const environment = (process.env.MELHOR_ENVIO_ENV ?? 'sandbox').toLowerCase();
+  const raw_environment = process.env.MELHOR_ENVIO_ENV;
+  const webhook_secret = process.env.MELHOR_ENVIO_WEBHOOK_SECRET;
+  const environment = (raw_environment ?? 'sandbox').toLowerCase();
   const sandbox = environment !== 'production';
+  const envStatus = {
+    MELHOR_ENVIO_CLIENT_ID: client_id ? 'defined' : 'undefined',
+    MELHOR_ENVIO_CLIENT_SECRET: client_secret ? 'defined' : 'undefined',
+    MELHOR_ENVIO_REDIRECT_URI: redirect_uri ? 'defined' : 'undefined',
+    MELHOR_ENVIO_ENV: raw_environment ? 'defined' : 'undefined',
+    MELHOR_ENVIO_WEBHOOK_SECRET: webhook_secret ? 'defined' : 'undefined',
+  };
+  console.info('[Melhor Envio getEnv]', {
+    runtime: 'Server Function',
+    variables: envStatus,
+  });
   const missing: string[] = [];
   if (!client_id) missing.push('MELHOR_ENVIO_CLIENT_ID');
   if (!client_secret) missing.push('MELHOR_ENVIO_CLIENT_SECRET');
