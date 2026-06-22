@@ -1,7 +1,7 @@
 import {
-  LayoutDashboard, Package, Tags, Layers, ShoppingCart, Warehouse, Truck, Users,
+  LayoutDashboard, Package, Tags, Layers, ShoppingCart, Warehouse, Users,
   Building2, ShoppingBag, Receipt, Megaphone, Settings, Shield, FileText, UserCog,
-  ClipboardList, Image as ImageIcon, Plug,
+  ClipboardList, Image as ImageIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -53,10 +53,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Expedição & Fiscal",
+    label: "Fiscal",
     items: [
-      { title: "Expedição", url: "/admin/shipping", icon: Truck, permission: "shipping.manage" },
-      { title: "Integrações", url: "/admin/integracoes", icon: Plug, permission: "shipping.manage" },
       { title: "Notas Fiscais", url: "/admin/invoices", icon: Receipt, permission: "finance.manage" },
     ],
   },
