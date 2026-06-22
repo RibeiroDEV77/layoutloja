@@ -74,6 +74,8 @@ export function useStorefrontCart() {
   const fnGetOrCreate = useServerFn(anonGetOrCreateCart);
   const fnGet = useServerFn(anonGetCart);
   const fnAdd = useServerFn(anonAddProductToCart);
+  const fnAddVariant = useServerFn(anonAddCartItem);
+
   const fnUpdate = useServerFn(anonUpdateCartItemQty);
   const fnRemove = useServerFn(anonRemoveCartItem);
 
