@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -58,6 +59,11 @@ import { Route as AuthenticatedAdminInventoryStockLevelIdRouteImport } from './r
 import { Route as AuthenticatedAdminCustomersCustomerIdRouteImport } from './routes/_authenticated/admin.customers.$customerId'
 import { Route as AuthenticatedAdminProductsIdEditRouteImport } from './routes/_authenticated/admin.products.$id.edit'
 
+const SacolaRoute = SacolaRouteImport.update({
+  id: '/sacola',
+  path: '/sacola',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -338,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/_authenticated/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/sacola'
     | '/admin'
     | '/categoria/$slug'
     | '/admin/attribute-values'
@@ -536,6 +546,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/sacola'
     | '/categoria/$slug'
     | '/admin/attribute-values'
     | '/admin/attributes'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/sacola'
     | '/_authenticated/admin'
     | '/categoria/$slug'
     | '/_authenticated/admin/attribute-values'
@@ -635,6 +647,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SacolaRoute: typeof SacolaRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
   ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
@@ -645,6 +658,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sacola': {
+      id: '/sacola'
+      path: '/sacola'
+      fullPath: '/sacola'
+      preLoaderRoute: typeof SacolaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -1164,6 +1184,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SacolaRoute: SacolaRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
   ApiPublicHooksMelhorEnvioCallbackRoute:
     ApiPublicHooksMelhorEnvioCallbackRoute,
