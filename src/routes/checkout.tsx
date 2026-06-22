@@ -61,13 +61,14 @@ function CheckoutPage() {
     (async () => {
       try {
         const lookup = await fnLookup({ data: { postal_code: cep } });
-        if (!cancelled && lookup && (lookup.street || lookup.city)) {
+        if (!cancelled && lookup.ok) {
+          const d = lookup.data;
           setAddress((a) => ({
             ...a,
-            street: a.street || (lookup.street ?? ''),
-            district: a.district || (lookup.district ?? ''),
-            city: a.city || (lookup.city ?? ''),
-            state: a.state || (lookup.state ?? ''),
+            street: a.street || (d.street ?? ''),
+            district: a.district || (d.district ?? ''),
+            city: a.city || (d.city ?? ''),
+            state: a.state || (d.state ?? ''),
           }));
         }
       } catch { /* ignore lookup errors */ }
