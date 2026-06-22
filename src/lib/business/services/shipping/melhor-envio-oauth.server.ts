@@ -222,6 +222,11 @@ async function postToken(body: Record<string, string>): Promise<TokenResponse> {
       ? maskSecret(v)
       : v;
   }
+  console.info('[ME OAuth TOKEN DEBUG]', {
+    endpoint: url,
+    client_id_last6: env.client_id ? env.client_id.slice(-6) : '<undefined>',
+    client_secret_length: env.client_secret ? env.client_secret.length : 0,
+  });
   console.info('[Melhor Envio OAuth REQUEST]', {
     url,
     method: 'POST',
