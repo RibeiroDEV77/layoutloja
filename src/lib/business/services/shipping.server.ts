@@ -224,63 +224,10 @@ export async function createRate(supabase: SbClient, userId: string, input: Rate
 }
 
 // ============================================================
-// Adapter integration via ShippingProviderRegistry
+// Adapter integration removida — a cotação é feita 100% pela API oficial
+// do Melhor Envio em `melhor-envio-direct.server.ts`. Sem registry, sem
+// painel admin, sem `shipping_carrier_accounts`.
 // ============================================================
-//
-// O ShippingService nunca importa um adapter concreto. Toda integração com
-// transportadoras (Correios hoje, Melhor Envio amanhã) passa pelo Registry.
-//
-import { calculateQuote as registryCalculateQuote } from './shipping/provider-registry.server';
-
-interface CarrierQuoteResult {
-  provider_code: string;
-  carrier_account_id: string;
-  carrier_name: string;
-  service_code: string;
-  service_name: string;
-  price: number;
-  estimated_days_min: number | null;
-  estimated_days_max: number | null;
-  raw?: Record<string, unknown> | null;
-}
-
-/**
- * Wrapper fino que delega ao ShippingProviderRegistry. Mantido para evitar
- * mudanças no contrato interno usado por `quoteShippingForCart`.
- */
-async function quoteFromActiveCarriers(
-  supabase: SbClient,
-  input: {
-    store_id: string;
-    origin_postal_code: string | null;
-    destination_postal_code: string;
-    weight_g: number;
-    declared_value?: number;
-    cart_id?: string | null;
-  },
-): Promise<CarrierQuoteResult[]> {
-  const result = await registryCalculateQuote(supabase, {
-    store_id: input.store_id,
-    origin_postal_code: input.origin_postal_code,
-    destination_postal_code: input.destination_postal_code,
-    weight_g: input.weight_g,
-    declared_value: input.declared_value,
-    source_aggregate_type: input.cart_id ? 'cart' : undefined,
-    source_aggregate_id: input.cart_id ?? null,
-    correlation_id: input.cart_id ?? null,
-  });
-  return result.options.map((o) => ({
-    provider_code: o.provider_code,
-    carrier_account_id: o.carrier_account_id,
-    carrier_name: o.carrier_name,
-    service_code: o.service_code,
-    service_name: o.service_name,
-    price: o.price,
-    estimated_days_min: o.estimated_days_min,
-    estimated_days_max: o.estimated_days_max,
-    raw: o.raw ?? null,
-  }));
-}
 
 /**
  * Persiste a cotação selecionada do carrinho no pedido recém-criado
