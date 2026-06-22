@@ -11,9 +11,14 @@ import { Errors } from './errors';
 import { hasPermission, isSuperAdmin } from './services/permissions.server';
 import type { SbClient } from './events/dispatcher.server';
 
-async function assertManage(supabase: SbClient, userId: string, storeId: string) {
-  if (await isSuperAdmin(supabase, userId)) return;
-  if (await hasPermission(supabase, userId, 'shipping.manage', storeId)) return;
+async function assertManage(supabase: SbClient, userId: string, storeId: string, email?: string) {
+  console.log('[assertManage]', { userId, storeId, email });
+  const superOk = await isSuperAdmin(supabase, userId);
+  console.log('[assertManage] isSuperAdmin =', superOk);
+  if (superOk) return;
+  const permOk = await hasPermission(supabase, userId, 'shipping.manage', storeId);
+  console.log('[assertManage] hasPermission(shipping.manage) =', permOk);
+  if (permOk) return;
   throw Errors.forbidden('Permissão necessária: shipping.manage');
 }
 
@@ -22,7 +27,7 @@ export const getMelhorEnvioStatus = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const env = (() => {
@@ -44,7 +49,7 @@ export const startMelhorEnvioOAuth = createServerFn({ method: 'POST' })
     withBusiness(async ({ data, context }) => {
       console.log('[ME OAuth START] step=enter', { store_id: data.store_id, return_to: data.return_to, user_id: context.userId });
       try {
-        await assertManage(context.supabase, context.userId, data.store_id);
+        await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
         console.log('[ME OAuth START] step=permission_ok');
 
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
@@ -84,7 +89,7 @@ export const refreshMelhorEnvioToken = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const accountId = await oauth.getMelhorEnvioAccountId(supabaseAdmin, data.store_id);
@@ -99,7 +104,7 @@ export const disconnectMelhorEnvio = createServerFn({ method: 'POST' })
   .inputValidator((d: { store_id: string }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const accountId = await oauth.getMelhorEnvioAccountId(supabaseAdmin, data.store_id);
@@ -125,7 +130,7 @@ export const calculateMelhorEnvioQuote = createServerFn({ method: 'POST' })
   }) => d)
   .handler(
     withBusiness(async ({ data, context }) => {
-      await assertManage(context.supabase, context.userId, data.store_id);
+      await assertManage(context.supabase, context.userId, data.store_id, (context as any).claims?.email);
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
       const oauth = await import('./services/shipping/melhor-envio-oauth.server');
       const { melhorEnvioAdapter } = await import('./services/shipping/providers/melhor-envio.server');
