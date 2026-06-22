@@ -847,11 +847,9 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
           <span className="text-7xl font-semibold text-white">{initial}</span>
         </div>
 
-        {/* Botão Comprar — aparece no hover */}
+        {/* Botão Adicionar à sacola — aparece no hover */}
         <div className="absolute inset-x-3 bottom-3 z-10 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-          <span className="block w-full text-center bg-[#111] text-white py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors">
-            Comprar
-          </span>
+          <AddToBagButton productId={p.id} />
         </div>
       </Link>
 
