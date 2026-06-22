@@ -431,10 +431,11 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 function PurchaseLabelButton({ orderId, hasTracking }: { orderId: string; hasTracking: boolean }) {
   const fn = useServerFn(purchaseOrderLabel);
   const mut = useMutation({
-    mutationFn: () => fn({ data: { order_id: orderId } }) as Promise<{ tracking_code: string; label_url: string | null }>,
+    mutationFn: () => fn({ data: { order_id: orderId } }),
     onSuccess: (res) => {
-      toast.success(`Etiqueta gerada: ${res.tracking_code}`);
-      if (res.label_url) window.open(res.label_url, "_blank", "noopener");
+      if (!res.ok) { toast.error(res.error.message); return; }
+      toast.success(`Etiqueta gerada: ${res.data.tracking_code}`);
+      if (res.data.label_url) window.open(res.data.label_url, "_blank", "noopener");
     },
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Falha ao gerar etiqueta"),
   });
