@@ -320,16 +320,19 @@ function OrderDetailPage() {
           <div className="rounded-lg border bg-card">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Transportadora</TableHead><TableHead>Serviço</TableHead><TableHead>Rastreio</TableHead><TableHead>Status</TableHead><TableHead>Enviado</TableHead></TableRow>
+                <TableRow><TableHead>Transportadora</TableHead><TableHead>Serviço</TableHead><TableHead>Rastreio</TableHead><TableHead>Status</TableHead><TableHead>Enviado</TableHead><TableHead className="text-right">Ações</TableHead></TableRow>
               </TableHeader>
               <TableBody>
-                {shipments.length === 0 ? <TableRow><TableCell colSpan={5}><EmptyState title="Sem envios" /></TableCell></TableRow> : shipments.map((s) => (
+                {shipments.length === 0 ? <TableRow><TableCell colSpan={6}><EmptyState title="Sem envios" /></TableCell></TableRow> : shipments.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>{s.carrier ?? "—"}</TableCell>
                     <TableCell>{s.service ?? "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{s.tracking_code ?? "—"}</TableCell>
                     <TableCell><StatusBadge label={s.status} tone="info" /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.shipped_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <PurchaseLabelButton orderId={order.id} hasTracking={Boolean(s.tracking_code)} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
