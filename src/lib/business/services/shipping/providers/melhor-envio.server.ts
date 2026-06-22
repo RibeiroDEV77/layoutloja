@@ -163,6 +163,25 @@ export const melhorEnvioAdapter: ShippingAdapter = {
     }
   },
 
+  /**
+   * Origem padrão = postal_code do endereço de remetente cadastrado na conta
+   * Melhor Envio (`GET /api/v2/me`). Permite que o checkout cote sem precisar
+   * preencher o CEP de origem manualmente — a "fonte da verdade" é o ME.
+   */
+  async getDefaultOrigin(ctx): Promise<string | null> {
+    try {
+      assertCreds(ctx);
+      const body = await fetchJson(`${host(ctx.account.sandbox)}/api/v2/me`, {
+        method: 'GET', headers: authHeaders(ctx),
+      }) as Record<string, unknown>;
+      const cep = digits(String(body.postal_code ?? ''));
+      return cep.length === 8 ? cep : null;
+    } catch {
+      return null;
+    }
+  },
+
+
   async calculateQuote(ctx, req): Promise<AdapterQuoteOption[]> {
     return this.quote!(ctx, req);
   },
