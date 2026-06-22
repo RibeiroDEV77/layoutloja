@@ -6,6 +6,7 @@ import {
   getOrder, getOrderTimeline, getOrderAudit,
   cancelOrder, addOrderNote, addOrderTag, removeOrderTag,
 } from "@/lib/business/orders.functions";
+import { purchaseOrderLabel } from "@/lib/business/checkout.functions";
 import { Can } from "@/hooks/use-permissions";
 import { StatusBadge, type StatusTone } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -320,16 +321,19 @@ function OrderDetailPage() {
           <div className="rounded-lg border bg-card">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Transportadora</TableHead><TableHead>Serviço</TableHead><TableHead>Rastreio</TableHead><TableHead>Status</TableHead><TableHead>Enviado</TableHead></TableRow>
+                <TableRow><TableHead>Transportadora</TableHead><TableHead>Serviço</TableHead><TableHead>Rastreio</TableHead><TableHead>Status</TableHead><TableHead>Enviado</TableHead><TableHead className="text-right">Ações</TableHead></TableRow>
               </TableHeader>
               <TableBody>
-                {shipments.length === 0 ? <TableRow><TableCell colSpan={5}><EmptyState title="Sem envios" /></TableCell></TableRow> : shipments.map((s) => (
+                {shipments.length === 0 ? <TableRow><TableCell colSpan={6}><EmptyState title="Sem envios" /></TableCell></TableRow> : shipments.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>{s.carrier ?? "—"}</TableCell>
                     <TableCell>{s.service ?? "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{s.tracking_code ?? "—"}</TableCell>
                     <TableCell><StatusBadge label={s.status} tone="info" /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.shipped_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <PurchaseLabelButton orderId={order.id} hasTracking={Boolean(s.tracking_code)} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -421,5 +425,25 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
       <span className="text-muted-foreground">{label}</span>
       <span className={bold ? "font-semibold tabular-nums" : "tabular-nums"}>{value}</span>
     </div>
+  );
+}
+
+function PurchaseLabelButton({ orderId, hasTracking }: { orderId: string; hasTracking: boolean }) {
+  const fn = useServerFn(purchaseOrderLabel);
+  const mut = useMutation({
+    mutationFn: () => fn({ data: { order_id: orderId } }),
+    onSuccess: (res) => {
+      if (!res.ok) { toast.error(res.error.message); return; }
+      toast.success(`Etiqueta gerada: ${res.data.tracking_code}`);
+      if (res.data.label_url) window.open(res.data.label_url, "_blank", "noopener");
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Falha ao gerar etiqueta"),
+  });
+  return (
+    <Can permission="fulfillment.ship">
+      <Button size="sm" variant={hasTracking ? "outline" : "default"} disabled={mut.isPending} onClick={() => mut.mutate()}>
+        {mut.isPending ? "Gerando…" : hasTracking ? "Reemitir etiqueta" : "Gerar etiqueta"}
+      </Button>
+    </Can>
   );
 }

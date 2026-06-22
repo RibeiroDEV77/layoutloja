@@ -244,7 +244,10 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
 
               <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
-              <IconBtn label="Sacola"><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <Link to="/sacola" className="relative p-2.5 text-[#111] hover:text-[var(--brand-red)] transition-colors duration-200" aria-label="Sacola">
+                <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+                <CartCountBadge />
+              </Link>
             </div>
           </div>
         </div>
@@ -844,11 +847,9 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
           <span className="text-7xl font-semibold text-white">{initial}</span>
         </div>
 
-        {/* Botão Comprar — aparece no hover */}
+        {/* Botão Adicionar à sacola — aparece no hover */}
         <div className="absolute inset-x-3 bottom-3 z-10 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-          <span className="block w-full text-center bg-[#111] text-white py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors">
-            Comprar
-          </span>
+          <AddToBagButton productId={p.id} />
         </div>
       </Link>
 
@@ -1163,6 +1164,45 @@ export function StorefrontFooter({
         </div>
       </div>
     </footer>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cart count badge + Add-to-bag (storefront-side hooks)
+// ---------------------------------------------------------------------------
+
+import { useStorefrontCart } from "@/hooks/use-storefront-cart";
+
+function CartCountBadge() {
+  const cart = useStorefrontCart();
+  if (!cart.ready || cart.itemsCount <= 0) return null;
+  return (
+    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] grid place-items-center rounded-full bg-[var(--brand-red)] text-white text-[10px] font-semibold px-1">
+      {cart.itemsCount}
+    </span>
+  );
+}
+
+export function AddToBagButton({ productId, className = "" }: { productId: string; className?: string }) {
+  const cart = useStorefrontCart();
+  const [adding, setAdding] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={adding || !cart.ready}
+      onClick={async (e) => {
+        e.preventDefault();
+        if (!cart.ready) return;
+        setAdding(true);
+        try { await cart.add(productId, 1); } finally { setAdding(false); }
+      }}
+      className={cn(
+        "block w-full text-center bg-[#111] text-white py-3 text-[12px] uppercase tracking-[0.18em] font-semibold hover:bg-[var(--brand-red)] transition-colors disabled:opacity-60",
+        className,
+      )}
+    >
+      {adding ? "Adicionando…" : "Adicionar à sacola"}
+    </button>
   );
 }
 
