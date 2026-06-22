@@ -26,7 +26,26 @@ const EMPTY_ADDRESS: AddressForm = {
   district: '', city: '', state: '',
 };
 
+const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
 function digits(s: string) { return s.replace(/\D/g, ''); }
+function maskCep(s: string) {
+  const d = digits(s).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+function maskPhone(s: string) {
+  const d = digits(s).slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+function isValidEmail(s: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim()); }
+function isValidPhone(s: string) { const d = digits(s); return d.length === 10 || d.length === 11; }
+function isValidName(s: string) {
+  const t = s.trim();
+  return t.length >= 5 && t.includes(' ') && /^[\p{L}\s'.-]+$/u.test(t);
+}
 
 function CheckoutPage() {
   const cart = useStorefrontCart();
@@ -61,26 +80,37 @@ function CheckoutPage() {
     (async () => {
       try {
         const lookup = await fnLookup({ data: { postal_code: cep } });
-        if (!cancelled && lookup.ok) {
-          const d = lookup.data;
+        // lookupPostalCode retorna PostalLookup diretamente (sem wrapper .ok)
+        if (!cancelled && lookup && typeof lookup === 'object' && 'city' in lookup) {
+          const d = lookup as { street?: string; district?: string; city?: string; state?: string };
           setAddress((a) => ({
             ...a,
-            street: a.street || (d.street ?? ''),
+            street:   a.street   || (d.street   ?? ''),
             district: a.district || (d.district ?? ''),
-            city: a.city || (d.city ?? ''),
-            state: a.state || (d.state ?? ''),
+            city:     a.city     || (d.city     ?? ''),
+            state:    a.state    || (d.state    ?? ''),
           }));
         }
-      } catch { /* ignore lookup errors */ }
+      } catch (err) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : '';
+          if (/CEP/i.test(msg)) setQuoteError('CEP não encontrado. Verifique o número digitado.');
+        }
+      }
       try {
         const res = (await fnQuote({ data: { cart_id: cart.cartId!, postal_code: cep } })) as { quotes: unknown[] };
         if (cancelled) return;
         await cart.refresh();
         if (!res.quotes || res.quotes.length === 0) {
-          setQuoteError('Nenhuma modalidade disponível para este CEP.');
+          setQuoteError('Nenhuma modalidade de frete disponível para este CEP no momento.');
         }
       } catch (err) {
-        if (!cancelled) setQuoteError(err instanceof Error ? err.message : 'Erro ao consultar frete');
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Erro ao consultar frete';
+          setQuoteError(/zona/i.test(msg)
+            ? 'Não atendemos esse CEP ainda. Tente outro endereço ou entre em contato.'
+            : msg);
+        }
       } finally {
         if (!cancelled) setQuoting(false);
       }
@@ -101,13 +131,24 @@ function CheckoutPage() {
     await cart.refresh();
   }
 
+  function validateAll(): string | null {
+    if (!isValidName(name)) return 'Informe seu nome completo (nome e sobrenome).';
+    if (!isValidEmail(email)) return 'Informe um e-mail válido.';
+    if (!isValidPhone(phone)) return 'Telefone inválido. Use DDD + número (10 ou 11 dígitos).';
+    if (digits(address.postal_code).length !== 8) return 'CEP inválido.';
+    if (!address.street.trim()) return 'Informe a rua.';
+    if (!address.number.trim() || !/^\d+$/.test(address.number.trim())) return 'Número do endereço deve conter apenas dígitos.';
+    if (!address.district.trim()) return 'Informe o bairro.';
+    if (!address.city.trim()) return 'Informe a cidade.';
+    if (!UF_LIST.includes(address.state.toUpperCase())) return 'UF inválida.';
+    return null;
+  }
+
   async function handlePlaceOrder() {
     if (!cart.cartId) return;
     setError(null);
-    if (!name || !email || !phone) { setError('Preencha nome, e-mail e telefone'); return; }
-    if (!address.postal_code || !address.street || !address.number || !address.city || !address.state) {
-      setError('Preencha o endereço completo'); return;
-    }
+    const v = validateAll();
+    if (v) { setError(v); return; }
     if (!selectedQuoteId) { setError('Selecione uma modalidade de frete'); return; }
 
     setPlacing(true);
@@ -116,7 +157,7 @@ function CheckoutPage() {
         data: {
           cart_id: cart.cartId,
           session_token: cart.sessionToken,
-          email, name, phone,
+          email: email.trim(), name: name.trim(), phone: digits(phone),
           address: { ...address, country: 'BR', postal_code: digits(address.postal_code) },
         },
       });
@@ -143,22 +184,32 @@ function CheckoutPage() {
               <section>
                 <h2 className="text-[13px] uppercase tracking-[0.18em] font-semibold">Identificação</h2>
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Field label="Nome completo" value={name} onChange={setName} />
-                  <Field label="E-mail" type="email" value={email} onChange={setEmail} />
-                  <Field label="Telefone" value={phone} onChange={setPhone} />
+                  <Field label="Nome completo" value={name} onChange={setName} autoComplete="name" placeholder="Ex.: Maria Silva" />
+                  <Field label="E-mail" type="email" value={email} onChange={setEmail} autoComplete="email" placeholder="voce@exemplo.com" inputMode="email" />
+                  <Field label="Telefone" value={phone} onChange={(v) => setPhone(maskPhone(v))} autoComplete="tel" placeholder="(11) 91234-5678" inputMode="tel" maxLength={16} />
                 </div>
               </section>
 
               <section>
                 <h2 className="text-[13px] uppercase tracking-[0.18em] font-semibold">Endereço de entrega</h2>
                 <div className="mt-3 grid grid-cols-2 md:grid-cols-6 gap-3">
-                  <Field className="col-span-2 md:col-span-2" label="CEP" value={address.postal_code} onChange={(v) => setAddress((a) => ({ ...a, postal_code: v }))} />
-                  <Field className="col-span-2 md:col-span-4" label="Rua" value={address.street} onChange={(v) => setAddress((a) => ({ ...a, street: v }))} />
-                  <Field className="col-span-1 md:col-span-1" label="Número" value={address.number} onChange={(v) => setAddress((a) => ({ ...a, number: v }))} />
-                  <Field className="col-span-1 md:col-span-2" label="Complemento" value={address.complement} onChange={(v) => setAddress((a) => ({ ...a, complement: v }))} />
-                  <Field className="col-span-2 md:col-span-3" label="Bairro" value={address.district} onChange={(v) => setAddress((a) => ({ ...a, district: v }))} />
-                  <Field className="col-span-2 md:col-span-4" label="Cidade" value={address.city} onChange={(v) => setAddress((a) => ({ ...a, city: v }))} />
-                  <Field className="col-span-2 md:col-span-2" label="UF" value={address.state} onChange={(v) => setAddress((a) => ({ ...a, state: v.toUpperCase().slice(0, 2) }))} />
+                  <Field className="col-span-2 md:col-span-2" label="CEP" value={address.postal_code}
+                         onChange={(v) => setAddress((a) => ({ ...a, postal_code: maskCep(v) }))}
+                         autoComplete="postal-code" inputMode="numeric" placeholder="00000-000" maxLength={9} />
+                  <Field className="col-span-2 md:col-span-4" label="Rua" value={address.street}
+                         onChange={(v) => setAddress((a) => ({ ...a, street: v }))} autoComplete="address-line1" />
+                  <Field className="col-span-1 md:col-span-1" label="Número" value={address.number}
+                         onChange={(v) => setAddress((a) => ({ ...a, number: digits(v).slice(0, 8) }))}
+                         inputMode="numeric" placeholder="123" />
+                  <Field className="col-span-1 md:col-span-2" label="Complemento" value={address.complement}
+                         onChange={(v) => setAddress((a) => ({ ...a, complement: v }))} placeholder="Apto / bloco (opcional)" />
+                  <Field className="col-span-2 md:col-span-3" label="Bairro" value={address.district}
+                         onChange={(v) => setAddress((a) => ({ ...a, district: v }))} />
+                  <Field className="col-span-2 md:col-span-4" label="Cidade" value={address.city}
+                         onChange={(v) => setAddress((a) => ({ ...a, city: v }))} />
+                  <Field className="col-span-2 md:col-span-2" label="UF" value={address.state}
+                         onChange={(v) => setAddress((a) => ({ ...a, state: v.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2) }))}
+                         maxLength={2} placeholder="SP" />
                 </div>
               </section>
 
@@ -245,7 +296,15 @@ function CheckoutPage() {
   );
 }
 
-function Field({ label, value, onChange, type = 'text', className = '' }: { label: string; value: string; onChange: (v: string) => void; type?: string; className?: string }) {
+function Field({
+  label, value, onChange, type = 'text', className = '',
+  placeholder, autoComplete, inputMode, maxLength,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  type?: string; className?: string; placeholder?: string;
+  autoComplete?: string; inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'url' | 'search' | 'decimal' | 'none';
+  maxLength?: number;
+}) {
   return (
     <label className={`block ${className}`}>
       <span className="block text-[11px] uppercase tracking-[0.18em] text-[#666] mb-1">{label}</span>
@@ -253,6 +312,10 @@ function Field({ label, value, onChange, type = 'text', className = '' }: { labe
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        maxLength={maxLength}
         className="w-full border border-[#EFEFEF] bg-white px-3 py-2 text-[14px] outline-none focus:border-[#111] transition-colors"
       />
     </label>
