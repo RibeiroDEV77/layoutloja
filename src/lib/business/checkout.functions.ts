@@ -9,7 +9,7 @@
  * Geração de etiqueta é AUTENTICADA (admin) e usa `purchaseShippingLabel`.
  */
 import { createServerFn } from '@tanstack/react-start';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { withBusiness } from './with-business';
@@ -17,12 +17,18 @@ import * as Cart from './services/cart.server';
 import * as Shipping from './services/shipping.server';
 import { Errors } from './errors';
 
-function publicClient(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
+/**
+ * Cliente admin (service_role) carregado dinamicamente dentro do handler.
+ *
+ * Necessário porque as policies RLS de `carts`/`cart_items` exigem um GUC
+ * (`request.cart_session_token`) que o PostgREST anônimo não define. A
+ * validação de propriedade do carrinho continua sendo feita via
+ * `session_token` em `Cart.*` (assertCartAccess). A chave service_role
+ * permanece exclusivamente no runtime do servidor.
+ */
+async function publicClient(): Promise<SupabaseClient<Database>> {
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  return supabaseAdmin as unknown as SupabaseClient<Database>;
 }
 
 // ---------------------------------------------------------------------------
