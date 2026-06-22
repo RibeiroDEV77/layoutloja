@@ -124,7 +124,7 @@ export async function resolveActiveProviders(
       .eq('store_id', storeId)
       .eq('is_active', true);
     if (res.error) console.error('[shipping] resolveActiveProviders query error:', res.error.message);
-    accounts = (res.data as never) ?? null;
+    accounts = (res.data as typeof accounts) ?? null;
     console.log('[shipping] resolveActiveProviders store=', storeId, 'rows=', accounts?.length ?? 0);
   } catch (err) {
     console.error('[shipping] resolveActiveProviders admin client error:', err instanceof Error ? err.message : err);
