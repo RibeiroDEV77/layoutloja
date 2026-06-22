@@ -181,12 +181,7 @@ export async function calculateQuote(
   for (const p of providers) {
     const cfgOrigin = typeof p.config.origin_postal_code === 'string'
       ? (p.config.origin_postal_code as string) : null;
-    const origin = input.origin_postal_code ?? cfgOrigin;
-    if (!origin) {
-      errors.push({ provider_code: p.provider_code, carrier_account_id: p.account_id,
-        error: 'CEP de origem ausente (input ou config do provider)' });
-      continue;
-    }
+    let origin = input.origin_postal_code ?? cfgOrigin;
 
     let credentials: AdapterCredentials | null = null;
     try {
@@ -210,6 +205,18 @@ export async function calculateQuote(
       },
       credentials,
     };
+
+    // Fallback final: pergunta ao provider remoto qual é o CEP de origem
+    // cadastrado (ex.: endereço de remetente do Melhor Envio).
+    if (!origin && p.adapter.getDefaultOrigin) {
+      try { origin = await p.adapter.getDefaultOrigin(ctx); } catch { /* ignore */ }
+    }
+    if (!origin) {
+      errors.push({ provider_code: p.provider_code, carrier_account_id: p.account_id,
+        error: 'CEP de origem ausente (input, config ou cadastro remoto do provider)' });
+      continue;
+    }
+
     const req: AdapterQuoteRequest = {
       origin_postal_code: origin,
       destination_postal_code: input.destination_postal_code,
@@ -218,6 +225,7 @@ export async function calculateQuote(
       declared_value: input.declared_value,
       service_codes: input.service_codes,
     };
+
 
     const providerStart = Date.now();
     try {
