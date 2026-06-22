@@ -1,91 +1,76 @@
-# Integração Melhor Envio (OAuth 2.0)
+## Objetivo
 
-## Observação importante sobre stack
+Deixar o painel pronto para que qualquer produto cadastrado já apareça na loja automaticamente, criar a estrutura de categorias/atributos pedida, e cadastrar os 4 produtos iniciais com variações de cor/tamanho e dados de frete.
 
-Este projeto é **TanStack Start** (Cloudflare Worker) — não usa Supabase Edge Functions como camada padrão. Toda lógica server-side equivalente vive em **server functions** (`createServerFn`) e **server routes** (`/api/...`), que rodam no mesmo backend, com acesso a Secrets via `process.env`, e nunca expõem segredos ao browser. Funcionalmente atende 100% do requisito ("toda comunicação via backend, nunca expor Client Secret"). Vou implementar nesse formato, mantendo os nomes lógicos pedidos.
+## Escopo da entrega
 
-Também já existe infraestrutura completa de Shipping no projeto (`shipping_carrier_accounts`, `shipping_labels`, `shipping_quotes`, `tracking_events`, adapter `melhor-envio.server.ts`, registry, webhook inbox). **Vou reutilizar** em vez de criar tabelas paralelas — o requisito "não alterar banco existente" é respeitado (nenhuma tabela existente sofre ALTER); apenas adiciono o que falta para OAuth.
+### 1. Padrão "publicar automaticamente" no painel
+- Ajustar o formulário de criação de produto (`admin.products.new.tsx` e service `products.server.ts`) para que o draft inicial já venha com:
+  - `status = active`
+  - `is_published = true`
+  - `visible_in_storefront = true`
+  - `available_for_sale = true`
+  - `show_in_catalog = true`
+- Mapear os nomes reais das colunas existentes em `products` antes de gravar (alguns desses flags podem já existir com outro nome — uso o que existir, não crio coluna nova sem necessidade).
+- Remover/ocultar etapas manuais de "publicar" no wizard, mantendo o botão apenas como reforço opcional.
 
-## O que será criado
-
-### 1. Migration (somente adições)
-
-- `shipping_oauth_states` — nonce + PKCE por tentativa de autorização (TTL 10 min).
-- `shipping_oauth_tokens` — `provider_code`, `store_id`, `access_token` (cifrado via keyring existente), `refresh_token` (cifrado), `expires_at`, `scope`, `token_type`. Uma linha por (provider, store).
-- GRANTs + RLS: leitura/escrita só via service_role (server functions). Admin lê status agregado por RPC `get_shipping_oauth_status(store_id)` (sem expor tokens).
-
-Nenhuma tabela existente é alterada.
-
-### 2. Secrets (via add_secret)
-
-- `MELHOR_ENVIO_CLIENT_ID` (= 26270)
-- `MELHOR_ENVIO_CLIENT_SECRET` (admin cola)
-- `MELHOR_ENVIO_REDIRECT_URI` (derivado do domínio publicado)
-- `MELHOR_ENVIO_ENV` = `sandbox` | `production`
-
-`ACCESS_TOKEN` / `REFRESH_TOKEN` **não** ficam em Secrets — ficam cifrados em `shipping_oauth_tokens` (multi-store, rotacionáveis sem redeploy). Isso é mais seguro e segue o padrão já usado por payments/fiscal/shipping no projeto.
-
-### 3. Server functions / routes (equivalente às Edge Functions pedidas)
-
-| Pedido | Implementação |
-|---|---|
-| `authorize-melhor-envio` | `GET /api/public/shipping/melhor-envio/authorize` → redirect 302 para `oauth/authorize` com `state` + PKCE |
-| `oauth-callback` | `GET /api/public/shipping/melhor-envio/callback` → troca `code` por tokens, persiste cifrado, redireciona p/ `/admin/integracoes` |
-| `refresh-token` | helper interno `refreshMelhorEnvioToken()` chamado automaticamente quando `expires_at < now()+60s` |
-| `calculate-shipping` | server fn `quoteMelhorEnvio({cart_id, postal_code})` — já existe via adapter, exposta no checkout |
-| `create-label` | server fn `createMelhorEnvioLabel({order_id})` (cart→checkout→generate→print, já implementado no adapter) |
-| `tracking` | server fn `trackMelhorEnvioShipment({shipment_id})` + cron diário |
-| `webhook-handler` | `POST /api/public/shipping/melhor-envio/webhook` — valida assinatura, grava em `payment_webhook_inbox` análogo (criar `shipping_webhook_inbox`) e processa idempotente |
-
-Adapter `melhor-envio.server.ts` é estendido para ler tokens de `shipping_oauth_tokens` (em vez de `credentials.access_token` fixo) e disparar refresh transparente.
-
-### 4. Frontend
-
-- **Nova rota**: `/admin/integracoes` (mínima, só lista provedores + status Melhor Envio). Não toca em nenhuma página admin existente.
-- **Checkout** (`src/routes/checkout.tsx` se existir, senão card no carrinho): input de CEP → chama `quoteMelhorEnvio` → lista serviços ordenados por preço → seleção → grava em `cart.shipping_quote_id`. Reutiliza `persistOrderShippingSnapshot` já existente ao concluir pedido.
-
-### 5. Pedido (somente leitura — sem alterar schema)
-
-Dados de transportadora/rastreio/etiqueta/prazo já existem em `shipments`, `shipping_labels`, `tracking_events`, `order_shipping_snapshots`. Nada a alterar.
-
-## Arquivos novos previstos
+### 2. Estrutura de categorias (Masculino)
+Criar via server functions existentes (`createCategory`) na loja ativa, somente se não existirem:
 
 ```
-supabase/migrations/<ts>_melhor_envio_oauth.sql
-src/lib/business/services/shipping/oauth/melhor-envio-oauth.server.ts
-src/lib/business/services/shipping/oauth/token-store.server.ts
-src/lib/business/shipping-oauth.functions.ts
-src/routes/api/public/shipping/melhor-envio/authorize.ts
-src/routes/api/public/shipping/melhor-envio/callback.ts
-src/routes/api/public/shipping/melhor-envio/webhook.ts
-src/routes/_authenticated/admin.integracoes.tsx
-src/components/checkout/shipping-quote-picker.tsx
+Masculino
+├── Calças
+│   ├── Sport Fino
+│   ├── Country
+│   ├── Jeans
+│   └── Social
+├── Bermudas
+│   ├── Sport Fino
+│   ├── Jeans
+│   └── Sarja
+├── Camisas
+├── Camisetas
+├── Polos
+├── Jaquetas
+├── Moletons
+└── Acessórios
 ```
 
-Arquivos editados (mínimos):
-- `src/lib/business/services/shipping/providers/melhor-envio.server.ts` — ler token do store (refresh transparente)
-- `src/components/app-sidebar.tsx` — entrada "Integrações" no menu admin
+### 3. Atributos globais
+Criar via `createAttribute` se ausentes: Cor, Tamanho, Tecido, Marca, Composição. Cor e Tamanho marcados como eixos de variação (`is_color`, `is_size`).
 
-## Fluxo OAuth resumido
+### 4. Variações por Cor e Tamanho
+Verificar se o editor de produto já suporta variações pelos eixos Cor/Tamanho com SKU, estoque, preço e imagens próprias. Se algum desses campos estiver faltando na UI de variantes, adicionar.
 
-```text
-Admin /admin/integracoes
-  → "Conectar Melhor Envio"
-  → GET /api/public/shipping/melhor-envio/authorize?store_id=X
-       (gera state+PKCE, salva em shipping_oauth_states)
-  → 302 melhorenvio.com.br/oauth/authorize?...
-  → usuário autoriza
-  → 302 /api/public/shipping/melhor-envio/callback?code=...&state=...
-       (valida state, POST /oauth/token, cifra e salva tokens)
-  → 302 /admin/integracoes?connected=melhor_envio
-```
+### 5. Campos de frete obrigatórios
+Garantir que o formulário de produto exija Peso, Comprimento, Largura e Altura (validação client-side + marcação visual de obrigatório). Banco já tem as colunas.
 
-Refresh: qualquer chamada do adapter chama `getValidAccessToken(store_id)` que renova se faltar <60s para expirar, persiste novos tokens, e segue.
+### 6. Cadastro dos 4 produtos
+Criar um script de seed (server function única chamada uma vez via UI ou migração de dados) que insira:
+1. Bermuda Sport Fino — Brito & Storari — R$ 99,99
+2. Calça Sport Fino — Brito & Storari — R$ 139,99
+3. Calça Country Balão — Oreon Jeans — R$ 149,99 (cor Azul)
+4. Calça Country Elastano — Brito & Storari — R$ 149,99 (cores Azul Claro, Médio, Escuro)
 
-## Pontos a confirmar antes de eu implementar
+Cada produto: marca, categoria/subcategoria, descrição, preço, peso/dimensões, atributos (Tecido, Composição), e variações de cor quando aplicável. Tamanhos: criar variações padrão P/M/G/GG com estoque 0 (para o usuário ajustar depois).
 
-1. **Ambiente**: começo em **sandbox** (`sandbox.melhorenvio.com.br`) e adiciono toggle p/ produção depois? (recomendo sim — evita queimar etiquetas reais durante testes).
-2. **Webhook**: o Melhor Envio assina via `X-Signature` HMAC com o `client_secret`. OK validar com timing-safe compare?
-3. **Outras 2 demandas pendentes** (Padronizar tipografia da Loja Pública + corrigir Hero) ficam para depois desta integração, ou prefere intercalar?
+## Fora de escopo
+- Não vou mexer no fluxo OAuth do Melhor Envio nem em RLS de shipping.
+- Não vou redesenhar o painel; apenas defaults, validação e seed.
+- Imagens dos produtos ficam vazias (não foram fornecidas) — o usuário sobe depois via DAM.
 
-Aprovando, executo migration + secrets + código numa sequência só.
+## Detalhes técnicos
+
+- **Defaults de publicação**: alterar `createProductDraft` em `src/lib/business/services/products.server.ts` para forçar os flags. No formulário (`admin.products.new.tsx`) remover o "passo de publicação" como gate, deixando o produto já publicado.
+- **Seed de categorias/atributos/produtos**: criar `src/lib/business/seed-catalog.functions.ts` com uma server function `seedInitialCatalog({ store_id })` protegida por `requireSupabaseAuth` + check de super_admin, idempotente (checa por slug/code antes de inserir). Adicionar um botão "Popular catálogo inicial" em `/admin/settings` (visível só para super admin) que chama essa função.
+- **Validação frete**: adicionar `required` + mensagens nos inputs de peso/dimensões no editor de produto.
+- **Variações**: confirmar que `product_variants` + `variant_attribute_values` já suportam o modelo; ajustar UI apenas se faltar campo de imagem/preço/estoque por variante.
+
+## Como o usuário usa depois
+
+1. Abre `/admin/settings` e clica em "Popular catálogo inicial" (uma vez).
+2. Vai em `/admin/products`, vê os 4 produtos já publicados.
+3. Sobe imagens e ajusta estoques das variações.
+4. Produtos aparecem na loja imediatamente, com frete via Melhor Envio funcional.
+
+Confirma esse plano? Posso seguir com a implementação completa numa sequência só.
