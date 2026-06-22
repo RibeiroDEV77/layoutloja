@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminInvoicesRouteImport } from './routes/_authenticated/admin.invoices'
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated/admin.inventory'
+import { Route as AuthenticatedAdminIntegracoesRouteImport } from './routes/_authenticated/admin.integracoes'
 import { Route as AuthenticatedAdminEmployeesRouteImport } from './routes/_authenticated/admin.employees'
 import { Route as AuthenticatedAdminDamRouteImport } from './routes/_authenticated/admin.dam'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
@@ -47,6 +48,8 @@ import { Route as AuthenticatedAdminProductsIndexRouteImport } from './routes/_a
 import { Route as ApiPublicHooksShippingTrackingSyncRouteImport } from './routes/api/public/hooks/shipping-tracking-sync'
 import { Route as ApiPublicHooksNuvemfiscalRouteImport } from './routes/api/public/hooks/nuvemfiscal'
 import { Route as ApiPublicHooksMercadopagoRouteImport } from './routes/api/public/hooks/mercadopago'
+import { Route as ApiPublicHooksMelhorEnvioWebhookRouteImport } from './routes/api/public/hooks/melhor-envio-webhook'
+import { Route as ApiPublicHooksMelhorEnvioCallbackRouteImport } from './routes/api/public/hooks/melhor-envio-callback'
 import { Route as AuthenticatedAdminPurchasesPoIdRouteImport } from './routes/_authenticated/admin.purchases.$poId'
 import { Route as AuthenticatedAdminProductsNewRouteImport } from './routes/_authenticated/admin.products.new'
 import { Route as AuthenticatedAdminOrdersOrderIdRouteImport } from './routes/_authenticated/admin.orders.$orderId'
@@ -165,6 +168,12 @@ const AuthenticatedAdminInventoryRoute =
     path: '/inventory',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminIntegracoesRoute =
+  AuthenticatedAdminIntegracoesRouteImport.update({
+    id: '/integracoes',
+    path: '/integracoes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminEmployeesRoute =
   AuthenticatedAdminEmployeesRouteImport.update({
     id: '/employees',
@@ -270,6 +279,18 @@ const ApiPublicHooksMercadopagoRoute =
     path: '/api/public/hooks/mercadopago',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMelhorEnvioWebhookRoute =
+  ApiPublicHooksMelhorEnvioWebhookRouteImport.update({
+    id: '/api/public/hooks/melhor-envio-webhook',
+    path: '/api/public/hooks/melhor-envio-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksMelhorEnvioCallbackRoute =
+  ApiPublicHooksMelhorEnvioCallbackRouteImport.update({
+    id: '/api/public/hooks/melhor-envio-callback',
+    path: '/api/public/hooks/melhor-envio-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminPurchasesPoIdRoute =
   AuthenticatedAdminPurchasesPoIdRouteImport.update({
     id: '/$poId',
@@ -333,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/dam': typeof AuthenticatedAdminDamRoute
   '/admin/employees': typeof AuthenticatedAdminEmployeesRoute
+  '/admin/integracoes': typeof AuthenticatedAdminIntegracoesRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/admin/invoices': typeof AuthenticatedAdminInvoicesRouteWithChildren
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
@@ -353,6 +375,8 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
   '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
+  '/api/public/hooks/melhor-envio-callback': typeof ApiPublicHooksMelhorEnvioCallbackRoute
+  '/api/public/hooks/melhor-envio-webhook': typeof ApiPublicHooksMelhorEnvioWebhookRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
@@ -378,6 +402,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/dam': typeof AuthenticatedAdminDamRoute
   '/admin/employees': typeof AuthenticatedAdminEmployeesRoute
+  '/admin/integracoes': typeof AuthenticatedAdminIntegracoesRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/admin/invoices': typeof AuthenticatedAdminInvoicesRouteWithChildren
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
@@ -397,6 +422,8 @@ export interface FileRoutesByTo {
   '/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
   '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
+  '/api/public/hooks/melhor-envio-callback': typeof ApiPublicHooksMelhorEnvioCallbackRoute
+  '/api/public/hooks/melhor-envio-webhook': typeof ApiPublicHooksMelhorEnvioWebhookRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
@@ -425,6 +452,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/_authenticated/admin/dam': typeof AuthenticatedAdminDamRoute
   '/_authenticated/admin/employees': typeof AuthenticatedAdminEmployeesRoute
+  '/_authenticated/admin/integracoes': typeof AuthenticatedAdminIntegracoesRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRouteWithChildren
   '/_authenticated/admin/invoices': typeof AuthenticatedAdminInvoicesRouteWithChildren
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
@@ -445,6 +473,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/orders/$orderId': typeof AuthenticatedAdminOrdersOrderIdRoute
   '/_authenticated/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
   '/_authenticated/admin/purchases/$poId': typeof AuthenticatedAdminPurchasesPoIdRoute
+  '/api/public/hooks/melhor-envio-callback': typeof ApiPublicHooksMelhorEnvioCallbackRoute
+  '/api/public/hooks/melhor-envio-webhook': typeof ApiPublicHooksMelhorEnvioWebhookRoute
   '/api/public/hooks/mercadopago': typeof ApiPublicHooksMercadopagoRoute
   '/api/public/hooks/nuvemfiscal': typeof ApiPublicHooksNuvemfiscalRoute
   '/api/public/hooks/shipping-tracking-sync': typeof ApiPublicHooksShippingTrackingSyncRoute
@@ -473,6 +503,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dam'
     | '/admin/employees'
+    | '/admin/integracoes'
     | '/admin/inventory'
     | '/admin/invoices'
     | '/admin/logs'
@@ -493,6 +524,8 @@ export interface FileRouteTypes {
     | '/admin/orders/$orderId'
     | '/admin/products/new'
     | '/admin/purchases/$poId'
+    | '/api/public/hooks/melhor-envio-callback'
+    | '/api/public/hooks/melhor-envio-webhook'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
@@ -518,6 +551,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dam'
     | '/admin/employees'
+    | '/admin/integracoes'
     | '/admin/inventory'
     | '/admin/invoices'
     | '/admin/logs'
@@ -537,6 +571,8 @@ export interface FileRouteTypes {
     | '/admin/orders/$orderId'
     | '/admin/products/new'
     | '/admin/purchases/$poId'
+    | '/api/public/hooks/melhor-envio-callback'
+    | '/api/public/hooks/melhor-envio-webhook'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
@@ -564,6 +600,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/dam'
     | '/_authenticated/admin/employees'
+    | '/_authenticated/admin/integracoes'
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/invoices'
     | '/_authenticated/admin/logs'
@@ -584,6 +621,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/orders/$orderId'
     | '/_authenticated/admin/products/new'
     | '/_authenticated/admin/purchases/$poId'
+    | '/api/public/hooks/melhor-envio-callback'
+    | '/api/public/hooks/melhor-envio-webhook'
     | '/api/public/hooks/mercadopago'
     | '/api/public/hooks/nuvemfiscal'
     | '/api/public/hooks/shipping-tracking-sync'
@@ -597,6 +636,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
+  ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
+  ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
   ApiPublicHooksMercadopagoRoute: typeof ApiPublicHooksMercadopagoRoute
   ApiPublicHooksNuvemfiscalRoute: typeof ApiPublicHooksNuvemfiscalRoute
   ApiPublicHooksShippingTrackingSyncRoute: typeof ApiPublicHooksShippingTrackingSyncRoute
@@ -744,6 +785,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInventoryRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/integracoes': {
+      id: '/_authenticated/admin/integracoes'
+      path: '/integracoes'
+      fullPath: '/admin/integracoes'
+      preLoaderRoute: typeof AuthenticatedAdminIntegracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/employees': {
       id: '/_authenticated/admin/employees'
       path: '/employees'
@@ -868,6 +916,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/mercadopago'
       fullPath: '/api/public/hooks/mercadopago'
       preLoaderRoute: typeof ApiPublicHooksMercadopagoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/melhor-envio-webhook': {
+      id: '/api/public/hooks/melhor-envio-webhook'
+      path: '/api/public/hooks/melhor-envio-webhook'
+      fullPath: '/api/public/hooks/melhor-envio-webhook'
+      preLoaderRoute: typeof ApiPublicHooksMelhorEnvioWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/melhor-envio-callback': {
+      id: '/api/public/hooks/melhor-envio-callback'
+      path: '/api/public/hooks/melhor-envio-callback'
+      fullPath: '/api/public/hooks/melhor-envio-callback'
+      preLoaderRoute: typeof ApiPublicHooksMelhorEnvioCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/purchases/$poId': {
@@ -1029,6 +1091,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRouteWithChildren
   AuthenticatedAdminDamRoute: typeof AuthenticatedAdminDamRoute
   AuthenticatedAdminEmployeesRoute: typeof AuthenticatedAdminEmployeesRoute
+  AuthenticatedAdminIntegracoesRoute: typeof AuthenticatedAdminIntegracoesRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRouteWithChildren
   AuthenticatedAdminInvoicesRoute: typeof AuthenticatedAdminInvoicesRouteWithChildren
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
@@ -1063,6 +1126,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminCustomersRouteWithChildren,
   AuthenticatedAdminDamRoute: AuthenticatedAdminDamRoute,
   AuthenticatedAdminEmployeesRoute: AuthenticatedAdminEmployeesRoute,
+  AuthenticatedAdminIntegracoesRoute: AuthenticatedAdminIntegracoesRoute,
   AuthenticatedAdminInventoryRoute:
     AuthenticatedAdminInventoryRouteWithChildren,
   AuthenticatedAdminInvoicesRoute: AuthenticatedAdminInvoicesRouteWithChildren,
@@ -1101,6 +1165,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
+  ApiPublicHooksMelhorEnvioCallbackRoute:
+    ApiPublicHooksMelhorEnvioCallbackRoute,
+  ApiPublicHooksMelhorEnvioWebhookRoute: ApiPublicHooksMelhorEnvioWebhookRoute,
   ApiPublicHooksMercadopagoRoute: ApiPublicHooksMercadopagoRoute,
   ApiPublicHooksNuvemfiscalRoute: ApiPublicHooksNuvemfiscalRoute,
   ApiPublicHooksShippingTrackingSyncRoute:
