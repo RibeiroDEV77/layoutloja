@@ -56,6 +56,31 @@ export const anonAddCartItem = createServerFn({ method: 'POST' })
     return Cart.addItem(sb, null, data);
   });
 
+/** Adiciona ao carrinho escolhendo automaticamente a primeira variante ativa do produto. */
+export const anonAddProductToCart = createServerFn({ method: 'POST' })
+  .inputValidator((d: { cart_id: string; product_id: string; qty: number; session_token: string }) => d)
+  .handler(async ({ data }) => {
+    const sb = publicClient();
+    const { data: variant, error } = await sb
+      .from('product_variants')
+      .select('id')
+      .eq('product_id', data.product_id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw Errors.internal('Falha ao buscar variante', { error: error.message });
+    if (!variant) throw Errors.rule('Produto sem variante disponível');
+    const cartSb = sb as unknown as Parameters<typeof Cart.addItem>[0];
+    return Cart.addItem(cartSb, null, {
+      cart_id: data.cart_id,
+      variant_id: variant.id,
+      qty: data.qty,
+      session_token: data.session_token,
+    });
+  });
+
+
 export const anonUpdateCartItemQty = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; qty: number; session_token: string }) => d)
   .handler(async ({ data }) => {
