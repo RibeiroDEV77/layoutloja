@@ -427,3 +427,22 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </div>
   );
 }
+
+function PurchaseLabelButton({ orderId, hasTracking }: { orderId: string; hasTracking: boolean }) {
+  const fn = useServerFn(purchaseOrderLabel);
+  const mut = useMutation({
+    mutationFn: () => fn({ data: { order_id: orderId } }) as Promise<{ tracking_code: string; label_url: string | null }>,
+    onSuccess: (res) => {
+      toast.success(`Etiqueta gerada: ${res.tracking_code}`);
+      if (res.label_url) window.open(res.label_url, "_blank", "noopener");
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Falha ao gerar etiqueta"),
+  });
+  return (
+    <Can permission="fulfillment.ship">
+      <Button size="sm" variant={hasTracking ? "outline" : "default"} disabled={mut.isPending} onClick={() => mut.mutate()}>
+        {mut.isPending ? "Gerando…" : hasTracking ? "Reemitir etiqueta" : "Gerar etiqueta"}
+      </Button>
+    </Can>
+  );
+}
