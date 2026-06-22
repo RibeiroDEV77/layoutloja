@@ -115,7 +115,8 @@ export async function resolveActiveProviders(
   // `anon` por RLS (e nem deve ser — contém config sensível). Aqui só
   // projetamos campos não-sensíveis; credenciais continuam vindo do RPC
   // `shipping_get_credentials` (decifrado pelo keyring).
-  let accounts: Array<{ id: string; store_id: string; provider_code: string; display_name: string; sandbox: boolean; config: Record<string, unknown> | null; is_active: boolean }> | null = null;
+  type AccRow = { id: string; store_id: string; provider_code: string; display_name: string; sandbox: boolean; config: Record<string, unknown> | null; is_active: boolean };
+  let accounts: AccRow[] = [];
   try {
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const res = await supabaseAdmin
@@ -124,13 +125,13 @@ export async function resolveActiveProviders(
       .eq('store_id', storeId)
       .eq('is_active', true);
     if (res.error) console.error('[shipping] resolveActiveProviders query error:', res.error.message);
-    accounts = (res.data as typeof accounts) ?? null;
-    console.log('[shipping] resolveActiveProviders store=', storeId, 'rows=', accounts?.length ?? 0);
+    accounts = ((res.data ?? []) as unknown as AccRow[]);
+    console.log('[shipping] resolveActiveProviders store=', storeId, 'rows=', accounts.length);
   } catch (err) {
     console.error('[shipping] resolveActiveProviders admin client error:', err instanceof Error ? err.message : err);
     return [];
   }
-  if (!accounts || accounts.length === 0) return [];
+  if (accounts.length === 0) return [];
 
   const out: ResolvedProvider[] = [];
   for (const acc of accounts) {
