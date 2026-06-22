@@ -244,7 +244,10 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
 
               <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
-              <IconBtn label="Sacola"><ShoppingBag className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <Link to="/sacola" className="relative p-2.5 text-[#111] hover:text-[var(--brand-red)] transition-colors duration-200" aria-label="Sacola">
+                <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+                <CartCountBadge />
+              </Link>
             </div>
           </div>
         </div>
