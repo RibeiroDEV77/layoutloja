@@ -178,6 +178,13 @@ export interface ShippingAdapter {
 
   /** Opcional: rastreamento. */
   track?(ctx: AdapterContext, tracking_code: string): Promise<AdapterTrackingResult>;
+
+  /**
+   * Opcional: retorna o CEP de origem padrão cadastrado no provider remoto
+   * (ex.: endereço de remetente do Melhor Envio). Usado como fallback pelo
+   * Registry quando nem o caller nem o `config.origin_postal_code` informam.
+   */
+  getDefaultOrigin?(ctx: AdapterContext): Promise<string | null>;
 }
 
 export class AdapterNotConfiguredError extends Error {
