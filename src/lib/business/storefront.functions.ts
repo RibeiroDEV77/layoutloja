@@ -34,6 +34,9 @@ export type StorefrontProduct = {
   featured: boolean; best_seller: boolean;
   image_url?: string | null;
   hover_image_url?: string | null;
+  price?: number | null;
+  sale_price?: number | null;
+  list_price?: number | null;
 };
 export type StorefrontBrand = {
   id: string; name: string; slug: string; logo_url: string | null;
