@@ -127,6 +127,7 @@ export const getCategoryFilters = createServerFn({ method: 'POST' })
       return Array.from(resolved);
     };
 
+    let pavMap: StorefrontProductAttributeMap = {};
     const valueProducts = new Map<string, Set<string>>();
     const addProductValue = (productId: string, valueId: string | null | undefined) => {
       if (!valueId || !valueById.has(valueId)) return;
@@ -143,7 +144,6 @@ export const getCategoryFilters = createServerFn({ method: 'POST' })
     //    Size filters also read product_variants.size_attribute_value_id, because
     //    the Admin panel stores generated sizes on variants rather than on the
     //    descriptive product_attribute_values table.
-    let pavMap: StorefrontProductAttributeMap = {};
     if (productIds.length > 0) {
       const { data: pavRows } = await sb
         .from('product_attribute_values')
