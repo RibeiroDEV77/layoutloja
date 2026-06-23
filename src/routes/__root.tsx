@@ -157,6 +157,7 @@ function RootComponent() {
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
             <MiniCart />
+            <WhatsAppFab />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>
