@@ -16,6 +16,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MinhaContaIndexRouteImport } from './routes/minha-conta.index'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
@@ -95,6 +96,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaContaIndexRoute = MinhaContaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MinhaContaRoute,
 } as any)
 const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
   id: '/produto/$slug',
@@ -361,13 +367,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
-  '/minha-conta': typeof MinhaContaRoute
+  '/minha-conta': typeof MinhaContaRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
+  '/minha-conta/': typeof MinhaContaIndexRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -414,12 +421,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
-  '/minha-conta': typeof MinhaContaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
+  '/minha-conta': typeof MinhaContaIndexRoute
   '/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -467,13 +474,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
-  '/minha-conta': typeof MinhaContaRoute
+  '/minha-conta': typeof MinhaContaRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
+  '/minha-conta/': typeof MinhaContaIndexRoute
   '/_authenticated/admin/attribute-values': typeof AuthenticatedAdminAttributeValuesRoute
   '/_authenticated/admin/attributes': typeof AuthenticatedAdminAttributesRoute
   '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
@@ -529,6 +537,7 @@ export interface FileRouteTypes {
     | '/categoria/$slug'
     | '/pedido/$id'
     | '/produto/$slug'
+    | '/minha-conta/'
     | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/audit'
@@ -575,12 +584,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/checkout'
-    | '/minha-conta'
     | '/reset-password'
     | '/sacola'
     | '/categoria/$slug'
     | '/pedido/$id'
     | '/produto/$slug'
+    | '/minha-conta'
     | '/admin/attribute-values'
     | '/admin/attributes'
     | '/admin/audit'
@@ -634,6 +643,7 @@ export interface FileRouteTypes {
     | '/categoria/$slug'
     | '/pedido/$id'
     | '/produto/$slug'
+    | '/minha-conta/'
     | '/_authenticated/admin/attribute-values'
     | '/_authenticated/admin/attributes'
     | '/_authenticated/admin/audit'
@@ -682,7 +692,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
-  MinhaContaRoute: typeof MinhaContaRoute
+  MinhaContaRoute: typeof MinhaContaRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SacolaRoute: typeof SacolaRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
@@ -745,6 +755,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/minha-conta/': {
+      id: '/minha-conta/'
+      path: '/'
+      fullPath: '/minha-conta/'
+      preLoaderRoute: typeof MinhaContaIndexRouteImport
+      parentRoute: typeof MinhaContaRoute
     }
     '/produto/$slug': {
       id: '/produto/$slug'
@@ -1237,12 +1254,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface MinhaContaRouteChildren {
+  MinhaContaIndexRoute: typeof MinhaContaIndexRoute
+}
+
+const MinhaContaRouteChildren: MinhaContaRouteChildren = {
+  MinhaContaIndexRoute: MinhaContaIndexRoute,
+}
+
+const MinhaContaRouteWithChildren = MinhaContaRoute._addFileChildren(
+  MinhaContaRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
-  MinhaContaRoute: MinhaContaRoute,
+  MinhaContaRoute: MinhaContaRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SacolaRoute: SacolaRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
