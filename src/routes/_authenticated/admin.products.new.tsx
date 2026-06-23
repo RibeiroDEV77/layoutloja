@@ -719,7 +719,7 @@ function ColorGallerySection({
   };
 
   return (
-    <div className={cn("rounded-lg border p-4 space-y-3", !compact && "bg-muted/20")}>
+    <div className={cn(compact ? "space-y-3" : "rounded-lg border p-4 space-y-3 bg-muted/20")}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />
