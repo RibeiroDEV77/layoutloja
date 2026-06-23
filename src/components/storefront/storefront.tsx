@@ -888,16 +888,14 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
             {[0,1,2,3,4].map(i => <Star key={i} className="h-3.5 w-3.5 fill-current" strokeWidth={0} />)}
           </div>
         )}
-        <div className="flex items-baseline gap-2 pt-1">
+        <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 pt-1">
           {p.on_sale && salePrice ? (
             <>
-              <span className="text-[var(--brand-red)] text-[20px] font-bold">{salePrice}</span>
-              {price && <span className="text-[#666] line-through text-[13px]">{price}</span>}
+              <span className="text-[var(--brand-red)] text-lg font-bold">{salePrice}</span>
+              {price && <span className="text-gray-400 line-through text-sm">{price}</span>}
             </>
-          ) : price ? (
-            <span className="text-[#111] text-[20px] font-bold">{price}</span>
           ) : (
-            <span className="text-[#666] text-[13px]">Sob consulta</span>
+            <span className="text-[#111] text-lg font-bold">{price ?? formatBRL(0)}</span>
           )}
         </div>
         {installments && (
