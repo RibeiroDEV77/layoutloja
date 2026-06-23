@@ -151,6 +151,36 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
       mediaByColor.set(m.product_color_id, list);
     }
 
+    // Agrega preço mínimo por produto a partir das variantes ativas
+    const priceByProduct = new Map<string, { price: number; list: number }>();
+    const { data: variantsForPrice } = await sb
+      .from('product_variants')
+      .select('id, product_id')
+      .in('product_id', productIds)
+      .eq('is_active', true);
+    const variantIds = (variantsForPrice ?? []).map((v) => v.id);
+    const productByVariant = new Map((variantsForPrice ?? []).map((v) => [v.id, v.product_id]));
+    if (variantIds.length) {
+      const { data: priceItems } = await sb
+        .from('price_list_items')
+        .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, is_public)')
+        .in('variant_id', variantIds)
+        .eq('price_lists.is_active', true)
+        .eq('price_lists.is_public', true);
+      for (const it of (priceItems ?? []) as Array<{ variant_id: string; price: number; compare_at_price: number | null; min_quantity: number | null; max_quantity: number | null }>) {
+        const minQ = it.min_quantity ?? 1;
+        const maxQ = it.max_quantity ?? null;
+        if (1 < minQ) continue;
+        if (maxQ != null && 1 > maxQ) continue;
+        const pid = productByVariant.get(it.variant_id);
+        if (!pid) continue;
+        const price = Number(it.price);
+        const list = it.compare_at_price != null ? Number(it.compare_at_price) : price;
+        const prev = priceByProduct.get(pid);
+        if (!prev || price < prev.price) priceByProduct.set(pid, { price, list });
+      }
+    }
+
     const rowsWithImages = products.map((p) => {
       const pColors = (colorsByProduct.get(p.id) ?? []).sort((a, b) =>
         Number(b.is_default) - Number(a.is_default) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
@@ -160,10 +190,16 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
       );
       const cover = medias.find((m) => m.is_cover) ?? medias[0] ?? null;
       const hover = medias.find((m) => m.is_hover_media && m.id !== cover?.id) ?? medias.find((m) => m.id !== cover?.id) ?? null;
+      const pr = priceByProduct.get(p.id) ?? null;
+      const onSale = !!(pr && pr.list > pr.price);
       return {
         ...p,
         image_url: cover ? (resolvedById.get(cover.id) ?? cover.external_url ?? cover.thumbnail_url ?? cover.storage_path) : null,
         hover_image_url: hover ? (resolvedById.get(hover.id) ?? hover.external_url ?? hover.thumbnail_url ?? hover.storage_path) : null,
+        price: pr ? (onSale ? pr.list : pr.price) : null,
+        sale_price: onSale ? pr!.price : null,
+        list_price: pr?.list ?? null,
+        on_sale: p.on_sale || onSale,
       };
     });
     return { rows: rowsWithImages };
