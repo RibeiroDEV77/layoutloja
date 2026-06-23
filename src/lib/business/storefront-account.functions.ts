@@ -232,7 +232,7 @@ export const getMyOrder = createServerFn({ method: "GET" })
   });
 
 // ---------- wishlist ----------
-async function ensureWishlist(ctx: any, customerId: string) {
+async function ensureWishlist(ctx: any, customerId: string, storeId: string) {
   const { data } = await ctx.supabase
     .from("wishlists")
     .select("id")
@@ -243,7 +243,7 @@ async function ensureWishlist(ctx: any, customerId: string) {
   if (data) return data.id as string;
   const { data: created, error } = await ctx.supabase
     .from("wishlists")
-    .insert({ customer_id: customerId, name: "Favoritos" })
+    .insert({ customer_id: customerId, store_id: storeId, name: "Favoritos" })
     .select("id")
     .single();
   if (error) throw error;
@@ -254,12 +254,12 @@ export const listMyWishlist = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const customer = await ensureCustomer(context);
-    const wid = await ensureWishlist(context, customer.id);
+    const wid = await ensureWishlist(context, customer.id, customer.store_id);
     const { data, error } = await context.supabase
       .from("wishlist_items")
-      .select("id, product_id, variant_id, created_at, products(id, name, slug)")
+      .select("id, product_id, variant_id, added_at, products(id, name, slug)")
       .eq("wishlist_id", wid)
-      .order("created_at", { ascending: false });
+      .order("added_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
   });
@@ -271,10 +271,15 @@ export const addToWishlist = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const customer = await ensureCustomer(context);
-    const wid = await ensureWishlist(context, customer.id);
+    const wid = await ensureWishlist(context, customer.id, customer.store_id);
     const { error } = await context.supabase
       .from("wishlist_items")
-      .insert({ wishlist_id: wid, product_id: data.product_id, variant_id: data.variant_id ?? null });
+      .insert({
+        wishlist_id: wid,
+        store_id: customer.store_id,
+        product_id: data.product_id,
+        variant_id: data.variant_id ?? null,
+      });
     if (error && !String(error.message).includes("duplicate")) throw error;
     return { ok: true };
   });
