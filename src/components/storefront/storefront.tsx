@@ -1006,35 +1006,32 @@ export function NewsletterSection() {
 
 export function TrustStrip() {
   const items = [
-    { icon: Truck, title: "Frete grátis", desc: "Acima de R$ 299" },
-    { icon: CreditCard, title: "Até 6x sem juros", desc: "No cartão de crédito" },
-    { icon: RotateCcw, title: "Troca fácil", desc: "Em até 30 dias" },
-    { icon: ShieldCheck, title: "Compra segura", desc: "Site 100% protegido" },
+    { icon: Truck, title: "Enviamos para todo o Brasil" },
+    { icon: CreditCard, title: "Parcele no cartão" },
+    { icon: ShieldCheck, title: "Compra Segura" },
+    { icon: Shirt, title: "Grande variedade de modelos" },
   ];
   return (
-    <section aria-label="Benefícios" className="bg-white border-y border-[#EFEFEF]">
+    <section aria-label="Benefícios" className="bg-white border-y border-[#ECECEC]">
       <div className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
-        {/* Desktop: linha única */}
-        <ul className="hidden md:flex items-center justify-between h-[64px] divide-x divide-[#EFEFEF]">
+        {/* Desktop: linha única (4 colunas) */}
+        <ul className="hidden lg:flex items-center justify-between h-[68px] divide-x divide-[#ECECEC]">
           {items.map((it) => (
-            <li key={it.title} className="flex-1 flex items-center justify-center gap-3 px-4">
-              <it.icon className="h-5 w-5 text-[#111] shrink-0" strokeWidth={1.5} />
-              <div className="leading-tight">
-                <p className="text-[14px] font-medium text-[#111]">{it.title}</p>
-                <p className="text-[12px] text-[#666]">{it.desc}</p>
-              </div>
+            <li
+              key={it.title}
+              className="flex-1 flex items-center justify-center gap-3 px-4 transition-colors hover:bg-[#FAFAFA]"
+            >
+              <it.icon className="h-[22px] w-[22px] shrink-0 text-[#C91D22]" strokeWidth={1.75} />
+              <span className="text-[14px] font-medium text-[#111]">{it.title}</span>
             </li>
           ))}
         </ul>
-        {/* Mobile: grade 2x2 */}
-        <ul className="md:hidden grid grid-cols-2 gap-x-2 gap-y-3 py-3">
+        {/* Tablet + Mobile: grade 2x2 */}
+        <ul className="lg:hidden grid grid-cols-2 gap-x-3 gap-y-2 py-3">
           {items.map((it) => (
-            <li key={it.title} className="flex items-center gap-2 px-2">
-              <it.icon className="h-5 w-5 text-[#111] shrink-0" strokeWidth={1.5} />
-              <div className="leading-tight min-w-0">
-                <p className="text-[12px] font-medium text-[#111] truncate">{it.title}</p>
-                <p className="text-[11px] text-[#666] truncate">{it.desc}</p>
-              </div>
+            <li key={it.title} className="flex items-center gap-2 px-2 py-1">
+              <it.icon className="h-[18px] w-[18px] shrink-0 text-[#C91D22]" strokeWidth={1.75} />
+              <span className="text-[12px] font-medium text-[#111] leading-tight">{it.title}</span>
             </li>
           ))}
         </ul>
