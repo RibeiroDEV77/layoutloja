@@ -648,6 +648,39 @@ function VariantsTab({
     if (ok) qc.invalidateQueries({ queryKey: ["product-prices", productId] });
   };
 
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkStock, setBulkStock] = useState("");
+  const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
+
+  const applyBulkPrice = async () => {
+    const value = Number(bulkPrice.replace(",", "."));
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
+    setBulkSaving("price");
+    try {
+      for (const v of variantsQ.data ?? []) await savePrice(v.id, value, null);
+      notify.success("Preço aplicado em todas as variantes");
+      setBulkPrice("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+
+  const applyBulkStock = async () => {
+    const value = Number(bulkStock);
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
+    setBulkSaving("stock");
+    try {
+      for (const v of variantsQ.data ?? []) {
+        const stock = stockByVariant.get(v.id);
+        if (stock?.id) await saveStock(stock.id, value);
+      }
+      notify.success("Estoque aplicado em todas as variantes");
+      setBulkStock("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+
   // ---------- Lookups ----------
   const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
   const sizeById = useMemo(() => {
@@ -1405,6 +1438,29 @@ function SeoTab({ product, onSaved }: { product: ProductRow; onSaved: () => void
           maxLength={170}
         />
       </FormField>
+    </TabShell>
+  );
+}
+
+function AdvancedTab({
+  productId, product, storeId, onSaved,
+}: { productId: string; product: ProductRow; storeId: string | null; onSaved: () => void }) {
+  return (
+    <TabShell title="Configurações avançadas" description="Itens usados com menos frequência ficam separados para não atrapalhar o cadastro principal.">
+      <Tabs defaultValue="seo" className="space-y-4">
+        <div className="overflow-x-auto">
+          <TabsList className="h-auto flex-wrap">
+            <TabsTrigger value="seo">SEO</TabsTrigger>
+            <TabsTrigger value="prices">Listas de preço</TabsTrigger>
+            <TabsTrigger value="related">Relacionados</TabsTrigger>
+            <TabsTrigger value="history">Histórico</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="seo" className="m-0"><SeoTab product={product} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="prices" className="m-0"><PricesTab productId={productId} storeId={storeId} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="related" className="m-0"><RelatedTab productId={productId} storeId={storeId} /></TabsContent>
+        <TabsContent value="history" className="m-0"><HistoryTab productId={productId} /></TabsContent>
+      </Tabs>
     </TabShell>
   );
 }
