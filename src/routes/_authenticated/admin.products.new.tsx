@@ -268,7 +268,7 @@ function ProductNewWizardPage() {
             <BasicBlock
               storeId={storeId}
               productId={productId}
-              onCreated={(id) => { setProductId(id); refresh(); scrollToSection("photos"); }}
+              onCreated={(id) => { setProductId(id); refresh(); scrollToSection("catalog"); }}
               onUpdated={refresh}
               onNext={() => goNext("basic")}
             />
@@ -284,17 +284,9 @@ function ProductNewWizardPage() {
 
           {productId && (
             <>
-              <section id="section-photos" className="scroll-mt-32">
-                <PhotosBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("photos")} onNext={() => goNext("photos")} />
-              </section>
-              <section id="section-variations" className="scroll-mt-32">
-                <VariationsBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("variations")} onNext={() => goNext("variations")} />
-              </section>
-              <section id="section-stockprice" className="scroll-mt-32">
-                <StockPriceBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("stockprice")} onNext={() => goNext("stockprice")} />
+              <section id="section-catalog" className="scroll-mt-32">
+                <CatalogBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("catalog")} onNext={() => goNext("catalog")} />
               </section>
               <section id="section-organization" className="scroll-mt-32">
                 <OrganizationBlock productId={productId} onChange={refresh}
