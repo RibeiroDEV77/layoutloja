@@ -20,6 +20,7 @@ import { Route as MinhaContaIndexRouteImport } from './routes/minha-conta.index'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as MinhaContaPedidosRouteImport } from './routes/minha-conta.pedidos'
+import { Route as MinhaContaFavoritosRouteImport } from './routes/minha-conta.favoritos'
 import { Route as MinhaContaEnderecosRouteImport } from './routes/minha-conta.enderecos'
 import { Route as MinhaContaDadosRouteImport } from './routes/minha-conta.dados'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
@@ -118,6 +119,11 @@ const PedidoIdRoute = PedidoIdRouteImport.update({
 const MinhaContaPedidosRoute = MinhaContaPedidosRouteImport.update({
   id: '/pedidos',
   path: '/pedidos',
+  getParentRoute: () => MinhaContaRoute,
+} as any)
+const MinhaContaFavoritosRoute = MinhaContaFavoritosRouteImport.update({
+  id: '/favoritos',
+  path: '/favoritos',
   getParentRoute: () => MinhaContaRoute,
 } as any)
 const MinhaContaEnderecosRoute = MinhaContaEnderecosRouteImport.update({
@@ -392,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
+  '/minha-conta/favoritos': typeof MinhaContaFavoritosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
@@ -447,6 +454,7 @@ export interface FileRoutesByTo {
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
+  '/minha-conta/favoritos': typeof MinhaContaFavoritosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
@@ -505,6 +513,7 @@ export interface FileRoutesById {
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
+  '/minha-conta/favoritos': typeof MinhaContaFavoritosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
   '/produto/$slug': typeof ProdutoSlugRoute
@@ -564,6 +573,7 @@ export interface FileRouteTypes {
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
+    | '/minha-conta/favoritos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
     | '/produto/$slug'
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
+    | '/minha-conta/favoritos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
     | '/produto/$slug'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
+    | '/minha-conta/favoritos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
     | '/produto/$slug'
@@ -818,6 +830,13 @@ declare module '@tanstack/react-router' {
       path: '/pedidos'
       fullPath: '/minha-conta/pedidos'
       preLoaderRoute: typeof MinhaContaPedidosRouteImport
+      parentRoute: typeof MinhaContaRoute
+    }
+    '/minha-conta/favoritos': {
+      id: '/minha-conta/favoritos'
+      path: '/favoritos'
+      fullPath: '/minha-conta/favoritos'
+      preLoaderRoute: typeof MinhaContaFavoritosRouteImport
       parentRoute: typeof MinhaContaRoute
     }
     '/minha-conta/enderecos': {
@@ -1314,6 +1333,7 @@ const AuthenticatedRouteRouteWithChildren =
 interface MinhaContaRouteChildren {
   MinhaContaDadosRoute: typeof MinhaContaDadosRoute
   MinhaContaEnderecosRoute: typeof MinhaContaEnderecosRoute
+  MinhaContaFavoritosRoute: typeof MinhaContaFavoritosRoute
   MinhaContaPedidosRoute: typeof MinhaContaPedidosRoute
   MinhaContaIndexRoute: typeof MinhaContaIndexRoute
 }
@@ -1321,6 +1341,7 @@ interface MinhaContaRouteChildren {
 const MinhaContaRouteChildren: MinhaContaRouteChildren = {
   MinhaContaDadosRoute: MinhaContaDadosRoute,
   MinhaContaEnderecosRoute: MinhaContaEnderecosRoute,
+  MinhaContaFavoritosRoute: MinhaContaFavoritosRoute,
   MinhaContaPedidosRoute: MinhaContaPedidosRoute,
   MinhaContaIndexRoute: MinhaContaIndexRoute,
 }
