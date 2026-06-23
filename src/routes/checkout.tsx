@@ -64,6 +64,7 @@ function isValidName(s: string) {
 }
 
 function CheckoutPage() {
+  const { categories, brands, products } = Route.useLoaderData();
   const cart = useStorefrontCart();
   const navigate = useNavigate();
   const fnQuote = useServerFn(anonQuoteShipping);
