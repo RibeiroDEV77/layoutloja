@@ -703,6 +703,18 @@ function VariantsTab({
 
   const sizeValues = sizeAttrQ.data?.values ?? [];
   const variants = variantsQ.data ?? [];
+  const sizesByColor = useMemo(() => {
+    const m = new Map<string, string[]>();
+    variants.forEach((v) => {
+      if (!v.color_id) return;
+      const label = v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? null : null;
+      if (!label) return;
+      const arr = m.get(v.color_id) ?? [];
+      if (!arr.includes(label)) arr.push(label);
+      m.set(v.color_id, arr);
+    });
+    return m;
+  }, [variants, sizeById]);
 
   return (
     <TabShell
