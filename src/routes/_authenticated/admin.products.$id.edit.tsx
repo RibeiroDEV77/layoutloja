@@ -515,13 +515,6 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
         </div>
       </div>
 
-      {form.category_id && (
-          <div key={k} className="flex items-center justify-between rounded-md border p-2">
-            <Label className="text-xs">{label}</Label>
-            <Switch checked={form[k] as boolean} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
-          </div>
-        ))}
-      </div>
 
       {form.category_id && (
         <div className="space-y-3 pt-4 border-t">
