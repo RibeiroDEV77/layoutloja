@@ -1,40 +1,105 @@
-## Diagnóstico
+## Objetivo
 
-Auditei a "Calça Country Balão" no banco. Ela já está atribuída à categoria **Masculino › Calças › Country** (slug `masc-calcas-country`) — então não está realmente em "Esporte Fino". O que aparece em Esporte Fino é outro produto, ou houve confusão visual entre os dropdowns.
+Implementar autenticação completa da loja (separada do admin), usando o ícone de usuário da navbar como ponto de entrada. Aproveitar o schema existente: `customers.auth_user_id`, `customer_addresses`, `wishlists/wishlist_items`, `orders`. Não criar tabelas duplicadas.
 
-Independente disso, o problema de fundo é real: **cada produto hoje só pode ficar em UMA categoria** (`products.category_id`). Você quer poder marcar o mesmo produto em várias seções (ex.: Country **e** Calças **e** Masculino, ou Country **e** Promoções).
+## Antes de começar — confirme
 
-## Plano
+1. **CPF criptografado com pgcrypto**: você precisa fornecer (ou autorizo gerar) o secret `CUSTOMER_PII_KEY` (chave AES armazenada via `add_secret`). A criptografia/descriptografia ficará em SECURITY DEFINER functions que recebem a chave via `current_setting`/parâmetro do server — nunca exposta ao cliente. Confirma essa abordagem?
+2. **Verificação de e-mail**: deixo o Supabase Auth com confirmação por e-mail habilitada (padrão) ou login imediato sem confirmação para facilitar testes?
 
-### 1. Banco — tabela de junção (migration)
-- Criar `public.product_categories(product_id, category_id, is_primary)` com PK composta, FKs com `ON DELETE CASCADE`, índice por categoria.
-- GRANTs (`anon SELECT`, `authenticated ALL`, `service_role ALL`) + RLS espelhando as políticas de `products`.
-- **Seed**: para cada produto existente, inserir uma linha com seu `category_id` atual marcada como `is_primary=true`. Mantém `products.category_id` como a "categoria primária" para compatibilidade.
+---
 
-### 2. Server functions (`storefront.functions.ts`)
-- `listStorefrontProducts` continua igual (sem filtro por categoria).
-- Adicionar `listProductCategoryMap({ product_ids })` retornando `Record<product_id, category_id[]>`, lendo de `product_categories`.
+## 1. Banco de dados (uma migration)
 
-### 3. Vitrine (`src/routes/categoria.$slug.tsx`)
-- No loader, buscar o mapa de categorias dos produtos da loja e considerar um produto pertencente à categoria atual quando **qualquer** uma de suas categorias (primária + extras) estiver no conjunto de IDs descendentes. Isso faz a "Calça Country Balão" aparecer corretamente em Country, Calças e Masculino simultaneamente.
+### 1.1 RLS para o cliente final acessar **seus próprios** dados
+Hoje as policies de `customers`, `customer_addresses`, `wishlists`, `wishlist_items`, `orders` são todas escopadas para staff (admin). Adicionar policies adicionais para o **cliente logado** (role `authenticated`):
 
-### 4. Admin — `admin.products.$id.edit.tsx`
-- Adicionar bloco "Seções adicionais" abaixo do seletor atual de categoria.
-- Componente: lista de checkboxes agrupada por departamento (árvore de `categories`), pré-marcando as linhas existentes em `product_categories`.
-- Server function `setProductCategories({ product_id, category_ids })` (com `requireSupabaseAuth` + checagem de role admin) que faz upsert/delete diff e garante que a primária (`category_id` do produto) sempre fique presente.
-- Ao salvar o produto, chamar a nova função.
+- `customers`: SELECT/UPDATE quando `auth_user_id = auth.uid()`.
+- `customer_addresses`: SELECT/INSERT/UPDATE/DELETE quando o `customer_id` pertence a um `customers` com `auth_user_id = auth.uid()` (via função `public.current_customer_id()` SECURITY DEFINER).
+- `wishlists` + `wishlist_items`: idem (`current_customer_id()`).
+- `orders` + `order_items`: somente SELECT do próprio cliente.
 
-### 5. Admin — criação (`admin.products.new.tsx`)
-- Após criar o produto com a categoria primária, opcionalmente abrir o mesmo painel de seções adicionais (ou deixar para a tela de edição). Para escopo mínimo: deixar só na edição.
+### 1.2 Função helper
+```sql
+CREATE OR REPLACE FUNCTION public.current_customer_id()
+RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT id FROM public.customers WHERE auth_user_id = auth.uid() LIMIT 1
+$$;
+```
 
-## Detalhes técnicos
+### 1.3 Trigger pós-signup
+`handle_new_storefront_user()` cria a linha em `customers` (type=`pessoa_fisica`, status=`ativo`, store_id default da loja) ao inserir em `auth.users`, copiando email e `raw_user_meta_data.full_name`.
 
-- O fallback de exibição da categoria principal continua sendo `products.category_id` (breadcrumbs, edição inicial).
-- A política RLS de leitura em `product_categories` é pública (`TO anon SELECT`) para que a vitrine SSR funcione sem auth.
-- Sem mudanças em `product_collections` (são coleções de marketing, não categorização).
+### 1.4 pgcrypto para CPF
+- `CREATE EXTENSION IF NOT EXISTS pgcrypto;`
+- Coluna nova `customers.doc_number_encrypted bytea` (mantém `doc_number` para o admin já existente — não quebra nada; storefront passa a usar a versão criptografada).
+- Funções `encrypt_doc(text)` / `decrypt_doc(bytea)` SECURITY DEFINER usando `pgp_sym_encrypt` com chave passada como parâmetro pelo server.
 
-## Fora de escopo
+> Não armazenamos senhas (Supabase Auth cuida) nem dados de cartão.
 
-- Reordenar/priorizar categorias além de "primária vs extras".
-- Migrar `products.category_id` para puramente derivado da junção (mantemos os dois por simplicidade).
-- Corrigir mapeamento do item de nav "Country" (slug `country` não casa com nenhuma categoria do banco) — posso fazer em seguida se quiser.
+---
+
+## 2. Server functions (TanStack Start)
+
+`src/lib/business/storefront-account.functions.ts` com `requireSupabaseAuth`:
+- `getMyAccount()` — devolve customer + endereços (descriptografando CPF).
+- `updateMyProfile({ name, phone, birth_date, doc_number? })` — criptografa CPF.
+- `listMyAddresses()`, `upsertMyAddress(...)`, `deleteMyAddress(id)`, `setDefaultAddress(id)`.
+- `listMyOrders()`, `getMyOrder(id)`.
+- `listMyWishlist()`, `addToWishlist(product_id)`, `removeFromWishlist(item_id)`.
+
+---
+
+## 3. UI
+
+### 3.1 `AccountSheet` — modal (desktop) / drawer (mobile)
+Acionado pelo ícone `User` da `StorefrontNavbar` (já existe).
+- **Não autenticado**: tabs "Entrar / Cadastrar / Recuperar senha" (Supabase `signInWithPassword`, `signUp` com `emailRedirectTo`, `resetPasswordForEmail` apontando para `/reset-password` — já existe).
+- **Autenticado**: header com nome/email + lista "Meus Pedidos · Endereços · Dados Pessoais · Favoritos · Sair". Cada item leva para `/minha-conta/...`.
+
+Componentes: shadcn `Sheet` (mobile) e `Dialog` (desktop), alternados por `useIsMobile`.
+
+### 3.2 Rotas `/minha-conta/*`
+Como **rota pública não pode** chamar server fn com `requireSupabaseAuth` durante SSR, criar layout sob `_storefront-account/` com `ssr: false` + redirect para `/` (abrindo o `AccountSheet` em login) quando não há sessão. Estrutura:
+
+```
+src/routes/_storefront-account/route.tsx        ← gate ssr:false
+src/routes/_storefront-account/minha-conta.tsx  ← layout com sidebar
+src/routes/_storefront-account/minha-conta.index.tsx       (resumo)
+src/routes/_storefront-account/minha-conta.pedidos.tsx
+src/routes/_storefront-account/minha-conta.pedidos.$id.tsx
+src/routes/_storefront-account/minha-conta.enderecos.tsx
+src/routes/_storefront-account/minha-conta.dados.tsx
+src/routes/_storefront-account/minha-conta.favoritos.tsx
+```
+
+Sidebar fixa à esquerda no desktop, accordion/colapsada no mobile. Cabeçalho com avatar e botão Sair.
+
+### 3.3 Checkout-ready (preparo, sem alterar fluxo atual)
+- Expor `useStorefrontCustomer()` (hook) consumindo `getMyAccount` via TanStack Query.
+- No `checkout.tsx`, em PR futuro, basta preencher `defaultValues` dos campos a partir desse hook quando `ctx.authenticated`. Já deixo o ponto preparado com TODO.
+
+---
+
+## 4. Arquivos a criar / editar
+
+**Criar**
+- migration única (`auth_storefront_setup`)
+- `src/lib/business/storefront-account.functions.ts`
+- `src/components/storefront/account-sheet.tsx`
+- `src/hooks/use-storefront-customer.ts`
+- 7 rotas em `_storefront-account/`
+
+**Editar**
+- `src/components/storefront/storefront.tsx` → `StorefrontNavbar` abre `AccountSheet` no clique do ícone User.
+- `.env`/secrets → `CUSTOMER_PII_KEY`.
+
+---
+
+## 5. Riscos / observações
+
+- O `_authenticated/route.tsx` atual redireciona para `/auth` (página do admin). Não vou mexer nele — `_storefront-account` é gate separado para clientes e redireciona para `/` (com modal).
+- RLS adicional para `authenticated` em tabelas que hoje só liberam para staff é **aditiva** (não revoga policies admin existentes).
+- `customer.store_id` é NOT NULL: trigger usa a loja default (primeira `stores` ativa) — confirme se há regra para múltiplas lojas.
+
+Confirme os dois pontos no topo (CPF/secret e confirmação de e-mail) e a regra de `store_id`, e eu executo migration + código.
