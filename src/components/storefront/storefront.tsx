@@ -249,7 +249,14 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
                 <Search className="h-5 w-5" strokeWidth={1.5} />
               </button>
 
-              <IconBtn label="Minha conta"><User className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
+              <button
+                type="button"
+                aria-label="Minha conta"
+                onClick={() => import("@/hooks/use-storefront-customer").then((m) => m.openAccountSheet())}
+                className="relative p-2.5 text-[#111] hover:text-[var(--brand-red)] transition-colors duration-200"
+              >
+                <User className="h-5 w-5" strokeWidth={1.5} />
+              </button>
               <IconBtn label="Favoritos"><Heart className="h-5 w-5" strokeWidth={1.5} /></IconBtn>
               <CartIconButton />
 
