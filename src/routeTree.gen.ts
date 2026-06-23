@@ -21,6 +21,7 @@ import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as MinhaContaPedidosRouteImport } from './routes/minha-conta.pedidos'
 import { Route as MinhaContaEnderecosRouteImport } from './routes/minha-conta.enderecos'
+import { Route as MinhaContaDadosRouteImport } from './routes/minha-conta.dados'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -122,6 +123,11 @@ const MinhaContaPedidosRoute = MinhaContaPedidosRouteImport.update({
 const MinhaContaEnderecosRoute = MinhaContaEnderecosRouteImport.update({
   id: '/enderecos',
   path: '/enderecos',
+  getParentRoute: () => MinhaContaRoute,
+} as any)
+const MinhaContaDadosRoute = MinhaContaDadosRouteImport.update({
+  id: '/dados',
+  path: '/dados',
   getParentRoute: () => MinhaContaRoute,
 } as any)
 const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
@@ -384,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/sacola': typeof SacolaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
+  '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
@@ -438,6 +445,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
+  '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
@@ -495,6 +503,7 @@ export interface FileRoutesById {
   '/sacola': typeof SacolaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/categoria/$slug': typeof CategoriaSlugRoute
+  '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
   '/minha-conta/pedidos': typeof MinhaContaPedidosRoute
   '/pedido/$id': typeof PedidoIdRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/admin'
     | '/categoria/$slug'
+    | '/minha-conta/dados'
     | '/minha-conta/enderecos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
@@ -607,6 +617,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/categoria/$slug'
+    | '/minha-conta/dados'
     | '/minha-conta/enderecos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
@@ -663,6 +674,7 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/_authenticated/admin'
     | '/categoria/$slug'
+    | '/minha-conta/dados'
     | '/minha-conta/enderecos'
     | '/minha-conta/pedidos'
     | '/pedido/$id'
@@ -813,6 +825,13 @@ declare module '@tanstack/react-router' {
       path: '/enderecos'
       fullPath: '/minha-conta/enderecos'
       preLoaderRoute: typeof MinhaContaEnderecosRouteImport
+      parentRoute: typeof MinhaContaRoute
+    }
+    '/minha-conta/dados': {
+      id: '/minha-conta/dados'
+      path: '/dados'
+      fullPath: '/minha-conta/dados'
+      preLoaderRoute: typeof MinhaContaDadosRouteImport
       parentRoute: typeof MinhaContaRoute
     }
     '/categoria/$slug': {
@@ -1293,12 +1312,14 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface MinhaContaRouteChildren {
+  MinhaContaDadosRoute: typeof MinhaContaDadosRoute
   MinhaContaEnderecosRoute: typeof MinhaContaEnderecosRoute
   MinhaContaPedidosRoute: typeof MinhaContaPedidosRoute
   MinhaContaIndexRoute: typeof MinhaContaIndexRoute
 }
 
 const MinhaContaRouteChildren: MinhaContaRouteChildren = {
+  MinhaContaDadosRoute: MinhaContaDadosRoute,
   MinhaContaEnderecosRoute: MinhaContaEnderecosRoute,
   MinhaContaPedidosRoute: MinhaContaPedidosRoute,
   MinhaContaIndexRoute: MinhaContaIndexRoute,
