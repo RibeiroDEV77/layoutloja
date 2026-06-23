@@ -1646,69 +1646,8 @@ function BlockFooter({ left, right }: { left?: React.ReactNode; right?: React.Re
   );
 }
 
-// =============================================================================
-// Wizard Sidebar — etapas verticais com status
-// =============================================================================
-function WizardSidebar({
-  step, currentIdx, productId, canPublish, onJump,
-}: {
-  step: StepKey;
-  currentIdx: number;
-  productId: string | null;
-  canPublish: boolean;
-  onJump: (k: StepKey) => void;
-}) {
-  return (
-    <aside className="lg:sticky lg:top-32 lg:self-start">
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-            Cadastro do Produto
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          <ol className="space-y-1">
-            {STEPS.map((s, i) => {
-              const isActive = s.key === step;
-              const isDone = i < currentIdx || (s.key === "publish" && canPublish);
-              const disabled = !productId && s.key !== "basic";
-              return (
-                <li key={s.key}>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onJump(s.key)}
-                    className={cn(
-                      "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-                      isActive && "bg-primary/10 text-primary font-semibold",
-                      !isActive && isDone && "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/5",
-                      !isActive && !isDone && "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-bold transition",
-                        isActive ? "bg-primary text-primary-foreground shadow-sm"
-                          : isDone ? "bg-emerald-500 text-white"
-                          : "bg-muted text-muted-foreground border",
-                      )}
-                    >
-                      {isDone ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                    </span>
-                    <span className="truncate flex-1">{s.label}</span>
-                    {isActive && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </CardContent>
-      </Card>
-    </aside>
-  );
-}
+// (WizardSidebar removido — substituído pela section nav inline em ProductNewWizardPage)
+
 
 // =============================================================================
 // Readiness Card — checklist em tempo real
