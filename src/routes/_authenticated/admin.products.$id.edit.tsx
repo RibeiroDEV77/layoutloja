@@ -466,6 +466,63 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
         ))}
       </div>
 
+      <div className="space-y-2 pt-4 border-t">
+        <div className="flex items-baseline justify-between">
+          <p className="text-sm font-medium">Seções adicionais</p>
+          <span className="text-xs text-muted-foreground">
+            Marque todas as seções em que este produto deve aparecer (Country, Calças, Masculino, Promoções…).
+            A categoria primária acima é selecionada automaticamente.
+          </span>
+        </div>
+        <div className="max-h-72 overflow-auto rounded-md border p-3 space-y-3">
+          {(() => {
+            const rows = cats.data ?? [];
+            const roots = rows.filter((c) => !c.parent_id);
+            const byParent = new Map<string, typeof rows>();
+            for (const c of rows) {
+              if (!c.parent_id) continue;
+              const list = byParent.get(c.parent_id) ?? [];
+              list.push(c); byParent.set(c.parent_id, list);
+            }
+            const Row = (c: { id: string; name: string }, depth: number) => {
+              const isPrimary = c.id === form.category_id;
+              const checked = sectionIds.has(c.id) || isPrimary;
+              return (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/40 px-2 py-1 rounded"
+                  style={{ paddingLeft: 8 + depth * 16 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isPrimary}
+                    onChange={() => toggleSection(c.id)}
+                  />
+                  <span>{c.name}</span>
+                  {isPrimary && <Badge variant="outline" className="text-[10px]">primária</Badge>}
+                </label>
+              );
+            };
+            const renderTree = (parentId: string | null, depth: number): React.ReactNode[] => {
+              const children = parentId === null ? roots : byParent.get(parentId) ?? [];
+              return children.flatMap((c) => [Row(c, depth), ...renderTree(c.id, depth + 1)]);
+            };
+            return cats.isLoading ? (
+              <p className="text-xs text-muted-foreground">Carregando categorias…</p>
+            ) : renderTree(null, 0);
+          })()}
+        </div>
+      </div>
+
+      {form.category_id && (
+          <div key={k} className="flex items-center justify-between rounded-md border p-2">
+            <Label className="text-xs">{label}</Label>
+            <Switch checked={form[k] as boolean} onCheckedChange={(v) => setForm({ ...form, [k]: v })} />
+          </div>
+        ))}
+      </div>
+
       {form.category_id && (
         <div className="space-y-3 pt-4 border-t">
           <p className="text-sm font-medium">Atributos da categoria</p>
