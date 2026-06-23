@@ -130,8 +130,119 @@ export async function getCart(supabase: SbClient, userId: string | null, cartId:
     supabase.from('cart_coupons').select('*, coupons(code, name, type, value)').eq('cart_id', cartId),
     supabase.from('shipping_quotes').select('*').eq('cart_id', cartId).order('created_at', { ascending: false }).limit(20),
   ]);
-  return { cart, items: items ?? [], coupons: coupons ?? [], shipping_quotes: quotes ?? [] };
+  const hydratedItems = await hydrateCartItemSnapshots(supabase, items ?? []);
+  return { cart, items: hydratedItems, coupons: coupons ?? [], shipping_quotes: quotes ?? [] };
 }
+
+/**
+ * Enriquecimento read-only do `snapshot` de cada cart_item com imagem da variante,
+ * nome da cor e label do tamanho. Reaproveita a mesma lógica de DAM/signed URL
+ * usada na vitrine — sem persistir no banco, apenas para exibição.
+ */
+async function hydrateCartItemSnapshots<T extends { variant_id?: string | null; snapshot?: unknown }>(supabase: SbClient, items: T[]): Promise<T[]> {
+  if (!items.length) return items;
+  const variantIds = Array.from(new Set(items.map((i) => i.variant_id as string).filter(Boolean)));
+  if (!variantIds.length) return items;
+
+  const { data: variants } = await supabase
+    .from('product_variants')
+    .select('id, product_id, product_color_id, size_attribute_value_id')
+    .in('id', variantIds);
+  const vRows = (variants ?? []) as Array<{ id: string; product_id: string; product_color_id: string | null; size_attribute_value_id: string | null }>;
+
+  const productIds = Array.from(new Set(vRows.map((v) => v.product_id)));
+  const directColorIds = Array.from(new Set(vRows.map((v) => v.product_color_id).filter(Boolean) as string[]));
+  const sizeIds = Array.from(new Set(vRows.map((v) => v.size_attribute_value_id).filter(Boolean) as string[]));
+
+  const { data: prodColors } = productIds.length
+    ? await supabase.from('product_colors')
+        .select('id, product_id, name, is_default, sort_order')
+        .in('product_id', productIds)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+    : { data: [] as Array<{ id: string; product_id: string; name: string; is_default: boolean | null; sort_order: number | null }> };
+  const colorsByProduct = new Map<string, Array<{ id: string; name: string; is_default: boolean | null; sort_order: number | null }>>();
+  const colorById = new Map<string, { id: string; product_id: string; name: string }>();
+  for (const c of (prodColors ?? []) as Array<{ id: string; product_id: string; name: string; is_default: boolean | null; sort_order: number | null }>) {
+    const list = colorsByProduct.get(c.product_id) ?? [];
+    list.push(c);
+    colorsByProduct.set(c.product_id, list);
+    colorById.set(c.id, { id: c.id, product_id: c.product_id, name: c.name });
+  }
+
+  // resolve fallback color por produto (default → primeira ativa)
+  const fallbackColorByProduct = new Map<string, string>();
+  for (const [pid, list] of colorsByProduct) {
+    const sorted = list.slice().sort((a, b) => Number(b.is_default) - Number(a.is_default) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
+    if (sorted[0]) fallbackColorByProduct.set(pid, sorted[0].id);
+  }
+
+  const allColorIds = Array.from(new Set([...directColorIds, ...fallbackColorByProduct.values()]));
+  const { data: mediaRows } = allColorIds.length
+    ? await supabase.from('product_color_media')
+        .select('id, product_color_id, external_url, storage_path, thumbnail_url, is_cover, sort_order')
+        .in('product_color_id', allColorIds)
+        .order('sort_order', { ascending: true })
+    : { data: [] as Array<{ id: string; product_color_id: string; external_url: string | null; storage_path: string | null; thumbnail_url: string | null; is_cover: boolean | null; sort_order: number | null }> };
+
+  type MediaRow = { id: string; product_color_id: string; external_url: string | null; storage_path: string | null; thumbnail_url: string | null; is_cover: boolean | null; sort_order: number | null };
+  const damPathFromUrl = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    const s = raw.trim();
+    if (!s) return null;
+    if (!/^https?:\/\//i.test(s)) return s.replace(/^\/?dam\//, '') || null;
+    const m = s.match(/\/object\/(?:sign|public|authenticated)\/dam\/([^?#]+)/i);
+    return m?.[1] ? decodeURIComponent(m[1]) : null;
+  };
+  const mediasByColor = new Map<string, MediaRow[]>();
+  for (const m of (mediaRows ?? []) as MediaRow[]) {
+    const list = mediasByColor.get(m.product_color_id) ?? [];
+    list.push(m);
+    mediasByColor.set(m.product_color_id, list);
+  }
+
+  // assina URLs do bucket dam
+  const resolvedById = new Map<string, string>();
+  const toSign: Array<{ id: string; path: string }> = [];
+  for (const m of (mediaRows ?? []) as MediaRow[]) {
+    const path = damPathFromUrl(m.storage_path) ?? damPathFromUrl(m.external_url) ?? damPathFromUrl(m.thumbnail_url);
+    if (path) toSign.push({ id: m.id, path });
+    else if (m.external_url || m.thumbnail_url) resolvedById.set(m.id, (m.external_url ?? m.thumbnail_url) as string);
+  }
+  if (toSign.length) {
+    try {
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { data: signed } = await supabaseAdmin.storage.from('dam').createSignedUrls(toSign.map((t) => t.path), 60 * 60 * 24 * 7);
+      signed?.forEach((row, i) => { if (row?.signedUrl) resolvedById.set(toSign[i].id, row.signedUrl); });
+    } catch { /* mantém fallback */ }
+  }
+
+  const { data: sizeLabels } = sizeIds.length
+    ? await supabase.from('attribute_values').select('id, label').in('id', sizeIds)
+    : { data: [] as Array<{ id: string; label: string }> };
+  const sizeById = new Map<string, string>();
+  for (const s of (sizeLabels ?? []) as Array<{ id: string; label: string }>) sizeById.set(s.id, s.label);
+
+  function imageForColor(colorId: string | null | undefined, productId: string): string | null {
+    const cid = colorId ?? fallbackColorByProduct.get(productId) ?? null;
+    if (!cid) return null;
+    const medias = (mediasByColor.get(cid) ?? []).slice().sort((a, b) => Number(b.is_cover) - Number(a.is_cover) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
+    const cover = medias[0];
+    if (!cover) return null;
+    return resolvedById.get(cover.id) ?? cover.external_url ?? cover.thumbnail_url ?? cover.storage_path ?? null;
+  }
+
+  return items.map((it) => {
+    const v = vRows.find((x) => x.id === it.variant_id);
+    if (!v) return it;
+    const snap = (it.snapshot && typeof it.snapshot === 'object') ? { ...(it.snapshot as Record<string, unknown>) } : {};
+    snap.image_url = snap.image_url ?? imageForColor(v.product_color_id, v.product_id);
+    snap.color_name = snap.color_name ?? (v.product_color_id ? colorById.get(v.product_color_id)?.name ?? null : null);
+    snap.size_label = snap.size_label ?? (v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? null : null);
+    return { ...it, snapshot: snap } as T;
+  });
+}
+
 
 export interface AddItemInput {
   cart_id: string;

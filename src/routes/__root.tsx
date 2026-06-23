@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { CartProvider } from "@/components/storefront/cart-provider";
+import { MiniCart } from "@/components/storefront/mini-cart";
 
 function installSafeDomMutationPatch() {
   if (typeof window === "undefined") return;
@@ -150,9 +152,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system">
         <AuthProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster richColors position="top-right" />
+          <CartProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <MiniCart />
+            <Toaster richColors position="top-right" />
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

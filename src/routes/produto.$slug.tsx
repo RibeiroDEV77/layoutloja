@@ -2,10 +2,16 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
-import { StorefrontShell } from '@/components/storefront/storefront';
-import { useStorefrontCart, formatBRL } from '@/hooks/use-storefront-cart';
+import { toast } from 'sonner';
+import { StorefrontShell, StorefrontNavbar } from '@/components/storefront/storefront';
+import { useCart } from '@/components/storefront/cart-provider';
+import { formatBRL } from '@/hooks/use-storefront-cart';
 import { getStorefrontProduct, type StorefrontProductDetail } from '@/lib/business/storefront-product.functions';
-import { ChevronLeft, ChevronRight, Loader2, ShoppingBag, Check } from 'lucide-react';
+import { listStorefrontProducts, type StorefrontProduct } from '@/lib/business/storefront.functions';
+import {
+  ChevronLeft, ChevronRight, Loader2, ShoppingBag, Check,
+  Star, Heart, Share2, Ruler, Truck,
+} from 'lucide-react';
 
 export const Route = createFileRoute('/produto/$slug')({
   head: () => ({ meta: [{ title: 'Produto — Layout Loja' }] }),
@@ -15,7 +21,8 @@ export const Route = createFileRoute('/produto/$slug')({
 function ProductPage() {
   const { slug } = Route.useParams();
   const fnGet = useServerFn(getStorefrontProduct);
-  const cart = useStorefrontCart();
+  const fnList = useServerFn(listStorefrontProducts);
+  const cart = useCart();
   const navigate = useNavigate();
 
   const [colorId, setColorId] = useState<string | null>(null);
@@ -24,6 +31,8 @@ function ProductPage() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [favorited, setFavorited] = useState(false);
+  const [related, setRelated] = useState<StorefrontProduct[]>([]);
 
   const productQ = useQuery({
     queryKey: ['storefront', 'product', slug],
@@ -57,6 +66,29 @@ function ProductPage() {
     const currentSizeStillExists = product.sizes.some((s) => s.attribute_value_id === sizeId);
     if (sizeId && !currentSizeStillExists) setSizeId(null);
   }, [product, colorId, sizeId]);
+
+  // registrar em "vistos recentemente" + favorito
+  useEffect(() => {
+    if (!product) return;
+    try {
+      const raw = window.localStorage.getItem('storefront.recent');
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      const next = [product.id, ...ids.filter((i) => i !== product.id)].slice(0, 12);
+      window.localStorage.setItem('storefront.recent', JSON.stringify(next));
+    } catch { /* ignore */ }
+    try {
+      const raw = window.localStorage.getItem('storefront.wishlist');
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      setFavorited(ids.includes(product.id));
+    } catch { /* ignore */ }
+  }, [product]);
+
+  // produtos relacionados (featured fallback)
+  useEffect(() => {
+    fnList({ data: { flag: 'featured', limit: 8 } })
+      .then((r) => setRelated((r.rows ?? []).filter((p) => p.id !== product?.id)))
+      .catch(() => {});
+  }, [fnList, product?.id]);
 
   const color = useMemo(
     () => product?.colors.find((c) => c.id === colorId) ?? null,
@@ -122,6 +154,8 @@ function ProductPage() {
     try {
       await cart.addVariant(selectedVariant.id, 1);
       setAdded(true);
+      cart.openCart();
+      toast.success('Adicionado à sacola');
       setTimeout(() => setAdded(false), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao adicionar à sacola');
@@ -130,9 +164,51 @@ function ProductPage() {
     }
   }
 
+  function handleFavorite() {
+    if (!product) return;
+    try {
+      const raw = window.localStorage.getItem('storefront.wishlist');
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      const next = favorited ? ids.filter((i) => i !== product.id) : [product.id, ...ids];
+      window.localStorage.setItem('storefront.wishlist', JSON.stringify(next));
+      setFavorited(!favorited);
+      toast.success(favorited ? 'Removido dos favoritos' : 'Adicionado aos favoritos');
+    } catch { /* ignore */ }
+  }
+
+  async function handleShare() {
+    if (!product) return;
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product.name, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copiado!');
+      }
+    } catch { /* user cancel */ }
+  }
+
+  const installments = product?.price_from ? Math.min(10, Math.floor(product.price_from / 50) || 1) : 0;
+  const pixPrice = product?.price_from ? product.price_from * 0.95 : 0;
+
   return (
     <StorefrontShell>
-      <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
+      <StorefrontNavbar />
+      <main className="mx-auto max-w-[1280px] px-4 lg:px-8 py-6 lg:py-10">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-[12px] text-[#666] mb-6" aria-label="Breadcrumb">
+          <Link to="/" className="hover:text-[var(--brand-red)]">Início</Link>
+          <ChevronRight className="h-3 w-3" />
+          {product?.brand && (
+            <>
+              <span className="text-[#666]">{product.brand.name}</span>
+              <ChevronRight className="h-3 w-3" />
+            </>
+          )}
+          <span className="text-[#111] truncate max-w-[40ch]">{product?.name ?? '…'}</span>
+        </nav>
+
         {productQ.isLoading ? (
           <div className="grid place-items-center py-32"><Loader2 className="h-6 w-6 animate-spin text-[#666]" /></div>
         ) : !product ? (
@@ -154,15 +230,11 @@ function ProductPage() {
                 )}
                 {media.length > 1 && (
                   <>
-                    <button
-                      type="button"
-                      aria-label="Anterior"
+                    <button type="button" aria-label="Anterior"
                       onClick={() => setGalleryIdx((i) => (i - 1 + media.length) % media.length)}
                       className="absolute left-2 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center bg-white/90 hover:bg-white shadow-sm rounded-full"
                     ><ChevronLeft className="h-4 w-4" /></button>
-                    <button
-                      type="button"
-                      aria-label="Próximo"
+                    <button type="button" aria-label="Próximo"
                       onClick={() => setGalleryIdx((i) => (i + 1) % media.length)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center bg-white/90 hover:bg-white shadow-sm rounded-full"
                     ><ChevronRight className="h-4 w-4" /></button>
@@ -172,10 +244,7 @@ function ProductPage() {
               {media.length > 1 && (
                 <div className="mt-3 grid grid-cols-5 gap-2">
                   {media.map((m, i) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setGalleryIdx(i)}
+                    <button key={m.id} type="button" onClick={() => setGalleryIdx(i)}
                       className={`aspect-square bg-[#F8F8F8] overflow-hidden border ${i === galleryIdx ? 'border-[#111]' : 'border-transparent hover:border-[#999]'}`}
                     >
                       <img src={m.url} alt={m.alt ?? ''} className="h-full w-full object-cover" />
@@ -192,6 +261,16 @@ function ProductPage() {
               )}
               <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight">{product.name}</h1>
 
+              {/* Avaliações (estrutura pronta) */}
+              <div className="mt-2 flex items-center gap-2 text-[12px] text-[#666]">
+                <div className="flex">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <Star key={i} className="h-3.5 w-3.5 text-[#DDD]" strokeWidth={1.5} />
+                  ))}
+                </div>
+                <span>Sem avaliações ainda</span>
+              </div>
+
               <div className="mt-4 flex items-baseline gap-3">
                 {product.list_price_from && product.price_from && product.list_price_from > product.price_from && (
                   <span className="text-[14px] text-[#999] line-through">{formatBRL(product.list_price_from)}</span>
@@ -204,6 +283,23 @@ function ProductPage() {
                     : 'Sob consulta'}
                 </span>
               </div>
+
+              {/* Parcelamento + Pix */}
+              {product.price_from && (
+                <div className="mt-2 text-[13px] text-[#444] space-y-1">
+                  {installments > 1 && (
+                    <p>
+                      ou <strong>{installments}x</strong> de <strong>{formatBRL(product.price_from / installments)}</strong> sem juros
+                    </p>
+                  )}
+                  <p>
+                    <span className="inline-flex items-center gap-1 text-[var(--brand-red)] font-medium">
+                      Pix
+                    </span>{' '}
+                    <strong>{formatBRL(pixPrice)}</strong> à vista (5% off)
+                  </p>
+                </div>
+              )}
 
               {product.short_description && (
                 <p className="mt-4 text-[14px] text-[#444]">{product.short_description}</p>
@@ -219,11 +315,7 @@ function ProductPage() {
                     {product.colors.map((c) => {
                       const selected = c.id === colorId;
                       return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setColorId(c.id)}
-                          aria-label={c.name}
+                        <button key={c.id} type="button" onClick={() => setColorId(c.id)} aria-label={c.name}
                           className={`h-9 w-9 rounded-full border-2 transition-colors ${selected ? 'border-[#111]' : 'border-[#EFEFEF] hover:border-[#999]'}`}
                           style={{ backgroundColor: c.hex ?? '#EFEFEF' }}
                         />
@@ -236,16 +328,22 @@ function ProductPage() {
               {/* Tamanhos */}
               {product.sizes.length > 0 && (
                 <div className="mt-6">
-                  <p className="text-[12px] uppercase tracking-[0.18em] font-semibold">Tamanho</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] uppercase tracking-[0.18em] font-semibold">Tamanho</p>
+                    <button
+                      type="button"
+                      onClick={() => toast.info('Guia de medidas em breve')}
+                      className="inline-flex items-center gap-1 text-[11px] text-[#666] hover:text-[#111] underline"
+                    >
+                      <Ruler className="h-3 w-3" /> Guia de medidas
+                    </button>
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {product.sizes.map((s) => {
                       const available = sizesAvailability.get(s.attribute_value_id) ?? false;
                       const selected = s.attribute_value_id === sizeId;
                       return (
-                        <button
-                          key={s.attribute_value_id}
-                          type="button"
-                          disabled={!available}
+                        <button key={s.attribute_value_id} type="button" disabled={!available}
                           onClick={() => handleSizeSelect(s.attribute_value_id)}
                           className={`min-w-[3rem] px-3 py-2 text-[13px] border transition-colors ${
                             selected ? 'border-[#111] bg-[#111] text-white'
@@ -265,10 +363,7 @@ function ProductPage() {
               {error && <p className="mt-4 text-[13px] text-[var(--brand-red)]">{error}</p>}
 
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  disabled={adding || !cart.ready}
+                <button type="button" onClick={handleAdd} disabled={adding || !cart.ready}
                   className="flex-1 inline-flex items-center justify-center gap-2 bg-[#111] text-white px-6 py-3 text-[12px] uppercase tracking-[0.18em] hover:bg-[var(--brand-red)] transition-colors disabled:opacity-50"
                 >
                   {adding ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -276,11 +371,31 @@ function ProductPage() {
                     : <ShoppingBag className="h-4 w-4" />}
                   {added ? 'Adicionado' : 'Adicionar à sacola'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate({ to: '/sacola' })}
+                <button type="button" onClick={() => navigate({ to: '/sacola' })}
                   className="px-6 py-3 text-[12px] uppercase tracking-[0.18em] border border-[#111] hover:bg-[#F8F8F8]"
                 >Ver sacola</button>
+              </div>
+
+              {/* Ações secundárias */}
+              <div className="mt-4 flex items-center gap-4 text-[12px] text-[#666]">
+                <button type="button" onClick={handleFavorite} className="inline-flex items-center gap-1.5 hover:text-[var(--brand-red)]">
+                  <Heart className={`h-4 w-4 ${favorited ? 'fill-[var(--brand-red)] text-[var(--brand-red)]' : ''}`} /> Favoritar
+                </button>
+                <button type="button" onClick={handleShare} className="inline-flex items-center gap-1.5 hover:text-[#111]">
+                  <Share2 className="h-4 w-4" /> Compartilhar
+                </button>
+              </div>
+
+              {/* Calcular frete (preparado) */}
+              <div className="mt-6 border border-[#EFEFEF] p-4">
+                <p className="text-[12px] uppercase tracking-[0.18em] font-semibold flex items-center gap-2">
+                  <Truck className="h-3.5 w-3.5" /> Calcular frete e prazo
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <input disabled placeholder="Seu CEP" className="flex-1 border border-[#EFEFEF] px-3 py-2 text-[13px] bg-white disabled:opacity-60" />
+                  <button disabled className="px-4 py-2 text-[12px] uppercase tracking-[0.18em] border border-[#EFEFEF] text-[#999] cursor-not-allowed">OK</button>
+                </div>
+                <p className="mt-2 text-[11px] text-[#666]">Disponível no checkout.</p>
               </div>
 
               {/* Descrição */}
@@ -308,7 +423,30 @@ function ProductPage() {
             </div>
           </div>
         )}
-      </div>
+
+        {/* Produtos relacionados */}
+        {related.length > 0 && (
+          <section className="mt-16 border-t border-[#EFEFEF] pt-12">
+            <h2 className="text-[13px] uppercase tracking-[0.18em] font-semibold mb-4">Você também pode gostar</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory">
+              {related.map((p) => (
+                <Link key={p.id} to="/produto/$slug" params={{ slug: p.slug }}
+                  className="snap-start shrink-0 w-[180px] sm:w-[220px] group"
+                >
+                  <div className="aspect-[3/4] bg-[#F8F8F8] overflow-hidden">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-3xl text-[#EFEFEF]">{p.name.charAt(0).toUpperCase()}</div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[13px] text-[#111] line-clamp-2">{p.name}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
     </StorefrontShell>
   );
 }
