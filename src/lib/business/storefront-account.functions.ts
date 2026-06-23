@@ -289,7 +289,7 @@ export const removeFromWishlist = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
     const customer = await ensureCustomer(context);
-    const wid = await ensureWishlist(context, customer.id);
+    const wid = await ensureWishlist(context, customer.id, customer.store_id);
     const { error } = await context.supabase
       .from("wishlist_items")
       .delete()
