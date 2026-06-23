@@ -141,12 +141,57 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
       } catch { /* sem estoque -> trata como disponível */ }
     }
 
-    const mediaByColor = new Map<string, StorefrontProductMedia[]>();
-    for (const m of (mediaRes.data ?? []) as Array<{
+    // Extrai o path dentro do bucket "dam" a partir de uma URL salva (assinada/pública)
+    // ou de um storage_path direto. Devolve null se não der pra resolver.
+    const damPathFromUrl = (raw: string | null | undefined): string | null => {
+      if (!raw) return null;
+      const s = raw.trim();
+      if (!s) return null;
+      if (!/^https?:\/\//i.test(s)) {
+        const noBucket = s.replace(/^\/?dam\//, '');
+        return noBucket || null;
+      }
+      const m = s.match(/\/object\/(?:sign|public|authenticated)\/dam\/([^?#]+)/i);
+      if (m && m[1]) return decodeURIComponent(m[1]);
+      return null;
+    };
+
+    type RawMedia = {
       id: string; product_color_id: string; external_url: string | null;
       storage_path: string | null; alt: string | null; sort_order: number | null; is_cover: boolean | null;
-    }>) {
-      const url = m.external_url ?? m.storage_path;
+    };
+    const rawMedia = (mediaRes.data ?? []) as RawMedia[];
+
+    // Gera URLs assinadas frescas (TTL longo) para mídias do bucket "dam".
+    // URLs curtas salvas pelo admin expiravam em ~1h e quebravam o storefront.
+    const resolvedUrlById = new Map<string, string>();
+    const toSign: Array<{ id: string; path: string }> = [];
+    for (const m of rawMedia) {
+      const path = damPathFromUrl(m.storage_path) ?? damPathFromUrl(m.external_url);
+      if (path) toSign.push({ id: m.id, path });
+      else if (m.external_url) resolvedUrlById.set(m.id, m.external_url);
+    }
+    if (toSign.length) {
+      try {
+        const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        const { data: signed } = await supabaseAdmin
+          .storage.from('dam')
+          .createSignedUrls(toSign.map((t) => t.path), 60 * 60 * 24 * 7);
+        signed?.forEach((row, i) => {
+          if (row?.signedUrl) resolvedUrlById.set(toSign[i].id, row.signedUrl);
+        });
+      } catch { /* fallback: usa external_url original */ }
+      for (const t of toSign) {
+        if (!resolvedUrlById.has(t.id)) {
+          const orig = rawMedia.find((r) => r.id === t.id)?.external_url;
+          if (orig) resolvedUrlById.set(t.id, orig);
+        }
+      }
+    }
+
+    const mediaByColor = new Map<string, StorefrontProductMedia[]>();
+    for (const m of rawMedia) {
+      const url = resolvedUrlById.get(m.id) ?? m.external_url ?? m.storage_path;
       if (!url) continue;
       const list = mediaByColor.get(m.product_color_id) ?? [];
       list.push({
