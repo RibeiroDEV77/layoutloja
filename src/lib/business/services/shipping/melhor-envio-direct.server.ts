@@ -51,16 +51,42 @@ async function fetchJson(url: string, init: RequestInit) {
 export async function getOriginPostalCode(): Promise<string> {
   const now = Date.now();
   if (_originCache && _originCache.expiresAt > now) return _originCache.cep;
-  const body = await fetchJson(`${host()}/api/v2/me`, {
-    method: 'GET',
-    headers: authHeaders(),
-  }) as Record<string, unknown>;
-  const cep = digits(String(body.postal_code ?? ''));
-  if (cep.length !== 8) {
-    throw new Error('Conta Melhor Envio sem CEP de remetente cadastrado');
+
+  // 1) Override por env (caso a conta ME não tenha endereço cadastrado).
+  const envCep = digits(process.env.MELHOR_ENVIO_ORIGIN_CEP ?? '');
+  if (envCep.length === 8) {
+    _originCache = { cep: envCep, expiresAt: now + ORIGIN_TTL_MS };
+    return envCep;
   }
-  _originCache = { cep, expiresAt: now + ORIGIN_TTL_MS };
-  return cep;
+
+  // 2) Endereços de remetente cadastrados na conta ME.
+  try {
+    const addrs = await fetchJson(`${host()}/api/v2/me/addresses`, {
+      method: 'GET', headers: authHeaders(),
+    }) as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+    const list = Array.isArray(addrs) ? addrs : (addrs?.data ?? []);
+    for (const a of list) {
+      const cep = digits(String(a.postal_code ?? ''));
+      if (cep.length === 8) {
+        _originCache = { cep, expiresAt: now + ORIGIN_TTL_MS };
+        return cep;
+      }
+    }
+  } catch { /* segue para fallback */ }
+
+  // 3) Fallback: perfil do usuário (alguns tokens expõem postal_code direto).
+  const me = await fetchJson(`${host()}/api/v2/me`, {
+    method: 'GET', headers: authHeaders(),
+  }) as Record<string, unknown>;
+  const cep = digits(String(me.postal_code ?? ''));
+  if (cep.length === 8) {
+    _originCache = { cep, expiresAt: now + ORIGIN_TTL_MS };
+    return cep;
+  }
+
+  throw new Error(
+    'Cadastre um endereço de remetente em https://melhorenvio.com.br/painel/configuracoes/enderecos ou defina MELHOR_ENVIO_ORIGIN_CEP.',
+  );
 }
 
 export interface MeQuoteOption {
