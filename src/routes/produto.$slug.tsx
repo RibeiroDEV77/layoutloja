@@ -41,7 +41,13 @@ function ProductPage() {
     if (!product) { setColorId(null); setSizeId(null); return; }
     const currentColorStillExists = product.colors.some((c) => c.id === colorId);
     if (!currentColorStillExists) {
-      const def = product.colors.find((c) => c.is_default && c.media.length > 0)
+      const hasAvailableVariant = (productColorId: string) =>
+        product.variants.some((v) => v.product_color_id === productColorId && v.available);
+      const def = product.colors.find((c) => c.is_default && c.media.length > 0 && hasAvailableVariant(c.id))
+        ?? product.colors.find((c) => c.media.length > 0 && hasAvailableVariant(c.id))
+        ?? product.colors.find((c) => c.is_default && hasAvailableVariant(c.id))
+        ?? product.colors.find((c) => hasAvailableVariant(c.id))
+        ?? product.colors.find((c) => c.is_default && c.media.length > 0)
         ?? product.colors.find((c) => c.media.length > 0)
         ?? product.colors.find((c) => c.is_default)
         ?? product.colors[0]
@@ -64,16 +70,21 @@ function ProductPage() {
 
   const sizesAvailability = useMemo(() => {
     const map = new Map<string, boolean>();
-    for (const v of variantsForColor) {
+    for (const v of product?.variants ?? []) {
       if (!v.size_attribute_value_id) continue;
       const prev = map.get(v.size_attribute_value_id) ?? false;
       map.set(v.size_attribute_value_id, prev || v.available);
     }
     return map;
-  }, [variantsForColor]);
+  }, [product?.variants]);
 
   const selectedVariant = useMemo(() => {
     if (!product) return null;
+    const exactAvailable = variantsForColor.find((v) => {
+      if (product.sizes.length > 0) return v.size_attribute_value_id === sizeId && v.available;
+      return v.available;
+    });
+    if (exactAvailable) return exactAvailable;
     return variantsForColor.find((v) => {
       if (product.sizes.length > 0) return v.size_attribute_value_id === sizeId;
       return true;
@@ -84,6 +95,22 @@ function ProductPage() {
   const currentMedia = media[galleryIdx] ?? media[0] ?? null;
 
   useEffect(() => { setGalleryIdx(0); }, [colorId]);
+
+  function handleSizeSelect(nextSizeId: string) {
+    setError(null);
+    const sameColorVariant = product?.variants.find((v) =>
+      v.size_attribute_value_id === nextSizeId
+      && (!colorId || v.product_color_id === colorId)
+      && v.available,
+    );
+    const availableVariant = sameColorVariant ?? product?.variants.find((v) =>
+      v.size_attribute_value_id === nextSizeId && v.available,
+    );
+    if (availableVariant?.product_color_id && availableVariant.product_color_id !== colorId) {
+      setColorId(availableVariant.product_color_id);
+    }
+    setSizeId(nextSizeId);
+  }
 
   async function handleAdd() {
     if (!product) return;
@@ -219,7 +246,7 @@ function ProductPage() {
                           key={s.attribute_value_id}
                           type="button"
                           disabled={!available}
-                          onClick={() => setSizeId(s.attribute_value_id)}
+                          onClick={() => handleSizeSelect(s.attribute_value_id)}
                           className={`min-w-[3rem] px-3 py-2 text-[13px] border transition-colors ${
                             selected ? 'border-[#111] bg-[#111] text-white'
                             : available ? 'border-[#EFEFEF] hover:border-[#111]'
