@@ -133,7 +133,10 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
       }
     }
     const categoryProducts = item.categoryId
-      ? products.filter((product) => product.category_id && categoryIds.has(product.category_id))
+      ? products.filter((product) => {
+          const assigned = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
+          return assigned.some((categoryId) => categoryIds.has(categoryId));
+        })
       : products;
     const productPool = categoryProducts.length ? categoryProducts : products;
     const subcategoryItems: MegaListItem[] = item.kind === "brands"
