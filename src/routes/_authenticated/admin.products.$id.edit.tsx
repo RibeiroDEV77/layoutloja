@@ -930,6 +930,17 @@ function VariantsTab({
                       {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Adicionar
                     </Button>
                   </div>
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      disabled={creatingSizes || !sizeTagInput.trim() || !colors.length}
+                      onClick={() => addCustomSizes({ generateAfter: true })}
+                      className="w-full gap-2"
+                    >
+                      {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      Adicionar tamanhos e gerar para todas as cores
+                    </Button>
+                  </div>
                 </div>
                 {selectedSizes.length > 0 && colors.length > 0 && (
                   <p className="text-xs text-muted-foreground border-t pt-2">
