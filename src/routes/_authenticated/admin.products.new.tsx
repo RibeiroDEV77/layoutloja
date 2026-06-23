@@ -76,11 +76,10 @@ type PriceItemRow = Tables<"price_list_items">;
 type Row = { id: string; name: string };
 
 // ── Seções (single-page) ─────────────────────────────────────────────────────
+// Catálogo = fotos + cores + tamanhos + preço/estoque, tudo no mesmo lugar.
 const SECTIONS = [
   { key: "basic", label: "Dados Básicos" },
-  { key: "photos", label: "Fotos" },
-  { key: "variations", label: "Variações" },
-  { key: "stockprice", label: "Estoque e Preços" },
+  { key: "catalog", label: "Catálogo (fotos, cores, tamanhos e preço)" },
   { key: "organization", label: "Organização" },
   { key: "publish", label: "Publicação" },
 ] as const;
@@ -269,7 +268,7 @@ function ProductNewWizardPage() {
             <BasicBlock
               storeId={storeId}
               productId={productId}
-              onCreated={(id) => { setProductId(id); refresh(); scrollToSection("photos"); }}
+              onCreated={(id) => { setProductId(id); refresh(); scrollToSection("catalog"); }}
               onUpdated={refresh}
               onNext={() => goNext("basic")}
             />
@@ -285,17 +284,9 @@ function ProductNewWizardPage() {
 
           {productId && (
             <>
-              <section id="section-photos" className="scroll-mt-32">
-                <PhotosBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("photos")} onNext={() => goNext("photos")} />
-              </section>
-              <section id="section-variations" className="scroll-mt-32">
-                <VariationsBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("variations")} onNext={() => goNext("variations")} />
-              </section>
-              <section id="section-stockprice" className="scroll-mt-32">
-                <StockPriceBlock productId={productId} onChange={refresh}
-                  onPrev={() => goPrev("stockprice")} onNext={() => goNext("stockprice")} />
+              <section id="section-catalog" className="scroll-mt-32">
+                <CatalogBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("catalog")} onNext={() => goNext("catalog")} />
               </section>
               <section id="section-organization" className="scroll-mt-32">
                 <OrganizationBlock productId={productId} onChange={refresh}
@@ -557,14 +548,33 @@ function BasicBlock({
 }
 
 // =============================================================================
-// BLOCO 2 — Fotos (galeria do produto, vinculada a cor "Padrão" quando necessário)
-//   Também renderiza galerias por COR caso o produto já tenha múltiplas cores.
+// BLOCO 2 — Catálogo (fotos + cores + tamanhos + preço/estoque, tudo junto)
 // =============================================================================
-function PhotosBlock({
+function CatalogBlock({
   productId, onChange, onPrev, onNext,
 }: { productId: string; onChange: () => void; onPrev: () => void; onNext: () => void }) {
+  const { storeId } = useActiveStore();
+  const qc = useQueryClient();
+
   const fnListColors = useServerFn(listProductColors);
   const fnCreateColor = useServerFn(createProductColor);
+  const fnUpdColor = useServerFn(updateProductColor);
+  const fnDelColor = useServerFn(deleteProductColor);
+  const fnListMedia = useServerFn(listColorMedia);
+  const fnAddMedia = useServerFn(addColorMedia);
+  const fnDelMedia = useServerFn(deleteColorMedia);
+  const fnCatAttrs = useServerFn(listCategoryAttributes);
+  const fnAttrs = useServerFn(listAttributes);
+  const fnVals = useServerFn(listAttributeValues);
+  const fnGen = useServerFn(generateProductVariants);
+  const fnVariants = useServerFn(listProductVariants);
+  const fnUpdVar = useServerFn(updateProductVariant);
+  const fnDelVar = useServerFn(deleteProductVariant);
+  const fnStock = useServerFn(listAdminStock);
+  const fnBulkStock = useServerFn(bulkAdjustStock);
+  const fnPrices = useServerFn(listProductPrices);
+  const fnPriceLists = useServerFn(listPriceLists);
+  const fnSetPrice = useServerFn(setVariantPrice);
 
   const colorsQ = useQuery({
     queryKey: ["wizard", productId, "colors"],
@@ -574,42 +584,439 @@ function PhotosBlock({
       return r.data as ColorRow[];
     },
   });
-
-  // Garante ao menos uma cor para anexar mídias (cor "Padrão" se não houver nenhuma).
-  const [ensured, setEnsured] = useState(false);
-  useEffect(() => {
-    if (ensured) return;
-    if (colorsQ.isLoading || colorsQ.isError) return;
-    if ((colorsQ.data ?? []).length > 0) { setEnsured(true); return; }
-    setEnsured(true);
-    void fnCreateColor({
-      data: { product_id: productId, name: "Padrão", hex: "#000000", is_default: true },
-    }).then((r) => {
-      if (r.ok) { colorsQ.refetch(); onChange(); }
-    });
-  }, [colorsQ.isLoading, colorsQ.isError, colorsQ.data, ensured, fnCreateColor, productId, colorsQ, onChange]);
-
   const colors = colorsQ.data ?? [];
 
+  // garante "Padrão" para anexar fotos antes de cadastrar variações
+  const [ensured, setEnsured] = useState(false);
+  useEffect(() => {
+    if (ensured || colorsQ.isLoading || colorsQ.isError) return;
+    if (colors.length > 0) { setEnsured(true); return; }
+    setEnsured(true);
+    void fnCreateColor({ data: { product_id: productId, name: "Padrão", hex: "#000000", is_default: true } })
+      .then((r) => { if (r.ok) { colorsQ.refetch(); onChange(); } });
+  }, [ensured, colorsQ.isLoading, colorsQ.isError, colors.length, fnCreateColor, productId, colorsQ, onChange]);
+
+  const productQ = useQuery({
+    queryKey: ["wizard-product", productId],
+    queryFn: async () => {
+      const { getProduct } = await import("@/lib/business/products.functions");
+      const r = await getProduct({ data: { id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.product as Tables<"products">;
+    },
+  });
+
+  const sizeAttrQ = useQuery({
+    queryKey: ["wizard-size-attr", productQ.data?.category_id, storeId],
+    enabled: !!productQ.data?.category_id && !!storeId,
+    queryFn: async () => {
+      const [ca, attrs] = await Promise.all([
+        fnCatAttrs({ data: { category_id: productQ.data!.category_id! } }),
+        fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
+      ]);
+      if (!ca.ok || !attrs.ok) return null;
+      const attrList = attrs.data.rows as Array<{ id: string; name: string; is_size?: boolean }>;
+      const catList = ca.data.rows as Array<{ attribute_id: string }>;
+      const cand = attrList.find((a) => catList.some((c) => c.attribute_id === a.id) && (a.is_size || /tamanho|size/i.test(a.name)));
+      if (!cand) return { attribute: null, values: [] as Array<{ id: string; label: string }> };
+      const v = await fnVals({ data: { attribute_id: cand.id, pageSize: 100 } });
+      return { attribute: cand, values: v.ok ? (v.data.rows as Array<{ id: string; label: string }>) : [] };
+    },
+  });
+  const sizeValues = sizeAttrQ.data?.values ?? [];
+
+  const variantsQ = useQuery({
+    queryKey: ["wizard-variants", productId],
+    queryFn: async () => {
+      const r = await fnVariants({ data: { product_id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as VariantRow[];
+    },
+  });
+  const variants = variantsQ.data ?? [];
+
+  const stockQ = useQuery({
+    queryKey: ["wizard-stock", productId, storeId], enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnStock({ data: { store_id: storeId!, product_id: productId, pageSize: 200 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as Array<{ id: string; variant_id: string; quantity_on_hand: number }>;
+    },
+  });
+  const priceListsQ = useQuery({
+    queryKey: ["wizard-price-lists", storeId], enabled: !!storeId,
+    queryFn: async () => {
+      const r = await fnPriceLists({ data: { store_id: storeId!, pageSize: 100 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as Array<{ id: string; name: string; is_default?: boolean }>;
+    },
+  });
+  const pricesQ = useQuery({
+    queryKey: ["wizard-prices", productId],
+    queryFn: async () => {
+      const r = await fnPrices({ data: { product_id: productId } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as PriceItemRow[];
+    },
+  });
+  const defaultPriceListId = priceListsQ.data?.find((l) => l.is_default)?.id ?? priceListsQ.data?.[0]?.id ?? "";
+
+  const stockByVariant = useMemo(() => {
+    const m = new Map<string, { id: string; qty: number }>();
+    (stockQ.data ?? []).forEach((s) => m.set(s.variant_id, { id: s.id, qty: s.quantity_on_hand }));
+    return m;
+  }, [stockQ.data]);
+  const priceByVariant = useMemo(() => {
+    const m = new Map<string, { price: number; compare: number | null }>();
+    (pricesQ.data ?? []).filter((p) => p.price_list_id === defaultPriceListId)
+      .forEach((p) => m.set(p.variant_id!, {
+        price: Number(p.price),
+        compare: p.compare_at_price != null ? Number(p.compare_at_price) : null,
+      }));
+    return m;
+  }, [pricesQ.data, defaultPriceListId]);
+
+  // Mapa de tamanhos id→label para mostrar na MatrixRow
+  const sizeLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    sizeValues.forEach((v) => m.set(v.id, v.label));
+    return m;
+  }, [sizeValues]);
+
+  // toggle "tem variações"
+  const [hasVariations, setHasVariations] = useState<"no" | "yes">("no");
+  useEffect(() => {
+    if (colors.some((c) => c.name !== "Padrão")) setHasVariations("yes");
+  }, [colors]);
+
+  // selected sizes (used when generating)
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  useEffect(() => {
+    // pré-seleciona tamanhos que já têm variantes
+    const used = Array.from(new Set(variants.map((v) => v.size_attribute_value_id).filter(Boolean) as string[]));
+    if (used.length > 0) setSelectedSizes((prev) => prev.length === 0 ? used : prev);
+  }, [variants]);
+  const toggleSize = (id: string) =>
+    setSelectedSizes((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  // criar cor
+  const [newColor, setNewColor] = useState({ name: "", hex: "#000000" });
+  const [migration, setMigration] = useState<null | { padraoId: string; media: MediaRow[]; pendingName: string; pendingHex: string }>(null);
+  const [migrating, setMigrating] = useState(false);
+
+  const addColor = async () => {
+    const name = newColor.name.trim();
+    if (!name) return;
+    const onlyPadrao = colors.length === 1 && colors[0].name === "Padrão";
+    if (onlyPadrao) {
+      try {
+        const r = await fnListMedia({ data: { color_id: colors[0].id } });
+        const media = r.ok ? (r.data as MediaRow[]) : [];
+        if (media.length > 0) {
+          setMigration({ padraoId: colors[0].id, media, pendingName: name, pendingHex: newColor.hex });
+          return;
+        }
+      } catch { /* segue */ }
+    }
+    const ok = await runAction(
+      () => fnCreateColor({ data: { product_id: productId, name, hex: newColor.hex, is_default: colors.length === 0 } }),
+      { success: "Cor adicionada" },
+    );
+    if (ok) { setNewColor({ name: "", hex: "#000000" }); colorsQ.refetch(); onChange(); }
+  };
+
+  const runMigration = async (mode: "move" | "duplicate") => {
+    if (!migration) return;
+    setMigrating(true);
+    try {
+      const createdResp = await fnCreateColor({ data: { product_id: productId, name: migration.pendingName, hex: migration.pendingHex, is_default: mode === "move" } });
+      if (!createdResp.ok) throw new Error(createdResp.error.message);
+      const created = createdResp.data as ColorRow;
+      for (const m of migration.media) {
+        await fnAddMedia({ data: {
+          color_id: created.id, media_type: m.media_type as 'image'|'video'|'youtube'|'vimeo',
+          storage_path: m.storage_path, external_url: m.external_url, external_id: m.external_id,
+          thumbnail_url: m.thumbnail_url, alt: m.alt, title: m.title,
+          sort_order: m.sort_order ?? 0, is_cover: !!m.is_cover, is_hover_media: !!m.is_hover_media,
+        } });
+      }
+      if (mode === "move") {
+        for (const m of migration.media) await fnDelMedia({ data: { id: m.id } });
+        await fnDelColor({ data: { id: migration.padraoId } });
+        notify.success("Imagens movidas para " + migration.pendingName);
+      } else {
+        notify.success("Imagens duplicadas em " + migration.pendingName);
+      }
+      setMigration(null);
+      setNewColor({ name: "", hex: "#000000" });
+      colorsQ.refetch();
+      onChange();
+    } catch (e) {
+      notify.error((e as Error).message || "Falha ao migrar imagens");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const removeColor = async (id: string) => {
+    const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
+    if (ok) { colorsQ.refetch(); onChange(); }
+  };
+  const setDefault = async (id: string) => {
+    const ok = await runAction(() => fnUpdColor({ data: { id, patch: { is_default: true } } }), { success: "Padrão atualizada" });
+    if (ok) { colorsQ.refetch(); onChange(); }
+  };
+
+  const generate = async () => {
+    if (!colors.length) { notify.error("Adicione ao menos uma cor"); return; }
+    const ok = await runAction(
+      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selectedSizes } }),
+      { loading: "Gerando variantes...", success: "Variantes geradas" },
+    );
+    if (ok) { qc.invalidateQueries({ queryKey: ["wizard", productId] }); qc.invalidateQueries({ queryKey: ["wizard-variants", productId] }); onChange(); }
+  };
+
+  // edições de variante / estoque / preço
+  const saveVariant = async (id: string, patch: Parameters<typeof fnUpdVar>[0]["data"]["patch"]) => {
+    const ok = await runAction(() => fnUpdVar({ data: { id, patch } }), { success: "Variante salva" });
+    if (ok) qc.invalidateQueries({ queryKey: ["wizard-variants", productId] });
+  };
+  const saveStock = async (stockLevelId: string, qty: number) => {
+    const ok = await runAction(
+      () => fnBulkStock({ data: { items: [{ stock_level_id: stockLevelId, new_quantity: qty, reason: "Cadastro de produto" }] } }),
+      { success: "Estoque ajustado" },
+    );
+    if (ok) qc.invalidateQueries({ queryKey: ["wizard-stock", productId, storeId] });
+  };
+  const savePrice = async (variantId: string, price: number, compare: number | null) => {
+    if (!defaultPriceListId) { notify.error("Cadastre uma lista de preços antes"); return; }
+    const ok = await runAction(
+      () => fnSetPrice({ data: { variant_id: variantId, price_list_id: defaultPriceListId, price, compare_at_price: compare } }),
+      { success: "Preço salvo" },
+    );
+    if (ok) qc.invalidateQueries({ queryKey: ["wizard-prices", productId] });
+  };
+  const removeVariant = async (id: string) => {
+    const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
+    if (ok) { qc.invalidateQueries({ queryKey: ["wizard-variants", productId] }); onChange(); }
+  };
+
+  // Bulk para todas as variantes ou para variantes de uma cor específica
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkStock, setBulkStock] = useState("");
+  const [bulkSaving, setBulkSaving] = useState<string | null>(null);
+  const applyBulk = async (scope: "all" | string, kind: "price" | "stock", raw: string) => {
+    const target = scope === "all" ? variants : variants.filter((v) => v.product_color_id === scope);
+    if (!target.length) return;
+    const value = Number(raw.replace(",", "."));
+    if (Number.isNaN(value) || value < 0) { notify.error("Valor inválido"); return; }
+    setBulkSaving(`${scope}:${kind}`);
+    try {
+      for (const v of target) {
+        if (kind === "price") await savePrice(v.id, value, null);
+        else { const st = stockByVariant.get(v.id); if (st?.id) await saveStock(st.id, value); }
+      }
+      notify.success(kind === "price" ? "Preço aplicado" : "Estoque aplicado");
+    } finally { setBulkSaving(null); }
+  };
+
+  const variantsByColor = useMemo(() => {
+    const m = new Map<string, VariantRow[]>();
+    variants.forEach((v) => {
+      const list = m.get(v.product_color_id) ?? [];
+      list.push(v);
+      m.set(v.product_color_id, list);
+    });
+    return m;
+  }, [variants]);
+
+  // descrição dinâmica
+  const description = hasVariations === "yes"
+    ? "Cadastre cada cor com suas fotos, tamanhos e preço. Tudo da cor fica no mesmo cartão."
+    : "Adicione fotos e defina preço e estoque. Ative variações se este produto vier em mais de uma cor.";
+
   return (
-    <BlockCard
-      title="Fotos do Produto"
-      description="Selecione mídias do DAM ou envie novas. As fotos pertencem a uma cor — usamos 'Padrão' enquanto você não cadastra variações."
-    >
-      {colorsQ.isLoading || colors.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-          <Loader2 className="h-4 w-4 animate-spin" /> Preparando galeria...
+    <BlockCard title="Catálogo do Produto" description={description}>
+      {/* Toggle simples */}
+      <div className="rounded-lg border bg-muted/30 p-3 flex flex-wrap items-center gap-3 justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Este produto tem cores/tamanhos diferentes?</p>
+          <p className="text-xs text-muted-foreground">Ex.: calça em Azul Escuro, Azul Médio e Azul Claro, cada uma com tamanhos P/M/G.</p>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {colors.map((c) => (
-            <ColorGallerySection
-              key={c.id}
-              color={c}
-              onChange={onChange}
-              compact={colors.length === 1}
-            />
-          ))}
+        <RadioGroup value={hasVariations} onValueChange={(v) => setHasVariations(v as "no" | "yes")} className="flex gap-4 shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer text-sm"><RadioGroupItem value="no" id="hv-no" /> Não</label>
+          <label className="flex items-center gap-2 cursor-pointer text-sm"><RadioGroupItem value="yes" id="hv-yes" /> Sim</label>
+        </RadioGroup>
+      </div>
+
+      {/* === Modo SIMPLES === */}
+      {hasVariations === "no" && (
+        <div className="space-y-5">
+          {colors.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+              <Loader2 className="h-4 w-4 animate-spin" /> Preparando galeria...
+            </div>
+          ) : (
+            <ColorGallerySection color={colors[0]} onChange={onChange} compact />
+          )}
+
+          {variants.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">Clique abaixo para criar a variante única e habilitar preço e estoque.</p>
+              <Button onClick={generate} className="gap-2"><Sparkles className="h-4 w-4" /> Criar variante única</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Preço e Estoque</h4>
+              {variants.map((v) => {
+                const stock = stockByVariant.get(v.id);
+                const price = priceByVariant.get(v.id);
+                return (
+                  <MatrixRow key={v.id} variant={v} thumbnailUrl={null}
+                    colorName={colors[0]?.name ?? "—"} colorHex={colors[0]?.hex ?? null}
+                    sizeLabel="Único"
+                    stockLevelId={stock?.id ?? null} stockQty={stock?.qty ?? null}
+                    price={price?.price ?? null} compare={price?.compare ?? null}
+                    onChangeVariant={(p) => saveVariant(v.id, p)}
+                    onChangeStock={(q) => stock?.id && saveStock(stock.id, q)}
+                    onChangePrice={(p, c) => savePrice(v.id, p, c)}
+                    onDelete={() => removeVariant(v.id)} />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === Modo COM VARIAÇÕES === */}
+      {hasVariations === "yes" && (
+        <div className="space-y-5">
+          {/* Tamanhos globais */}
+          <div className="rounded-lg border bg-background p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h4 className="text-sm font-semibold">Tamanhos disponíveis</h4>
+                {sizeAttrQ.data?.attribute && (
+                  <p className="text-xs text-muted-foreground">{sizeAttrQ.data.attribute.name}</p>
+                )}
+              </div>
+              {sizeValues.length > 0 && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Todos</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
+                </div>
+              )}
+            </div>
+            {!sizeValues.length ? (
+              <p className="text-xs text-muted-foreground">A categoria selecionada não possui atributo de tamanho. Será gerada 1 variante por cor.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {sizeValues.map((v) => (
+                  <button key={v.id} type="button" onClick={() => toggleSize(v.id)}
+                    className={cn("px-3 py-1.5 rounded-full border text-sm transition",
+                      selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Adicionar cor */}
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <h4 className="text-sm font-semibold mb-2">Adicionar uma cor</h4>
+            <FormRow>
+              <FormField label="Nome da cor">
+                <Input value={newColor.name} onChange={(e) => setNewColor({ ...newColor, name: e.target.value })} placeholder="Ex.: Azul Escuro" />
+              </FormField>
+              <ColorPicker label="Amostra" value={newColor.hex} onChange={(v) => setNewColor({ ...newColor, hex: v })} />
+              <div className="flex items-end">
+                <Button onClick={addColor} disabled={!newColor.name.trim()} className="gap-2">
+                  <Plus className="h-4 w-4" /> Adicionar
+                </Button>
+              </div>
+            </FormRow>
+          </div>
+
+          {/* Bulk geral */}
+          {variants.length > 0 && (
+            <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+              <p className="text-sm font-medium">Aplicar a todas as variantes</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex gap-2">
+                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço" />
+                  <Button variant="outline" disabled={bulkSaving === "all:price" || !bulkPrice.trim()}
+                    onClick={() => applyBulk("all", "price", bulkPrice).then(() => setBulkPrice(""))} className="shrink-0">Aplicar preço</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque" />
+                  <Button variant="outline" disabled={bulkSaving === "all:stock" || !bulkStock.trim()}
+                    onClick={() => applyBulk("all", "stock", bulkStock).then(() => setBulkStock(""))} className="shrink-0">Aplicar estoque</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Cards por cor */}
+          {colors.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Adicione uma cor acima para começar.</p>
+          ) : (
+            <div className="space-y-4">
+              {colors.map((c) => {
+                const cVariants = variantsByColor.get(c.id) ?? [];
+                return (
+                  <ColorCard
+                    key={c.id}
+                    color={c}
+                    variants={cVariants}
+                    sizeLabelById={sizeLabelById}
+                    stockByVariant={stockByVariant}
+                    priceByVariant={priceByVariant}
+                    onChange={onChange}
+                    onSetDefault={() => setDefault(c.id)}
+                    onRemove={() => removeColor(c.id)}
+                    onSaveVariant={saveVariant}
+                    onSaveStock={saveStock}
+                    onSavePrice={savePrice}
+                    onRemoveVariant={removeVariant}
+                    onApplyBulk={(kind, raw) => applyBulk(c.id, kind, raw)}
+                    bulkSaving={bulkSaving}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          <div className="pt-2 border-t flex flex-wrap justify-end gap-2">
+            <Button onClick={generate} disabled={!colors.length} className="gap-2">
+              <Sparkles className="h-4 w-4" /> {variants.length > 0 ? "Atualizar variantes" : "Gerar variantes"}
+            </Button>
+          </div>
+
+          <AlertDialog open={!!migration} onOpenChange={(o) => { if (!o && !migrating) setMigration(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>As fotos atuais pertencem a {migration?.pendingName}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Você já tinha {migration?.media.length ?? 0} foto(s) na cor temporária "Padrão".
+                  Escolha o que fazer ao criar <strong>{migration?.pendingName}</strong>:
+                  <br /><br />
+                  • <strong>Mover</strong>: transfere as fotos e remove "Padrão".<br />
+                  • <strong>Duplicar</strong>: copia as fotos e mantém "Padrão".<br />
+                  • <strong>Cancelar</strong>: não cria a cor agora.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={migrating}>Cancelar</AlertDialogCancel>
+                <Button variant="outline" disabled={migrating} onClick={() => runMigration("duplicate")} className="gap-2">
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Duplicar
+                </Button>
+                <AlertDialogAction disabled={migrating} onClick={(e) => { e.preventDefault(); runMigration("move"); }}>
+                  {migrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Mover
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
@@ -618,6 +1025,108 @@ function PhotosBlock({
         right={<Button onClick={onNext} className="gap-2">Avançar <ArrowRight className="h-4 w-4" /></Button>}
       />
     </BlockCard>
+  );
+}
+
+// ── Card de cor (fotos + variantes daquela cor) ────────────────────────────
+function ColorCard({
+  color, variants, sizeLabelById, stockByVariant, priceByVariant,
+  onChange, onSetDefault, onRemove,
+  onSaveVariant, onSaveStock, onSavePrice, onRemoveVariant,
+  onApplyBulk, bulkSaving,
+}: {
+  color: ColorRow;
+  variants: VariantRow[];
+  sizeLabelById: Map<string, string>;
+  stockByVariant: Map<string, { id: string; qty: number }>;
+  priceByVariant: Map<string, { price: number; compare: number | null }>;
+  onChange: () => void;
+  onSetDefault: () => void;
+  onRemove: () => void;
+  onSaveVariant: (id: string, p: { sku?: string; barcode?: string | null; weight_grams?: number | null }) => void;
+  onSaveStock: (stockLevelId: string, qty: number) => void;
+  onSavePrice: (variantId: string, price: number, compare: number | null) => void;
+  onRemoveVariant: (id: string) => void;
+  onApplyBulk: (kind: "price" | "stock", raw: string) => Promise<void>;
+  bulkSaving: string | null;
+}) {
+  const [bp, setBp] = useState("");
+  const [bs, setBs] = useState("");
+  return (
+    <div className="rounded-xl border bg-background shadow-sm">
+      <header className="flex items-center justify-between gap-3 p-4 border-b bg-muted/20 rounded-t-xl">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="h-6 w-6 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold truncate">{color.name}</span>
+              {color.is_default && <Badge variant="secondary" className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
+              <span className="text-xs text-muted-foreground">· {variants.length} variante(s)</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {!color.is_default && (
+            <Button size="sm" variant="ghost" onClick={onSetDefault} className="h-8 text-xs">Tornar padrão</Button>
+          )}
+          <Button size="icon" variant="ghost" onClick={onRemove} className="h-8 w-8" aria-label="Remover cor">
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </header>
+
+      <div className="p-4 space-y-4">
+        {/* Fotos desta cor */}
+        <div>
+          <h5 className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Fotos desta cor</h5>
+          <ColorGallerySection color={color} onChange={onChange} compact />
+        </div>
+
+        {/* Variantes desta cor */}
+        <div>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <h5 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Tamanhos · Preço · Estoque</h5>
+            {variants.length > 1 && (
+              <div className="flex gap-2">
+                <div className="flex gap-1">
+                  <Input value={bp} onChange={(e) => setBp(e.target.value)} type="number" step="0.01" placeholder="Preço todos" className="h-8 w-32" />
+                  <Button size="sm" variant="outline" disabled={!bp.trim() || bulkSaving === `${color.id}:price`}
+                    onClick={() => onApplyBulk("price", bp).then(() => setBp(""))}>OK</Button>
+                </div>
+                <div className="flex gap-1">
+                  <Input value={bs} onChange={(e) => setBs(e.target.value)} type="number" min={0} placeholder="Estoque todos" className="h-8 w-32" />
+                  <Button size="sm" variant="outline" disabled={!bs.trim() || bulkSaving === `${color.id}:stock`}
+                    onClick={() => onApplyBulk("stock", bs).then(() => setBs(""))}>OK</Button>
+                </div>
+              </div>
+            )}
+          </div>
+          {variants.length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+              Selecione os tamanhos acima e clique em <strong>Gerar variantes</strong> para criar.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {variants.map((v) => {
+                const stock = stockByVariant.get(v.id);
+                const price = priceByVariant.get(v.id);
+                const sizeLabel = (v.size_attribute_value_id && sizeLabelById.get(v.size_attribute_value_id)) || "Único";
+                return (
+                  <MatrixRow key={v.id} variant={v} thumbnailUrl={null}
+                    colorName={color.name} colorHex={color.hex ?? null} sizeLabel={sizeLabel}
+                    stockLevelId={stock?.id ?? null} stockQty={stock?.qty ?? null}
+                    price={price?.price ?? null} compare={price?.compare ?? null}
+                    onChangeVariant={(p) => onSaveVariant(v.id, p)}
+                    onChangeStock={(q) => stock?.id && onSaveStock(stock.id, q)}
+                    onChangePrice={(p, c) => onSavePrice(v.id, p, c)}
+                    onDelete={() => onRemoveVariant(v.id)} />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -780,592 +1289,6 @@ function ColorGallerySection({
   );
 }
 
-// =============================================================================
-// BLOCO 3 — Variações (cores + tamanhos + gerar) + galerias por cor
-// =============================================================================
-function VariationsBlock({
-  productId, onChange, onPrev, onNext,
-}: { productId: string; onChange: () => void; onPrev: () => void; onNext: () => void }) {
-  const { storeId } = useActiveStore();
-  const qc = useQueryClient();
-
-  const fnListColors = useServerFn(listProductColors);
-  const fnCreateColor = useServerFn(createProductColor);
-  const fnUpdColor = useServerFn(updateProductColor);
-  const fnDelColor = useServerFn(deleteProductColor);
-  const fnCatAttrs = useServerFn(listCategoryAttributes);
-  const fnAttrs = useServerFn(listAttributes);
-  const fnVals = useServerFn(listAttributeValues);
-  const fnGen = useServerFn(generateProductVariants);
-
-  const colorsQ = useQuery({
-    queryKey: ["wizard", productId, "colors"],
-    queryFn: async () => {
-      const r = await fnListColors({ data: { product_id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data as ColorRow[];
-    },
-  });
-  const colors = colorsQ.data ?? [];
-
-  // descobre product.category_id (precisa para tamanhos)
-  const productQ = useQuery({
-    queryKey: ["wizard-product", productId],
-    queryFn: async () => {
-      // reuse readiness loader: but we need category — pull from getProduct via existing fn
-      const { getProduct } = await import("@/lib/business/products.functions");
-      const fn = getProduct;
-      const r = await fn({ data: { id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.product as Tables<"products">;
-    },
-  });
-
-  const sizeAttrQ = useQuery({
-    queryKey: ["wizard-size-attr", productQ.data?.category_id, storeId],
-    enabled: !!productQ.data?.category_id && !!storeId,
-    queryFn: async () => {
-      const [ca, attrs] = await Promise.all([
-        fnCatAttrs({ data: { category_id: productQ.data!.category_id! } }),
-        fnAttrs({ data: { store_id: storeId!, pageSize: 100 } }),
-      ]);
-      if (!ca.ok || !attrs.ok) return null;
-      const attrList = attrs.data.rows as Array<{ id: string; name: string; is_size?: boolean }>;
-      const catList = ca.data.rows as Array<{ attribute_id: string }>;
-      const cand = attrList.find((a) =>
-        catList.some((c) => c.attribute_id === a.id) && (a.is_size || /tamanho|size/i.test(a.name)),
-      );
-      if (!cand) return { attribute: null, values: [] as Array<{ id: string; label: string }> };
-      const v = await fnVals({ data: { attribute_id: cand.id, pageSize: 100 } });
-      return { attribute: cand, values: v.ok ? (v.data.rows as Array<{ id: string; label: string }>) : [] };
-    },
-  });
-
-  const [hasVariations, setHasVariations] = useState<"no" | "yes">("no");
-  useEffect(() => {
-    // se já existir cor que não seja "Padrão" → assume sim
-    if (colors.some((c) => c.name !== "Padrão")) setHasVariations("yes");
-  }, [colors]);
-
-  const fnListMediaForMigration = useServerFn(listColorMedia);
-  const fnAddMediaForMigration = useServerFn(addColorMedia);
-  const fnDelMediaForMigration = useServerFn(deleteColorMedia);
-
-  const [newColor, setNewColor] = useState({ name: "", hex: "#000000" });
-  const [migration, setMigration] = useState<null | {
-    padraoId: string;
-    media: MediaRow[];
-    pendingName: string;
-    pendingHex: string;
-  }>(null);
-  const [migrating, setMigrating] = useState(false);
-
-  const createColorRaw = async (name: string, hex: string, isDefault: boolean) => {
-    return runAction(
-      () => fnCreateColor({ data: { product_id: productId, name, hex, is_default: isDefault } }),
-      { success: "Cor adicionada" },
-    );
-  };
-
-  const addColor = async () => {
-    const name = newColor.name.trim();
-    if (!name) return;
-    // Padrão-only migration: única cor existente é "Padrão" e tem mídias.
-    const onlyPadrao = colors.length === 1 && colors[0].name === "Padrão";
-    if (onlyPadrao) {
-      const padrao = colors[0];
-      try {
-        const r = await fnListMediaForMigration({ data: { color_id: padrao.id } });
-        const media = r.ok ? (r.data as MediaRow[]) : [];
-        if (media.length > 0) {
-          setMigration({ padraoId: padrao.id, media, pendingName: name, pendingHex: newColor.hex });
-          return;
-        }
-      } catch { /* ignore — segue fluxo padrão */ }
-    }
-    const ok = await createColorRaw(name, newColor.hex, colors.length === 0);
-    if (ok) { setNewColor({ name: "", hex: "#000000" }); colorsQ.refetch(); onChange(); }
-  };
-
-  const runMigration = async (mode: "move" | "duplicate") => {
-    if (!migration) return;
-    setMigrating(true);
-    try {
-      const createdResp = await fnCreateColor({ data: {
-        product_id: productId, name: migration.pendingName, hex: migration.pendingHex, is_default: mode === "move",
-      } });
-      if (!createdResp.ok) throw new Error(createdResp.error.message);
-      const created = createdResp.data as ColorRow;
-      if (!created?.id) throw new Error("Falha ao criar cor");
-
-      for (const m of migration.media) {
-        await fnAddMediaForMigration({ data: {
-          color_id: created.id,
-          media_type: m.media_type as 'image'|'video'|'youtube'|'vimeo',
-          storage_path: m.storage_path,
-          external_url: m.external_url,
-          external_id: m.external_id,
-          thumbnail_url: m.thumbnail_url,
-          alt: m.alt,
-          title: m.title,
-          sort_order: m.sort_order ?? 0,
-          is_cover: !!m.is_cover,
-          is_hover_media: !!m.is_hover_media,
-        } });
-      }
-
-      if (mode === "move") {
-        for (const m of migration.media) {
-          await fnDelMediaForMigration({ data: { id: m.id } });
-        }
-        await fnDelColor({ data: { id: migration.padraoId } });
-        notify.success("Imagens movidas para " + migration.pendingName);
-      } else {
-        notify.success("Imagens duplicadas em " + migration.pendingName);
-      }
-
-      setMigration(null);
-      setNewColor({ name: "", hex: "#000000" });
-      colorsQ.refetch();
-      onChange();
-    } catch (e) {
-      notify.error((e as Error).message || "Falha ao migrar imagens");
-    } finally {
-      setMigrating(false);
-    }
-  };
-
-  const removeColor = async (id: string) => {
-    const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
-    if (ok) { colorsQ.refetch(); onChange(); }
-  };
-  const setDefault = async (id: string) => {
-    const ok = await runAction(() => fnUpdColor({ data: { id, patch: { is_default: true } } }), { success: "Padrão atualizada" });
-    if (ok) { colorsQ.refetch(); onChange(); }
-  };
-
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const toggleSize = (id: string) =>
-    setSelectedSizes((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  const generate = async () => {
-    if (!colors.length) { notify.error("Adicione ao menos uma cor"); return; }
-    const ok = await runAction(
-      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selectedSizes } }),
-      { loading: "Gerando variantes...", success: "Variantes geradas" },
-    );
-    if (ok) {
-      qc.invalidateQueries({ queryKey: ["wizard", productId] });
-      onChange();
-    }
-  };
-
-  const sizeValues = sizeAttrQ.data?.values ?? [];
-
-  return (
-    <BlockCard
-      title="Variações"
-      description="Configure cores e tamanhos. As variantes (SKU + estoque + preço) são geradas automaticamente."
-    >
-      <FormField label="Este produto possui variações?">
-        <RadioGroup value={hasVariations} onValueChange={(v) => setHasVariations(v as "no" | "yes")} className="flex gap-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="no" id="vno" />
-            <span>Não (produto simples)</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="yes" id="vyes" />
-            <span>Sim, possui cores/tamanhos</span>
-          </label>
-        </RadioGroup>
-      </FormField>
-
-      {hasVariations === "no" && (
-        <div className="rounded-md border p-4 bg-muted/30 text-sm space-y-2">
-          <p>
-            Produto simples — clique em <strong>Gerar variantes</strong> abaixo para criar uma única variante
-            (usa a cor "Padrão"). Você poderá ajustar SKU, peso, código de barras, estoque e preço na próxima etapa.
-          </p>
-          <Button size="sm" onClick={generate} className="gap-2">
-            <Sparkles className="h-4 w-4" /> Gerar variante única
-          </Button>
-        </div>
-      )}
-
-      {hasVariations === "yes" && (
-        <>
-          <section className="space-y-3">
-            <h3 className="font-medium text-sm">Cores</h3>
-            <div className="rounded-md border p-3 bg-muted/30">
-              <FormRow>
-                <FormField label="Nome">
-                  <Input value={newColor.name} onChange={(e) => setNewColor({ ...newColor, name: e.target.value })} placeholder="Ex.: Vermelho" />
-                </FormField>
-                <ColorPicker label="Cor" value={newColor.hex} onChange={(v) => setNewColor({ ...newColor, hex: v })} />
-                <div className="flex items-end">
-                  <Button onClick={addColor} disabled={!newColor.name.trim()} className="gap-2">
-                    <Plus className="h-4 w-4" /> Adicionar cor
-                  </Button>
-                </div>
-              </FormRow>
-            </div>
-            {colors.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {colors.map((c) => (
-                  <div key={c.id} className="rounded-lg border bg-background p-3 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: c.hex ?? "#ccc" }} />
-                        <span className="font-medium truncate">{c.name}</span>
-                        {c.is_default && <Badge variant="secondary" className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!c.is_default && (
-                          <Button size="sm" variant="ghost" onClick={() => setDefault(c.id)} className="h-8 text-xs">
-                            Tornar padrão
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => removeColor(c.id)} className="h-8 w-8">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                    <ColorGallerySection color={c} onChange={onChange} compact />
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <AlertDialog open={!!migration} onOpenChange={(o) => { if (!o && !migrating) setMigration(null); }}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  As imagens existentes pertencem à cor {migration?.pendingName}?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Você cadastrou {migration?.media.length ?? 0} imagem(ns) na cor temporária "Padrão".
-                  Escolha o que fazer ao criar a cor <strong>{migration?.pendingName}</strong>:
-                  <br /><br />
-                  • <strong>Mover</strong>: transfere todas as imagens para {migration?.pendingName} e remove a cor "Padrão".<br />
-                  • <strong>Duplicar</strong>: copia as imagens para {migration?.pendingName} e mantém a cor "Padrão".<br />
-                  • <strong>Cancelar</strong>: não cria a cor agora.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={migrating}>Cancelar</AlertDialogCancel>
-                <Button variant="outline" disabled={migrating} onClick={() => runMigration("duplicate")} className="gap-2">
-                  {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Duplicar imagens
-                </Button>
-                <AlertDialogAction disabled={migrating} onClick={(e) => { e.preventDefault(); runMigration("move"); }}>
-                  {migrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Mover imagens
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-
-          <section className="space-y-3 pt-2 border-t">
-            <h3 className="font-medium text-sm">
-              Tamanhos
-              {sizeAttrQ.data?.attribute && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">({sizeAttrQ.data.attribute.name})</span>
-              )}
-            </h3>
-            {!sizeValues.length ? (
-              <p className="text-xs text-muted-foreground">
-                A categoria selecionada não possui atributo de tamanho. Será gerada 1 variante por cor.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {sizeValues.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => toggleSize(v.id)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full border text-sm transition",
-                        selectedSizes.includes(v.id)
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "hover:bg-muted",
-                      )}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <div className="pt-2 border-t flex justify-end">
-            <Button onClick={generate} className="gap-2" disabled={!colors.length}>
-              <Sparkles className="h-4 w-4" /> Gerar Variantes
-            </Button>
-          </div>
-
-          {/* Fotos por cor agora ficam dentro de cada card de cor acima. */}
-        </>
-      )}
-
-      <BlockFooter
-        left={<Button variant="outline" onClick={onPrev} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>}
-        right={<Button onClick={onNext} className="gap-2">Avançar <ArrowRight className="h-4 w-4" /></Button>}
-      />
-    </BlockCard>
-  );
-}
-
-// =============================================================================
-// BLOCO 4 — Variantes / Estoque e Preços (matriz editável)
-// =============================================================================
-function StockPriceBlock({
-  productId, onChange, onPrev, onNext,
-}: { productId: string; onChange: () => void; onPrev: () => void; onNext: () => void }) {
-  const { storeId } = useActiveStore();
-  const qc = useQueryClient();
-
-  const fnVariants = useServerFn(listProductVariants);
-  const fnColors = useServerFn(listProductColors);
-  const fnUpdVar = useServerFn(updateProductVariant);
-  const fnDelVar = useServerFn(deleteProductVariant);
-  const fnStock = useServerFn(listAdminStock);
-  const fnBulkStock = useServerFn(bulkAdjustStock);
-  const fnPrices = useServerFn(listProductPrices);
-  const fnPriceLists = useServerFn(listPriceLists);
-  const fnSetPrice = useServerFn(setVariantPrice);
-  const fnAttrVals = useServerFn(listAttributeValues);
-
-  const variantsQ = useQuery({
-    queryKey: ["wizard-variants", productId],
-    queryFn: async () => {
-      const r = await fnVariants({ data: { product_id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data as VariantRow[];
-    },
-  });
-  const colorsQ = useQuery({
-    queryKey: ["wizard", productId, "colors"],
-    queryFn: async () => {
-      const r = await fnColors({ data: { product_id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data as ColorRow[];
-    },
-  });
-  const stockQ = useQuery({
-    queryKey: ["wizard-stock", productId, storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnStock({ data: { store_id: storeId!, product_id: productId, pageSize: 200 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Array<{ id: string; variant_id: string; quantity_on_hand: number }>;
-    },
-  });
-  const priceListsQ = useQuery({
-    queryKey: ["wizard-price-lists", storeId], enabled: !!storeId,
-    queryFn: async () => {
-      const r = await fnPriceLists({ data: { store_id: storeId!, pageSize: 100 } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Array<{ id: string; name: string; is_default?: boolean }>;
-    },
-  });
-  const pricesQ = useQuery({
-    queryKey: ["wizard-prices", productId],
-    queryFn: async () => {
-      const r = await fnPrices({ data: { product_id: productId } });
-      if (!r.ok) throw new Error(r.error.message);
-      return r.data as PriceItemRow[];
-    },
-  });
-
-  const defaultPriceListId =
-    priceListsQ.data?.find((l) => l.is_default)?.id ?? priceListsQ.data?.[0]?.id ?? "";
-
-  const variants = variantsQ.data ?? [];
-  const colors = colorsQ.data ?? [];
-
-  // resolve labels de tamanho (lookup por id → label)
-  const sizeIds = useMemo(
-    () => Array.from(new Set(variants.map((v) => v.size_attribute_value_id).filter(Boolean) as string[])),
-    [variants],
-  );
-  const sizeLabelsQ = useQuery({
-    queryKey: ["wizard-size-labels", productId, sizeIds.join(",")],
-    enabled: sizeIds.length > 0,
-    queryFn: async () => {
-      // como não temos endpoint por ids, listamos por attribute_id; usamos o primeiro variant
-      const first = variants.find((v) => v.size_attribute_value_id);
-      if (!first?.size_attribute_value_id) return new Map<string, string>();
-      // não temos attribute_id direto — buscamos via category attrs? Simplificamos: mostramos id curto fallback
-      // tentativa: já temos variantes com label opcional; deixa "—"
-      void fnAttrVals;
-      return new Map<string, string>();
-    },
-  });
-
-  const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
-
-  // Capa por cor — busca a galeria de cada cor e pega a mídia marcada como cover
-  const fnListMedia = useServerFn(listColorMedia);
-  const coversQ = useQuery({
-    queryKey: ["wizard-color-covers", productId, colors.map((c) => c.id).join(",")],
-    enabled: colors.length > 0,
-    queryFn: async () => {
-      const map = new Map<string, string>();
-      await Promise.all(colors.map(async (c) => {
-        const r = await fnListMedia({ data: { color_id: c.id } });
-        if (!r.ok) return;
-        const list = r.data as MediaRow[];
-        const cover = list.find((m) => m.is_cover) ?? list[0];
-        const src = cover?.thumbnail_url || cover?.external_url || cover?.storage_path || "";
-        if (src) map.set(c.id, src);
-      }));
-      return map;
-    },
-  });
-  const colorThumbById = coversQ.data ?? new Map<string, string>();
-  const stockByVariant = useMemo(() => {
-    const m = new Map<string, { id: string; qty: number }>();
-    (stockQ.data ?? []).forEach((s) => m.set(s.variant_id, { id: s.id, qty: s.quantity_on_hand }));
-    return m;
-  }, [stockQ.data]);
-  const priceByVariant = useMemo(() => {
-    const m = new Map<string, { price: number; compare: number | null }>();
-    (pricesQ.data ?? [])
-      .filter((p) => p.price_list_id === defaultPriceListId)
-      .forEach((p) => m.set(p.variant_id!, {
-        price: Number(p.price),
-        compare: p.compare_at_price != null ? Number(p.compare_at_price) : null,
-      }));
-    return m;
-  }, [pricesQ.data, defaultPriceListId]);
-
-  const saveVariant = async (id: string, patch: Parameters<typeof fnUpdVar>[0]["data"]["patch"]) => {
-    const ok = await runAction(() => fnUpdVar({ data: { id, patch } }), { success: "Variante salva" });
-    if (ok) qc.invalidateQueries({ queryKey: ["wizard-variants", productId] });
-  };
-  const saveStock = async (stockLevelId: string, qty: number) => {
-    const ok = await runAction(
-      () => fnBulkStock({ data: { items: [{ stock_level_id: stockLevelId, new_quantity: qty, reason: "Cadastro de produto" }] } }),
-      { success: "Estoque ajustado" },
-    );
-    if (ok) qc.invalidateQueries({ queryKey: ["wizard-stock", productId, storeId] });
-  };
-  const savePrice = async (variantId: string, price: number, compare: number | null) => {
-    if (!defaultPriceListId) { notify.error("Cadastre uma lista de preços antes"); return; }
-    const ok = await runAction(
-      () => fnSetPrice({ data: { variant_id: variantId, price_list_id: defaultPriceListId, price, compare_at_price: compare } }),
-      { success: "Preço salvo" },
-    );
-    if (ok) qc.invalidateQueries({ queryKey: ["wizard-prices", productId] });
-  };
-  const removeVariant = async (id: string) => {
-    const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
-    if (ok) {
-      qc.invalidateQueries({ queryKey: ["wizard-variants", productId] });
-      onChange();
-    }
-  };
-
-  const [bulkPrice, setBulkPrice] = useState("");
-  const [bulkStock, setBulkStock] = useState("");
-  const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
-  const applyBulkPrice = async () => {
-    const value = Number(bulkPrice.replace(",", "."));
-    if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
-    setBulkSaving("price");
-    try {
-      for (const v of variants) await savePrice(v.id, value, null);
-      notify.success("Preço aplicado em todas as variantes");
-      setBulkPrice("");
-    } finally {
-      setBulkSaving(null);
-    }
-  };
-  const applyBulkStock = async () => {
-    const value = Number(bulkStock);
-    if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
-    setBulkSaving("stock");
-    try {
-      for (const v of variants) {
-        const stock = stockByVariant.get(v.id);
-        if (stock?.id) await saveStock(stock.id, value);
-      }
-      notify.success("Estoque aplicado em todas as variantes");
-      setBulkStock("");
-    } finally {
-      setBulkSaving(null);
-    }
-  };
-
-  return (
-    <BlockCard
-      title="Variantes — Estoque e Preços"
-      description="Ajuste cada variação em cards simples ou aplique preço/estoque em massa."
-    >
-      {variants.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Nenhuma variante. Volte à etapa <strong>Variações</strong> e clique em <strong>Gerar variantes</strong>.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-sm font-medium mb-3">Ações rápidas</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex gap-2">
-                <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas" />
-                <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0">Aplicar preço</Button>
-              </div>
-              <div className="flex gap-2">
-                <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" />
-                <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0">Aplicar estoque</Button>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            {variants.map((v) => {
-                const color = colorById.get(v.product_color_id);
-                const sizeLabel =
-                  (v.size_attribute_value_id && sizeLabelsQ.data?.get(v.size_attribute_value_id)) || "Único";
-                const stock = stockByVariant.get(v.id);
-                const price = priceByVariant.get(v.id);
-                const thumb = colorThumbById.get(v.product_color_id) ?? null;
-                return (
-                  <MatrixRow
-                    key={v.id}
-                    variant={v}
-                    thumbnailUrl={thumb}
-                    colorName={color?.name ?? "—"}
-                    colorHex={color?.hex ?? null}
-                    sizeLabel={sizeLabel}
-                    stockLevelId={stock?.id ?? null}
-                    stockQty={stock?.qty ?? null}
-                    price={price?.price ?? null}
-                    compare={price?.compare ?? null}
-                    onChangeVariant={(p) => saveVariant(v.id, p)}
-                    onChangeStock={(q) => stock?.id && saveStock(stock.id, q)}
-                    onChangePrice={(p, c) => savePrice(v.id, p, c)}
-                    onDelete={() => removeVariant(v.id)}
-                  />
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      <BlockFooter
-        left={<Button variant="outline" onClick={onPrev} className="gap-2"><ArrowLeft className="h-4 w-4" /> Voltar</Button>}
-        right={<Button onClick={onNext} className="gap-2">Avançar <ArrowRight className="h-4 w-4" /></Button>}
-      />
-    </BlockCard>
-  );
-}
 
 function MatrixRow({
   variant, thumbnailUrl, colorName, colorHex, sizeLabel,
