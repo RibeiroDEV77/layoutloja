@@ -394,19 +394,38 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
   const save = async () => {
     setSaving(true);
     const ok = await runAction(
-      () => fnUpd({ data: { id: product.id, patch: {
-        category_id: form.category_id || null,
-        brand_id: form.brand_id || null,
-        featured: form.featured,
-        on_sale: form.on_sale,
-        new_product: form.new_product,
-        best_seller: form.best_seller,
-      } } }),
+      async () => {
+        const r = await fnUpd({ data: { id: product.id, patch: {
+          category_id: form.category_id || null,
+          brand_id: form.brand_id || null,
+          featured: form.featured,
+          on_sale: form.on_sale,
+          new_product: form.new_product,
+          best_seller: form.best_seller,
+        } } });
+        if (form.category_id) {
+          await fnSetSections({ data: {
+            product_id: product.id,
+            category_ids: Array.from(sectionIds),
+            primary_id: form.category_id,
+          } });
+        }
+        return r;
+      },
       { loading: "Salvando...", success: "Organização salva" },
     );
     setSaving(false);
     if (ok) onSaved();
   };
+
+  const toggleSection = (id: string) => {
+    setSectionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
 
   const setAttr = async (payload: Parameters<typeof fnSet>[0]["data"]) => {
     const ok = await runAction(() => fnSet({ data: payload }), { success: "Atributo salvo" });
