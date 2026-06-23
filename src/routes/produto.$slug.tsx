@@ -196,7 +196,10 @@ function ProductPage() {
   return (
     <StorefrontShell>
       <StorefrontNavbar />
-      <main className="mx-auto max-w-[1280px] px-4 lg:px-8 py-6 lg:py-10">
+      <main className="mx-auto max-w-[1280px] px-4 lg:px-8 py-6 lg:py-10 animate-fade-in">
+        <div className="mb-4 -ml-2 md:-ml-3">
+          <BackButton fallbackTo="/" />
+        </div>
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[12px] text-[#666] mb-6" aria-label="Breadcrumb">
           <Link to="/" className="hover:text-[var(--brand-red)]">Início</Link>
