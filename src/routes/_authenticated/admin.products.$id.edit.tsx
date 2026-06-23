@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Plus, Trash2, Sparkles, ImagePlus, Star, Save, Send, GripVertical, Library,
   CheckCircle2, AlertCircle, History as HistoryIcon, Eye, EyeOff, Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { AssetPicker } from "@/components/dam/asset-picker";
 import type { AssetLike } from "@/components/dam/asset-thumb";
@@ -80,15 +81,11 @@ type AttrValRow = Tables<"product_attribute_values">;
 type PriceItemRow = Tables<"price_list_items">;
 
 const TABS = [
-  { key: "general", label: "Geral" },
+  { key: "general", label: "Produto" },
+  { key: "variants", label: "Variantes + fotos" },
   { key: "organization", label: "Organização" },
-  { key: "variants", label: "Variantes" },
-  { key: "gallery", label: "Galeria" },
-  { key: "prices", label: "Preços" },
-  { key: "seo", label: "SEO" },
-  { key: "related", label: "Relacionados" },
-  { key: "publish", label: "Publicação" },
-  { key: "history", label: "Histórico" },
+  { key: "publish", label: "Publicar" },
+  { key: "advanced", label: "Avançado" },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
 
@@ -217,34 +214,22 @@ function ProductEditPage() {
           </TabsList>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="shadow-sm">
+          <CardContent className="p-4 sm:p-6">
             <TabsContent value="general" className="m-0">
               <GeneralTab product={product} onSaved={refreshAll} />
-            </TabsContent>
-            <TabsContent value="organization" className="m-0">
-              <OrganizationTab product={product} onSaved={refreshAll} />
             </TabsContent>
             <TabsContent value="variants" className="m-0">
               <VariantsTab productId={id} product={product} colors={colors as ColorRow[]} onSaved={refreshAll} />
             </TabsContent>
-            <TabsContent value="gallery" className="m-0">
-              <GalleryTab productId={id} colors={colors as ColorRow[]} onSaved={refreshAll} />
-            </TabsContent>
-            <TabsContent value="prices" className="m-0">
-              <PricesTab productId={id} storeId={storeId} onSaved={refreshAll} />
-            </TabsContent>
-            <TabsContent value="seo" className="m-0">
-              <SeoTab product={product} onSaved={refreshAll} />
-            </TabsContent>
-            <TabsContent value="related" className="m-0">
-              <RelatedTab productId={id} storeId={storeId} />
+            <TabsContent value="organization" className="m-0">
+              <OrganizationTab product={product} onSaved={refreshAll} />
             </TabsContent>
             <TabsContent value="publish" className="m-0">
               <PublishTab canPublish={canPublish} issues={issues} onPublish={onPublish} onUnpublish={onUnpublish} status={product.status} />
             </TabsContent>
-            <TabsContent value="history" className="m-0">
-              <HistoryTab productId={id} />
+            <TabsContent value="advanced" className="m-0">
+              <AdvancedTab productId={id} product={product} storeId={storeId} onSaved={refreshAll} />
             </TabsContent>
           </CardContent>
         </Card>
@@ -663,6 +648,39 @@ function VariantsTab({
     if (ok) qc.invalidateQueries({ queryKey: ["product-prices", productId] });
   };
 
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkStock, setBulkStock] = useState("");
+  const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
+
+  const applyBulkPrice = async () => {
+    const value = Number(bulkPrice.replace(",", "."));
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
+    setBulkSaving("price");
+    try {
+      for (const v of variantsQ.data ?? []) await savePrice(v.id, value, null);
+      notify.success("Preço aplicado em todas as variantes");
+      setBulkPrice("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+
+  const applyBulkStock = async () => {
+    const value = Number(bulkStock);
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
+    setBulkSaving("stock");
+    try {
+      for (const v of variantsQ.data ?? []) {
+        const stock = stockByVariant.get(v.id);
+        if (stock?.id) await saveStock(stock.id, value);
+      }
+      notify.success("Estoque aplicado em todas as variantes");
+      setBulkStock("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+
   // ---------- Lookups ----------
   const colorById = useMemo(() => new Map(colors.map((c) => [c.id, c])), [colors]);
   const sizeById = useMemo(() => {
@@ -688,14 +706,14 @@ function VariantsTab({
 
   return (
     <TabShell
-      title="Variantes"
-      description="Centro operacional. Toda baixa de estoque, pedido, pagamento, NF e frete usa o SKU da variante."
+      title="Variantes e fotos"
+      description="Crie cores, vincule fotos e ajuste os SKUs no mesmo lugar."
     >
       {/* CORES — formam o eixo principal das variantes e a chave da galeria */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium">Cores</h3>
-          <p className="text-xs text-muted-foreground">Imagens pertencem à cor — gerencie na aba Galeria.</p>
+          <h3 className="font-medium">1. Cores e fotos</h3>
+          <p className="text-xs text-muted-foreground">Cada cor pode ter sua própria galeria.</p>
         </div>
         <div className="rounded-md border p-3 space-y-3 bg-muted/30">
           <FormRow>
@@ -711,19 +729,27 @@ function VariantsTab({
           </FormRow>
         </div>
         {colors.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {colors.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
-                <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: c.hex ?? "#ccc" }} />
-                <span className="font-medium">{c.name}</span>
-                {c.is_default ? (
-                  <Badge className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>
-                ) : (
-                  <button onClick={() => setColorDefault(c.id)} className="text-xs text-muted-foreground hover:text-foreground">tornar padrão</button>
-                )}
-                <button onClick={() => removeColor(c.id)} className="text-destructive hover:text-destructive/80">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+              <div key={c.id} className="rounded-lg border bg-background p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: c.hex ?? "#ccc" }} />
+                    <span className="font-medium truncate">{c.name}</span>
+                    {c.is_default && <Badge className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!c.is_default && (
+                      <Button size="sm" variant="ghost" onClick={() => setColorDefault(c.id)} className="h-8 text-xs">
+                        Tornar padrão
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" onClick={() => removeColor(c.id)} className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <ColorMediaQuickManager color={c} onSaved={onSaved} />
               </div>
             ))}
           </div>
@@ -733,7 +759,7 @@ function VariantsTab({
       {/* GERADOR */}
       <section className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium">Gerador de variantes</h3>
+          <h3 className="font-medium">2. Tamanhos e geração</h3>
           <Button
             size="sm"
             onClick={generate}
@@ -759,17 +785,23 @@ function VariantsTab({
                 Categoria sem atributo de tamanho — será gerada 1 variante por cor.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {sizeValues.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => toggleSize(v.id)}
-                    className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sizeValues.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => toggleSize(v.id)}
+                      className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -779,63 +811,157 @@ function VariantsTab({
       {/* MATRIZ EDITÁVEL */}
       <section className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium">Matriz de variantes ({variants.length})</h3>
+          <h3 className="font-medium">3. Ajustes por variante ({variants.length})</h3>
         </div>
         {variants.length === 0 ? (
           <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhuma variante. Adicione cores e clique em <strong>Gerar variantes</strong>.
           </div>
         ) : (
-          <div className="rounded-md border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase">
-                <tr>
-                  <th className="text-left p-2">Cor</th>
-                  <th className="text-left p-2">Tamanho</th>
-                  <th className="text-left p-2">SKU</th>
-                  <th className="text-left p-2">Cód. barras</th>
-                  <th className="text-right p-2">Estoque</th>
-                  <th className="text-right p-2">Peso (g)</th>
-                  <th className="text-right p-2">Preço</th>
-                  <th className="text-right p-2">Promo</th>
-                  <th className="text-center p-2">Ativo</th>
-                  <th className="text-right p-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {variants.map((v) => {
-                  const color = colorById.get(v.product_color_id);
-                  const sizeLabel = v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? "—" : "Único";
-                  const stock = stockByVariant.get(v.id);
-                  const price = priceByVariant.get(v.id);
-                  return (
-                    <VariantRow
-                      key={v.id}
-                      variant={v}
-                      colorName={color?.name ?? "—"}
-                      colorHex={color?.hex ?? null}
-                      sizeLabel={sizeLabel}
-                      stockLevelId={stock?.id ?? null}
-                      stockQty={stock?.qty ?? null}
-                      price={price?.price ?? null}
-                      salePrice={price?.compare ?? null}
-                      onChangeVariant={(patch) => saveVariantField(v.id, patch)}
-                      onChangeStock={(qty) => stock?.id && saveStock(stock.id, qty)}
-                      onChangePrice={(p, sale) => savePrice(v.id, p, sale)}
-                      onDelete={() => removeVariant(v.id)}
-                    />
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium mb-3">Ações rápidas</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex gap-2">
+                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas" />
+                  <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0">
+                    Aplicar preço
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" />
+                  <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0">
+                    Aplicar estoque
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+              {variants.map((v) => {
+                const color = colorById.get(v.product_color_id);
+                const sizeLabel = v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? "—" : "Único";
+                const stock = stockByVariant.get(v.id);
+                const price = priceByVariant.get(v.id);
+                return (
+                  <VariantRow
+                    key={v.id}
+                    variant={v}
+                    colorName={color?.name ?? "—"}
+                    colorHex={color?.hex ?? null}
+                    sizeLabel={sizeLabel}
+                    stockLevelId={stock?.id ?? null}
+                    stockQty={stock?.qty ?? null}
+                    price={price?.price ?? null}
+                    salePrice={price?.compare ?? null}
+                    onChangeVariant={(patch) => saveVariantField(v.id, patch)}
+                    onChangeStock={(qty) => stock?.id && saveStock(stock.id, qty)}
+                    onChangePrice={(p, sale) => savePrice(v.id, p, sale)}
+                    onDelete={() => removeVariant(v.id)}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Edição inline: pressione Tab para salvar cada célula. Estoque usa o Inventory Engine (com auditoria + outbox).
-          Preços usam a lista padrão da loja.
+          Campos salvam ao sair do input. Preço usa a lista padrão da loja; estoque usa o controle de inventário.
         </p>
       </section>
     </TabShell>
+  );
+}
+
+function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: () => void }) {
+  const fnList = useServerFn(listColorMedia);
+  const fnAdd = useServerFn(addColorMedia);
+  const fnDel = useServerFn(deleteColorMedia);
+  const fnUpd = useServerFn(updateColorMedia);
+  const qc = useQueryClient();
+
+  const media = useQuery({
+    queryKey: ["variant-color-media", color.id],
+    queryFn: async () => {
+      const r = await fnList({ data: { color_id: color.id } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data as MediaRow[];
+    },
+  });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["variant-color-media", color.id] });
+
+  const onPicked = async (assets: AssetLike[]) => {
+    if (assets.length === 0) return;
+    const baseOrder = media.data?.length ?? 0;
+    const hasCover = (media.data ?? []).some((m) => m.is_cover);
+    const ok = await runAction(
+      async () => {
+        let i = 0;
+        for (const a of assets) {
+          const mediaType: "image" | "video" | "youtube" | "vimeo" =
+            a.kind === "youtube" ? "youtube"
+            : a.kind === "vimeo" ? "vimeo"
+            : a.kind === "video" ? "video"
+            : "image";
+          const previewUrl = a.preview_url ?? a.external_url ?? null;
+          const res = await fnAdd({ data: {
+            color_id: color.id,
+            media_type: mediaType,
+            external_url: previewUrl,
+            external_id: a.external_id ?? null,
+            storage_path: null,
+            thumbnail_url: previewUrl,
+            alt: a.alt_text ?? null,
+            title: a.title ?? a.original_filename ?? null,
+            is_cover: !hasCover && i === 0,
+            sort_order: baseOrder + i,
+          } });
+          if (!res.ok) throw new Error(res.error.message);
+          i++;
+        }
+        return { ok: true as const, data: { added: assets.length } };
+      },
+      { loading: "Vinculando fotos...", success: `${assets.length} foto(s) adicionada(s)` },
+    );
+    if (ok) { invalidate(); onSaved(); }
+  };
+  const setCover = async (id: string) => {
+    const ok = await runAction(() => fnUpd({ data: { id, patch: { is_cover: true } } }), { success: "Capa definida" });
+    if (ok) { invalidate(); onSaved(); }
+  };
+  const remove = async (id: string) => {
+    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Foto removida" });
+    if (ok) { invalidate(); onSaved(); }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{media.data?.length ?? 0} foto(s)</span>
+        <AssetPicker context="product" multiple onSelect={onPicked}>
+          <Button size="sm" variant="outline" className="gap-2"><ImagePlus className="h-4 w-4" />Adicionar fotos</Button>
+        </AssetPicker>
+      </div>
+      {(media.data?.length ?? 0) === 0 ? (
+        <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+          Fotos desta cor aparecerão aqui.
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+          {(media.data ?? []).slice(0, 10).map((m) => {
+            const src = m.thumbnail_url || m.external_url || m.storage_path || "";
+            return (
+              <div key={m.id} className="relative aspect-square rounded-md border bg-muted overflow-hidden group">
+                {src ? <img src={src} alt={m.alt ?? color.name} className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 m-auto text-muted-foreground" />}
+                {m.is_cover && <Badge className="absolute left-1 top-1 h-5 text-[10px]"><Star className="h-2.5 w-2.5 mr-0.5" />Capa</Badge>}
+                <div className="absolute inset-x-0 bottom-0 hidden group-hover:flex gap-1 p-1 bg-background/90">
+                  {!m.is_cover && <Button size="sm" variant="secondary" className="h-6 text-[10px] flex-1" onClick={() => setCover(m.id)}>Capa</Button>}
+                  <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => remove(m.id)}><Trash2 className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -876,96 +1002,90 @@ function VariantRow({
   };
 
   return (
-    <tr className={!variant.is_active ? "opacity-60" : ""}>
-      <td className="p-2 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: colorHex }} />}
-          <span>{colorName}</span>
+    <div className={`rounded-lg border bg-background p-3 space-y-3 ${!variant.is_active ? "opacity-60" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex items-center gap-2">
+            {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border shrink-0" style={{ background: colorHex }} />}
+            <span className="font-semibold truncate">{colorName}</span>
+            <Badge variant="secondary" className="shrink-0">{sizeLabel}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{variant.sku}</p>
         </div>
-      </td>
-      <td className="p-2 whitespace-nowrap">{sizeLabel}</td>
-      <td className="p-2">
-        <Input
-          value={sku}
-          onChange={(e) => setSku(e.target.value)}
-          onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
-          className="h-8 text-xs font-mono w-32"
-        />
-      </td>
-      <td className="p-2">
-        <Input
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          onBlur={() => (barcode || "") !== (variant.barcode ?? "") && onChangeVariant({ barcode: barcode || null })}
-          className="h-8 text-xs font-mono w-32"
-          placeholder="EAN/UPC"
-        />
-      </td>
-      <td className="p-2 text-right">
-        {stockLevelId ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <Switch checked={variant.is_active} onCheckedChange={(v) => onChangeVariant({ is_active: v })} />
+          <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8">
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <FormField label="SKU">
           <Input
-            type="number" min={0}
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            onBlur={() => onBlurNumber(stock, onChangeStock)}
-            className="h-8 text-xs w-20 text-right ml-auto"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
+            className="font-mono"
           />
-        ) : (
-          <span className="text-xs text-muted-foreground">— sem nível —</span>
-        )}
-      </td>
-      <td className="p-2 text-right">
-        <Input
-          type="number" min={0} step={1}
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          onBlur={() => {
-            const n = weight ? Number(weight) : null;
-            if (n !== variant.weight_grams) onChangeVariant({ weight_grams: n });
-          }}
-          className="h-8 text-xs w-20 text-right ml-auto"
-        />
-      </td>
-      <td className="p-2 text-right">
-        <Input
-          type="number" min={0} step="0.01"
-          value={priceInput}
-          onChange={(e) => setPriceInput(e.target.value)}
-          onBlur={() => {
-            const p = Number(priceInput.replace(",", "."));
-            const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
-            if (!Number.isNaN(p) && p !== price) onChangePrice(p, s);
-          }}
-          className="h-8 text-xs w-24 text-right ml-auto"
-          placeholder="0,00"
-        />
-      </td>
-      <td className="p-2 text-right">
-        <Input
-          type="number" min={0} step="0.01"
-          value={saleInput}
-          onChange={(e) => setSaleInput(e.target.value)}
-          onBlur={() => {
-            const p = priceInput ? Number(priceInput.replace(",", ".")) : price;
-            const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
-            if (p != null && !Number.isNaN(p)) onChangePrice(p, s);
-          }}
-          className="h-8 text-xs w-24 text-right ml-auto"
-          placeholder="—"
-        />
-      </td>
-      <td className="p-2 text-center">
-        <Switch
-          checked={variant.is_active}
-          onCheckedChange={(v) => onChangeVariant({ is_active: v })}
-        />
-      </td>
-      <td className="p-2 text-right">
-        <Button size="icon" variant="ghost" onClick={onDelete}>
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      </td>
-    </tr>
+        </FormField>
+        <FormField label="Estoque">
+          {stockLevelId ? (
+            <Input type="number" min={0} value={stock} onChange={(e) => setStock(e.target.value)} onBlur={() => onBlurNumber(stock, onChangeStock)} />
+          ) : (
+            <Input disabled value="Sem nível" />
+          )}
+        </FormField>
+        <FormField label="Preço">
+          <Input
+            type="number" min={0} step="0.01" value={priceInput} onChange={(e) => setPriceInput(e.target.value)}
+            onBlur={() => {
+              const p = Number(priceInput.replace(",", "."));
+              const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
+              if (!Number.isNaN(p) && p !== price) onChangePrice(p, s);
+            }}
+            placeholder="0,00"
+          />
+        </FormField>
+        <FormField label="Promoção">
+          <Input
+            type="number" min={0} step="0.01" value={saleInput} onChange={(e) => setSaleInput(e.target.value)}
+            onBlur={() => {
+              const p = priceInput ? Number(priceInput.replace(",", ".")) : price;
+              const s = saleInput ? Number(saleInput.replace(",", ".")) : null;
+              if (p != null && !Number.isNaN(p)) onChangePrice(p, s);
+            }}
+            placeholder="—"
+          />
+        </FormField>
+      </div>
+
+      <details className="rounded-md bg-muted/30 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Campos avançados</summary>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+          <FormField label="Código de barras">
+            <Input
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              onBlur={() => (barcode || "") !== (variant.barcode ?? "") && onChangeVariant({ barcode: barcode || null })}
+              className="font-mono"
+              placeholder="EAN/UPC"
+            />
+          </FormField>
+          <FormField label="Peso (g)">
+            <Input
+              type="number" min={0} step={1}
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              onBlur={() => {
+                const n = weight ? Number(weight) : null;
+                if (n !== variant.weight_grams) onChangeVariant({ weight_grams: n });
+              }}
+            />
+          </FormField>
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -1318,6 +1438,29 @@ function SeoTab({ product, onSaved }: { product: ProductRow; onSaved: () => void
           maxLength={170}
         />
       </FormField>
+    </TabShell>
+  );
+}
+
+function AdvancedTab({
+  productId, product, storeId, onSaved,
+}: { productId: string; product: ProductRow; storeId: string | null; onSaved: () => void }) {
+  return (
+    <TabShell title="Configurações avançadas" description="Itens usados com menos frequência ficam separados para não atrapalhar o cadastro principal.">
+      <Tabs defaultValue="seo" className="space-y-4">
+        <div className="overflow-x-auto">
+          <TabsList className="h-auto flex-wrap">
+            <TabsTrigger value="seo">SEO</TabsTrigger>
+            <TabsTrigger value="prices">Listas de preço</TabsTrigger>
+            <TabsTrigger value="related">Relacionados</TabsTrigger>
+            <TabsTrigger value="history">Histórico</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="seo" className="m-0"><SeoTab product={product} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="prices" className="m-0"><PricesTab productId={productId} storeId={storeId} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="related" className="m-0"><RelatedTab productId={productId} storeId={storeId} /></TabsContent>
+        <TabsContent value="history" className="m-0"><HistoryTab productId={productId} /></TabsContent>
+      </Tabs>
     </TabShell>
   );
 }

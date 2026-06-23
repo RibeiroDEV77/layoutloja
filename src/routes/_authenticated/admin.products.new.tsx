@@ -719,12 +719,12 @@ function ColorGallerySection({
   };
 
   return (
-    <div className={cn("rounded-lg border p-4 space-y-3", !compact && "bg-muted/20")}>
+    <div className={cn(compact ? "space-y-3" : "rounded-lg border p-4 space-y-3 bg-muted/20")}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />
-          <span className="font-medium truncate">Cor: {color.name}</span>
-          {color.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
+          {!compact && <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />}
+          <span className="font-medium truncate">{compact ? "Fotos" : `Cor: ${color.name}`}</span>
+          {!compact && color.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
           <span className="text-xs text-muted-foreground">· {media.data?.length ?? 0} mídia(s)</span>
         </div>
         <AssetPicker context="product" multiple onSelect={onPicked}>
@@ -1010,21 +1010,27 @@ function VariationsBlock({
               </FormRow>
             </div>
             {colors.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {colors.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm bg-background">
-                    <span className="h-3 w-3 rounded-full ring-1 ring-border" style={{ background: c.hex ?? "#ccc" }} />
-                    <span className="font-medium">{c.name}</span>
-                    {c.is_default ? (
-                      <Badge variant="secondary" className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>
-                    ) : (
-                      <button onClick={() => setDefault(c.id)} className="text-xs text-muted-foreground hover:text-foreground">
-                        tornar padrão
-                      </button>
-                    )}
-                    <button onClick={() => removeColor(c.id)} className="text-destructive hover:text-destructive/80">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  <div key={c.id} className="rounded-lg border bg-background p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: c.hex ?? "#ccc" }} />
+                        <span className="font-medium truncate">{c.name}</span>
+                        {c.is_default && <Badge variant="secondary" className="h-5 text-[10px] gap-1"><Star className="h-2.5 w-2.5" />Padrão</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!c.is_default && (
+                          <Button size="sm" variant="ghost" onClick={() => setDefault(c.id)} className="h-8 text-xs">
+                            Tornar padrão
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => removeColor(c.id)} className="h-8 w-8">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                    <ColorGallerySection color={c} onChange={onChange} compact />
                   </div>
                 ))}
               </div>
@@ -1073,22 +1079,28 @@ function VariationsBlock({
                 A categoria selecionada não possui atributo de tamanho. Será gerada 1 variante por cor.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {sizeValues.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => toggleSize(v.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full border text-sm transition",
-                      selectedSizes.includes(v.id)
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "hover:bg-muted",
-                    )}
-                  >
-                    {v.label}
-                  </button>
-                ))}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sizeValues.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => toggleSize(v.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full border text-sm transition",
+                        selectedSizes.includes(v.id)
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "hover:bg-muted",
+                      )}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -1099,20 +1111,7 @@ function VariationsBlock({
             </Button>
           </div>
 
-          {/* BLOCO 5 — Fotos por cor */}
-          {colors.length > 0 && (
-            <section className="space-y-3 pt-4 border-t">
-              <h3 className="font-medium text-sm">Fotos por cor</h3>
-              <p className="text-xs text-muted-foreground">
-                Cada cor possui sua própria galeria — exibida automaticamente quando o cliente escolhe a variação.
-              </p>
-              <div className="space-y-4">
-                {colors.map((c) => (
-                  <ColorGallerySection key={c.id} color={c} onChange={onChange} />
-                ))}
-              </div>
-            </section>
-          )}
+          {/* Fotos por cor agora ficam dentro de cada card de cor acima. */}
         </>
       )}
 
@@ -1274,34 +1273,63 @@ function StockPriceBlock({
     }
   };
 
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkStock, setBulkStock] = useState("");
+  const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
+  const applyBulkPrice = async () => {
+    const value = Number(bulkPrice.replace(",", "."));
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
+    setBulkSaving("price");
+    try {
+      for (const v of variants) await savePrice(v.id, value, null);
+      notify.success("Preço aplicado em todas as variantes");
+      setBulkPrice("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+  const applyBulkStock = async () => {
+    const value = Number(bulkStock);
+    if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
+    setBulkSaving("stock");
+    try {
+      for (const v of variants) {
+        const stock = stockByVariant.get(v.id);
+        if (stock?.id) await saveStock(stock.id, value);
+      }
+      notify.success("Estoque aplicado em todas as variantes");
+      setBulkStock("");
+    } finally {
+      setBulkSaving(null);
+    }
+  };
+
   return (
     <BlockCard
       title="Variantes — Estoque e Preços"
-      description="Edição inline. Toda alteração passa pelo Pricing e Inventory Engine (com auditoria + outbox)."
+      description="Ajuste cada variação em cards simples ou aplique preço/estoque em massa."
     >
       {variants.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
           Nenhuma variante. Volte à etapa <strong>Variações</strong> e clique em <strong>Gerar variantes</strong>.
         </div>
       ) : (
-        <div className="rounded-lg border overflow-x-auto bg-background">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left p-3 w-16">Miniatura</th>
-                <th className="text-left p-3 min-w-[120px]">Cor</th>
-                <th className="text-left p-3 w-20">Tamanho</th>
-                <th className="text-left p-3 min-w-[140px]">SKU</th>
-                <th className="text-left p-3 min-w-[140px]">Cód. Barras</th>
-                <th className="text-right p-3 w-24">Peso (g)</th>
-                <th className="text-right p-3 w-24">Estoque</th>
-                <th className="text-right p-3 w-28">Preço</th>
-                <th className="text-right p-3 w-28">Promo</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {variants.map((v) => {
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-sm font-medium mb-3">Ações rápidas</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex gap-2">
+                <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas" />
+                <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0">Aplicar preço</Button>
+              </div>
+              <div className="flex gap-2">
+                <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" />
+                <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0">Aplicar estoque</Button>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {variants.map((v) => {
                 const color = colorById.get(v.product_color_id);
                 const sizeLabel =
                   (v.size_attribute_value_id && sizeLabelsQ.data?.get(v.size_attribute_value_id)) || "Único";
@@ -1327,8 +1355,7 @@ function StockPriceBlock({
                   />
                 );
               })}
-            </tbody>
-          </table>
+          </div>
         </div>
       )}
 
@@ -1370,75 +1397,71 @@ function MatrixRow({
   useEffect(() => { setPc(compare != null ? String(compare) : ""); }, [compare]);
 
   return (
-    <tr className="hover:bg-muted/30 transition-colors">
-      <td className="p-3 w-16">
+    <div className="rounded-lg border bg-background p-3 space-y-3">
+      <div className="flex items-start justify-between gap-3">
         <div
-          className="h-10 w-10 rounded-md border bg-muted overflow-hidden grid place-items-center shrink-0"
+          className="h-14 w-14 rounded-md border bg-muted overflow-hidden grid place-items-center shrink-0"
           style={!thumbnailUrl && colorHex ? { background: colorHex } : undefined}
         >
           {thumbnailUrl
             ? <img src={thumbnailUrl} alt={colorName} className="w-full h-full object-cover" />
             : !colorHex && <ImageIcon className="h-4 w-4 text-muted-foreground" />}
         </div>
-      </td>
-      <td className="p-3 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border shrink-0" style={{ background: colorHex }} />}
-          <span className="font-medium">{colorName}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            {colorHex && <span className="h-3 w-3 rounded-full ring-1 ring-border shrink-0" style={{ background: colorHex }} />}
+            <span className="font-semibold">{colorName}</span>
+            <Badge variant="secondary">{sizeLabel}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono truncate mt-1">{variant.sku}</p>
         </div>
-      </td>
-      <td className="p-3 whitespace-nowrap text-muted-foreground">{sizeLabel}</td>
-      <td className="p-2">
-        <Input value={sku} onChange={(e) => setSku(e.target.value)}
-          onBlur={() => sku !== variant.sku && onChangeVariant({ sku })}
-          className="h-8 text-xs font-mono w-32" />
-      </td>
-      <td className="p-2">
-        <Input value={bc} onChange={(e) => setBc(e.target.value)}
-          onBlur={() => (bc || "") !== (variant.barcode ?? "") && onChangeVariant({ barcode: bc || null })}
-          className="h-8 text-xs font-mono w-32" placeholder="EAN/UPC" />
-      </td>
-      <td className="p-2 text-right">
-        <Input type="number" min={0} step={1} value={wt} onChange={(e) => setWt(e.target.value)}
-          onBlur={() => {
-            const n = wt ? Number(wt) : null;
-            if (n !== variant.weight_grams) onChangeVariant({ weight_grams: n });
-          }}
-          className="h-8 text-xs w-20 text-right ml-auto" />
-      </td>
-      <td className="p-2 text-right">
-        {stockLevelId ? (
-          <Input type="number" min={0} value={st} onChange={(e) => setSt(e.target.value)}
-            onBlur={() => {
+        <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8 shrink-0">
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <FormField label="SKU">
+          <Input value={sku} onChange={(e) => setSku(e.target.value)} onBlur={() => sku !== variant.sku && onChangeVariant({ sku })} className="font-mono" />
+        </FormField>
+        <FormField label="Estoque">
+          {stockLevelId ? (
+            <Input type="number" min={0} value={st} onChange={(e) => setSt(e.target.value)} onBlur={() => {
               const n = Number(st); if (!Number.isNaN(n) && n >= 0 && n !== stockQty) onChangeStock(n);
-            }}
-            className="h-8 text-xs w-20 text-right ml-auto" />
-        ) : <span className="text-xs text-muted-foreground">—</span>}
-      </td>
-      <td className="p-2 text-right">
-        <Input type="number" min={0} step="0.01" value={pr} onChange={(e) => setPr(e.target.value)}
-          onBlur={() => {
+            }} />
+          ) : <Input disabled value="Sem nível" />}
+        </FormField>
+        <FormField label="Preço">
+          <Input type="number" min={0} step="0.01" value={pr} onChange={(e) => setPr(e.target.value)} onBlur={() => {
             const p = Number(pr.replace(",", "."));
             const c = pc ? Number(pc.replace(",", ".")) : null;
             if (!Number.isNaN(p) && p !== price) onChangePrice(p, c);
-          }}
-          className="h-8 text-xs w-24 text-right ml-auto" placeholder="0,00" />
-      </td>
-      <td className="p-2 text-right">
-        <Input type="number" min={0} step="0.01" value={pc} onChange={(e) => setPc(e.target.value)}
-          onBlur={() => {
+          }} placeholder="0,00" />
+        </FormField>
+        <FormField label="Promoção">
+          <Input type="number" min={0} step="0.01" value={pc} onChange={(e) => setPc(e.target.value)} onBlur={() => {
             const p = pr ? Number(pr.replace(",", ".")) : price;
             const c = pc ? Number(pc.replace(",", ".")) : null;
             if (p != null && !Number.isNaN(p)) onChangePrice(p, c);
-          }}
-          className="h-8 text-xs w-24 text-right ml-auto" placeholder="—" />
-      </td>
-      <td className="p-2 text-right">
-        <Button size="icon" variant="ghost" onClick={onDelete}>
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      </td>
-    </tr>
+          }} placeholder="—" />
+        </FormField>
+      </div>
+
+      <details className="rounded-md bg-muted/30 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Campos avançados</summary>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+          <FormField label="Código de barras">
+            <Input value={bc} onChange={(e) => setBc(e.target.value)} onBlur={() => (bc || "") !== (variant.barcode ?? "") && onChangeVariant({ barcode: bc || null })} className="font-mono" placeholder="EAN/UPC" />
+          </FormField>
+          <FormField label="Peso (g)">
+            <Input type="number" min={0} step={1} value={wt} onChange={(e) => setWt(e.target.value)} onBlur={() => {
+              const n = wt ? Number(wt) : null;
+              if (n !== variant.weight_grams) onChangeVariant({ weight_grams: n });
+            }} />
+          </FormField>
+        </div>
+      </details>
+    </div>
   );
 }
 
