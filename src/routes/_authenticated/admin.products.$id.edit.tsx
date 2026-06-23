@@ -607,7 +607,7 @@ function VariantsTab({
     if (used.length) setSelectedSizes((prev) => prev.length ? prev : used);
   }, [variantsQ.data]);
 
-  const addCustomSizes = async () => {
+  const addCustomSizes = async (options: { generateAfter?: boolean } = {}) => {
     const attributeId = sizeAttrQ.data?.attribute?.id;
     const labels = parseSizeTags(sizeTagInput);
     if (!attributeId) { notify.error("A categoria precisa ter um atributo de tamanho"); return; }
@@ -630,10 +630,12 @@ function VariantsTab({
           if (match) selected.add(match.id);
         } else throw new Error(r.error.message);
       }
-      setSelectedSizes(Array.from(selected));
+      const nextSizes = Array.from(selected);
+      setSelectedSizes(nextSizes);
       setSizeTagInput("");
       await sizeAttrQ.refetch();
       notify.success("Tamanhos adicionados e selecionados");
+      if (options.generateAfter) await generate(nextSizes);
     } catch (e) {
       notify.error((e as Error).message || "Falha ao adicionar tamanho");
     } finally {
@@ -641,9 +643,9 @@ function VariantsTab({
     }
   };
 
-  const generate = async () => {
+  const generate = async (sizeIds = selectedSizes) => {
     const ok = await runAction(
-      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selectedSizes } }),
+      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: sizeIds } }),
       { loading: "Gerando variantes...", success: "Variantes geradas" },
     );
     if (ok) {
@@ -1038,9 +1040,9 @@ function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: 
           const res = await fnAdd({ data: {
             color_id: color.id,
             media_type: mediaType,
-            external_url: previewUrl,
+            external_url: a.storage_path ? null : previewUrl,
             external_id: a.external_id ?? null,
-            storage_path: null,
+            storage_path: a.storage_path ?? null,
             thumbnail_url: previewUrl,
             alt: a.alt_text ?? null,
             title: a.title ?? a.original_filename ?? null,
@@ -1274,9 +1276,9 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
             data: {
               color_id: activeColorId,
               media_type: mediaType,
-              external_url: previewUrl,
+              external_url: a.storage_path ? null : previewUrl,
               external_id: a.external_id ?? null,
-              storage_path: null,
+              storage_path: a.storage_path ?? null,
               thumbnail_url: previewUrl,
               alt: a.alt_text ?? null,
               title: a.title ?? a.original_filename ?? null,
