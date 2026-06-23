@@ -86,12 +86,12 @@ export function ProductOperationsMenu({
     }
   };
   const onShare = async () => {
-    const url = `${window.location.origin}/p/${product.slug}`;
+    const url = `${window.location.origin}/produto/${product.slug}`;
     try { await navigator.clipboard.writeText(url); notify.success("Link copiado"); }
     catch { notify.error("Não foi possível copiar"); }
   };
   const onPreview = () => {
-    window.open(`/p/${product.slug}`, "_blank", "noopener");
+    window.open(`/produto/${product.slug}`, "_blank", "noopener");
   };
 
   return (

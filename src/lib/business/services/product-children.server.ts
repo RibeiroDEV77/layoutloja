@@ -34,6 +34,35 @@ async function ensureRead(supabase: SbClient, userId: string, storeId: string) {
   throw Errors.forbidden('Permissão necessária: products.read');
 }
 
+function damPathFromUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  if (!/^https?:\/\//i.test(s)) return s.replace(/^\/?dam\//, '') || null;
+  const m = s.match(/\/object\/(?:sign|public|authenticated)\/dam\/([^?#]+)/i);
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
+}
+
+async function withFreshMediaUrls<T extends { id: string; storage_path: string | null; external_url: string | null; thumbnail_url: string | null }>(
+  supabase: SbClient,
+  rows: T[],
+): Promise<T[]> {
+  const toSign = rows
+    .map((m) => ({ id: m.id, path: damPathFromUrl(m.storage_path) ?? damPathFromUrl(m.external_url) }))
+    .filter((m): m is { id: string; path: string } => !!m.path);
+  if (!toSign.length) return rows;
+
+  const { data } = await supabase.storage.from('dam').createSignedUrls(toSign.map((m) => m.path), 60 * 60 * 24 * 7);
+  const signedById = new Map<string, string>();
+  data?.forEach((row, i) => {
+    if (row?.signedUrl) signedById.set(toSign[i].id, row.signedUrl);
+  });
+  return rows.map((m) => {
+    const signedUrl = signedById.get(m.id);
+    return signedUrl ? { ...m, thumbnail_url: signedUrl, external_url: signedUrl } : m;
+  });
+}
+
 // ============== CORES ==============
 
 export async function listColors(supabase: SbClient, userId: string, productId: string) {
@@ -92,7 +121,7 @@ export async function listColorMedia(supabase: SbClient, userId: string, colorId
   const { data, error } = await supabase
     .from('product_color_media').select('*').eq('product_color_id', colorId).order('sort_order');
   if (error) throw Errors.internal('Falha ao listar mídias', { error: error.message });
-  return data ?? [];
+  return withFreshMediaUrls(supabase, data ?? []);
 }
 
 export async function addColorMedia(
