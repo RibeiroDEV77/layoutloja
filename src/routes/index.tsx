@@ -109,6 +109,9 @@ function HomePage() {
         <main className="flex-1">
           <StorefrontHero banners={heroBanners} />
 
+          {/* Barra de Benefícios */}
+          <TrustStrip />
+
           {/* Navegação de Categorias */}
           <nav aria-label="Categorias" className="py-8 md:py-12 border-b border-gray-100">
             <div className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
