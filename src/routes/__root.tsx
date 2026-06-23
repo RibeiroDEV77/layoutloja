@@ -159,6 +159,7 @@ function RootComponent() {
             <Outlet />
             <MiniCart />
             <WhatsAppFab />
+            <AccountSheet />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>
