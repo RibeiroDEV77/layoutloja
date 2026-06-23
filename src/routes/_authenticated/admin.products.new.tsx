@@ -75,8 +75,8 @@ type PriceItemRow = Tables<"price_list_items">;
 
 type Row = { id: string; name: string };
 
-// ── Steps ────────────────────────────────────────────────────────────────────
-const STEPS = [
+// ── Seções (single-page) ─────────────────────────────────────────────────────
+const SECTIONS = [
   { key: "basic", label: "Dados Básicos" },
   { key: "photos", label: "Fotos" },
   { key: "variations", label: "Variações" },
@@ -84,7 +84,7 @@ const STEPS = [
   { key: "organization", label: "Organização" },
   { key: "publish", label: "Publicação" },
 ] as const;
-type StepKey = typeof STEPS[number]["key"];
+type StepKey = typeof SECTIONS[number]["key"];
 
 function sanitizeSku(s: string) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -92,7 +92,7 @@ function sanitizeSku(s: string) {
 }
 
 // =============================================================================
-// Página
+// Página — single page, seções empilhadas
 // =============================================================================
 function ProductNewWizardPage() {
   const { storeId } = useActiveStore();
@@ -104,8 +104,8 @@ function ProductNewWizardPage() {
     { label: "Novo Produto" },
   ]);
 
-  const [step, setStep] = useState<StepKey>("basic");
   const [productId, setProductId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<StepKey>("basic");
 
   const fnReadiness = useServerFn(getProductReadiness);
   const readinessQ = useQuery({
@@ -119,6 +119,8 @@ function ProductNewWizardPage() {
   });
   const progress = readinessQ.data?.progress ?? 0;
   const canPublish = !!readinessQ.data?.canPublish;
+  const issues = readinessQ.data?.issues ?? [];
+  const steps = readinessQ.data?.steps ?? [];
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["product", productId] });
@@ -126,18 +128,36 @@ function ProductNewWizardPage() {
     qc.invalidateQueries({ queryKey: ["wizard", productId] });
   };
 
-  const goNext = () => {
-    const idx = STEPS.findIndex((s) => s.key === step);
-    if (idx >= 0 && idx < STEPS.length - 1) setStep(STEPS[idx + 1].key);
-  };
-  const goPrev = () => {
-    const idx = STEPS.findIndex((s) => s.key === step);
-    if (idx > 0) setStep(STEPS[idx - 1].key);
+  // Scroll suave entre seções
+  const scrollToSection = (k: StepKey) => {
+    setActiveSection(k);
+    const el = document.getElementById(`section-${k}`);
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 140;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
   };
 
-  const currentIdx = STEPS.findIndex((s) => s.key === step);
-  const issues = readinessQ.data?.issues ?? [];
-  const steps = readinessQ.data?.steps ?? [];
+  // Observa a seção visível para destacar no nav
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) {
+          const k = visible.target.id.replace("section-", "") as StepKey;
+          setActiveSection(k);
+        }
+      },
+      { rootMargin: "-160px 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    SECTIONS.forEach((s) => {
+      const el = document.getElementById(`section-${s.key}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [productId]);
 
   // Sticky footer actions
   const fnPublish = useServerFn(publishProduct);
@@ -155,7 +175,7 @@ function ProductNewWizardPage() {
   };
   const publishFromFooter = async () => {
     if (!productId) { notify.error("Preencha os dados básicos primeiro"); return; }
-    if (!canPublish) { notify.error("Produto incompleto — veja o checklist"); setStep("publish"); return; }
+    if (!canPublish) { notify.error("Produto incompleto — veja o checklist"); scrollToSection("publish"); return; }
     setFooterBusy("publish");
     const ok = await runAction(
       () => fnPublish({ data: { id: productId } }),
@@ -165,8 +185,15 @@ function ProductNewWizardPage() {
     if (ok) navigate({ to: "/admin/products" });
   };
 
+  // Helpers para nav entre seções a partir dos botões dos blocos
+  const sectionIdx = (k: StepKey) => SECTIONS.findIndex((s) => s.key === k);
+  const nextOf = (k: StepKey): StepKey => SECTIONS[Math.min(SECTIONS.length - 1, sectionIdx(k) + 1)].key;
+  const prevOf = (k: StepKey): StepKey => SECTIONS[Math.max(0, sectionIdx(k) - 1)].key;
+  const goNext = (from: StepKey) => scrollToSection(nextOf(from));
+  const goPrev = (from: StepKey) => scrollToSection(prevOf(from));
+
   return (
-    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col min-h-[calc(100vh-3.5rem)]">
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex flex-col min-h-[calc(100vh-3.5rem)] bg-muted/20">
       {/* Header compacto */}
       <header className="sticky top-14 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
@@ -176,7 +203,7 @@ function ProductNewWizardPage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">Novo Produto</h1>
             <p className="text-xs text-muted-foreground truncate">
-              Cadastro guiado · {STEPS[currentIdx]?.label}
+              Cadastro em página única — preencha as seções abaixo
             </p>
           </div>
           <Badge variant={canPublish ? "default" : "secondary"} className="hidden sm:inline-flex shrink-0">
@@ -186,46 +213,104 @@ function ProductNewWizardPage() {
       </header>
 
       {/* Body grid */}
-      <div className="flex-1 grid gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 bg-muted/20
+      <div className="flex-1 grid gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6
         lg:grid-cols-[220px_minmax(0,1fr)_300px] xl:grid-cols-[240px_minmax(0,1fr)_320px]">
-        <WizardSidebar
-          step={step}
-          currentIdx={currentIdx}
-          productId={productId}
-          canPublish={canPublish}
-          onJump={setStep}
-        />
+        {/* Section nav (substitui o wizard sidebar) */}
+        <aside className="lg:sticky lg:top-32 lg:self-start hidden lg:block">
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Seções
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2">
+              <ol className="space-y-1">
+                {SECTIONS.map((s, i) => {
+                  const isActive = s.key === activeSection;
+                  const disabled = !productId && s.key !== "basic";
+                  const done = steps.find((x) => x.key === s.key)?.complete;
+                  return (
+                    <li key={s.key}>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => scrollToSection(s.key)}
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                          isActive && "bg-primary/10 text-primary font-semibold",
+                          !isActive && done && "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/5",
+                          !isActive && !done && "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-bold transition",
+                            isActive ? "bg-primary text-primary-foreground shadow-sm"
+                              : done ? "bg-emerald-500 text-white"
+                              : "bg-muted text-muted-foreground border",
+                          )}
+                        >
+                          {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                        </span>
+                        <span className="truncate flex-1">{s.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </CardContent>
+          </Card>
+        </aside>
 
         <main className="min-w-0 space-y-6 pb-24 lg:pb-6">
-          {step === "basic" && (
+          <section id="section-basic" className="scroll-mt-32">
             <BasicBlock
               storeId={storeId}
               productId={productId}
-              onCreated={(id) => { setProductId(id); refresh(); setStep("photos"); }}
+              onCreated={(id) => { setProductId(id); refresh(); scrollToSection("photos"); }}
               onUpdated={refresh}
-              onNext={goNext}
+              onNext={() => goNext("basic")}
             />
+          </section>
+
+          {!productId && (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                Salve os dados básicos para liberar as próximas seções.
+              </CardContent>
+            </Card>
           )}
-          {productId && step === "photos" && (
-            <PhotosBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-          )}
-          {productId && step === "variations" && (
-            <VariationsBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-          )}
-          {productId && step === "stockprice" && (
-            <StockPriceBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-          )}
-          {productId && step === "organization" && (
-            <OrganizationBlock productId={productId} onChange={refresh} onPrev={goPrev} onNext={goNext} />
-          )}
-          {productId && step === "publish" && (
-            <PublishBlock
-              productId={productId}
-              canPublish={canPublish}
-              issues={issues}
-              onPrev={goPrev}
-              onDone={() => navigate({ to: "/admin/products" })}
-            />
+
+          {productId && (
+            <>
+              <section id="section-photos" className="scroll-mt-32">
+                <PhotosBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("photos")} onNext={() => goNext("photos")} />
+              </section>
+              <section id="section-variations" className="scroll-mt-32">
+                <VariationsBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("variations")} onNext={() => goNext("variations")} />
+              </section>
+              <section id="section-stockprice" className="scroll-mt-32">
+                <StockPriceBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("stockprice")} onNext={() => goNext("stockprice")} />
+              </section>
+              <section id="section-organization" className="scroll-mt-32">
+                <OrganizationBlock productId={productId} onChange={refresh}
+                  onPrev={() => goPrev("organization")} onNext={() => goNext("organization")} />
+              </section>
+              <section id="section-publish" className="scroll-mt-32">
+                <PublishBlock
+                  productId={productId}
+                  canPublish={canPublish}
+                  issues={issues}
+                  onPrev={() => goPrev("publish")}
+                  onDone={() => navigate({ to: "/admin/products" })}
+                />
+              </section>
+            </>
           )}
         </main>
 
@@ -252,6 +337,7 @@ function ProductNewWizardPage() {
     </div>
   );
 }
+
 
 // =============================================================================
 // BLOCO 1 — Dados Básicos
@@ -1560,69 +1646,8 @@ function BlockFooter({ left, right }: { left?: React.ReactNode; right?: React.Re
   );
 }
 
-// =============================================================================
-// Wizard Sidebar — etapas verticais com status
-// =============================================================================
-function WizardSidebar({
-  step, currentIdx, productId, canPublish, onJump,
-}: {
-  step: StepKey;
-  currentIdx: number;
-  productId: string | null;
-  canPublish: boolean;
-  onJump: (k: StepKey) => void;
-}) {
-  return (
-    <aside className="lg:sticky lg:top-32 lg:self-start">
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-            Cadastro do Produto
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          <ol className="space-y-1">
-            {STEPS.map((s, i) => {
-              const isActive = s.key === step;
-              const isDone = i < currentIdx || (s.key === "publish" && canPublish);
-              const disabled = !productId && s.key !== "basic";
-              return (
-                <li key={s.key}>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onJump(s.key)}
-                    className={cn(
-                      "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-                      isActive && "bg-primary/10 text-primary font-semibold",
-                      !isActive && isDone && "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/5",
-                      !isActive && !isDone && "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-bold transition",
-                        isActive ? "bg-primary text-primary-foreground shadow-sm"
-                          : isDone ? "bg-emerald-500 text-white"
-                          : "bg-muted text-muted-foreground border",
-                      )}
-                    >
-                      {isDone ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                    </span>
-                    <span className="truncate flex-1">{s.label}</span>
-                    {isActive && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </CardContent>
-      </Card>
-    </aside>
-  );
-}
+// (WizardSidebar removido — substituído pela section nav inline em ProductNewWizardPage)
+
 
 // =============================================================================
 // Readiness Card — checklist em tempo real
