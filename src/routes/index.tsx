@@ -109,7 +109,12 @@ function HomePage() {
         <main className="flex-1">
           <StorefrontHero banners={heroBanners} />
 
-
+          {/* Navegação de Categorias */}
+          <nav aria-label="Categorias" className="py-8 md:py-12 border-b border-gray-100">
+            <div className="mx-auto w-full max-w-[1440px] px-4 md:px-8">
+              <CategoryCircles categories={categories} />
+            </div>
+          </nav>
 
           {/* Novidades */}
           <Section id="novidades">
@@ -120,17 +125,6 @@ function HomePage() {
               action={{ label: "Ver todos" }}
             />
             <ProductCarousel products={novidades.length ? novidades : todos.slice(0, 8)} />
-          </Section>
-
-          {/* Categorias */}
-          <Section>
-            <SectionHeader
-              eyebrow="Coleções"
-              title="Categorias"
-              description="Navegue pelas coleções do catálogo."
-              action={{ label: "Ver todas" }}
-            />
-            <CategoryGrid categories={categories} />
           </Section>
 
           {/* Mais vendidos */}
