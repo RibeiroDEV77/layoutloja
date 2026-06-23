@@ -142,6 +142,8 @@ export async function calculateQuotes(input: {
     const min = range?.min ?? (it.delivery_time as number | undefined) ?? null;
     const max = range?.max ?? (it.delivery_time as number | undefined) ?? null;
     const company = it.company as { name?: string } | undefined;
+    // Apenas Correios — sem transportadoras privadas.
+    if (!/correios/i.test(company?.name ?? '')) continue;
     out.push({
       service_code: String(it.id ?? ''),
       service_name: String(it.name ?? 'Serviço'),
