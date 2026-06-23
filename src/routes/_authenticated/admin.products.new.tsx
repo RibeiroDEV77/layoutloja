@@ -712,7 +712,7 @@ function CatalogBlock({
   const toggleSize = (id: string) =>
     setSelectedSizes((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  const addCustomSizes = async () => {
+  const addCustomSizes = async (options: { generateAfter?: boolean } = {}) => {
     const attributeId = sizeAttrQ.data?.attribute?.id;
     const labels = parseSizeTags(sizeTagInput);
     if (!attributeId) { notify.error("A categoria precisa ter um atributo de tamanho"); return; }
@@ -735,10 +735,12 @@ function CatalogBlock({
           if (match) selected.add(match.id);
         } else throw new Error(r.error.message);
       }
-      setSelectedSizes(Array.from(selected));
+      const nextSizes = Array.from(selected);
+      setSelectedSizes(nextSizes);
       setSizeTagInput("");
       await sizeAttrQ.refetch();
       notify.success("Tamanhos adicionados e selecionados");
+      if (options.generateAfter) await generate(nextSizes);
     } catch (e) {
       notify.error((e as Error).message || "Falha ao adicionar tamanho");
     } finally {
@@ -814,10 +816,10 @@ function CatalogBlock({
     if (ok) { colorsQ.refetch(); onChange(); }
   };
 
-  const generate = async () => {
+  const generate = async (sizeIds = selectedSizes) => {
     if (!colors.length) { notify.error("Adicione ao menos uma cor"); return; }
     const ok = await runAction(
-      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: selectedSizes } }),
+      () => fnGen({ data: { product_id: productId, size_attribute_value_ids: sizeIds } }),
       { loading: "Gerando variantes...", success: "Variantes geradas" },
     );
     if (ok) {
@@ -1010,8 +1012,19 @@ function CatalogBlock({
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button type="button" variant="outline" disabled={creatingSizes || !sizeTagInput.trim()} onClick={addCustomSizes} className="gap-2">
+                    <Button type="button" variant="outline" disabled={creatingSizes || !sizeTagInput.trim()} onClick={() => addCustomSizes()} className="gap-2">
                       {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Adicionar
+                    </Button>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      disabled={creatingSizes || !sizeTagInput.trim() || !colors.length}
+                      onClick={() => addCustomSizes({ generateAfter: true })}
+                      className="w-full gap-2"
+                    >
+                      {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      Adicionar tamanhos e gerar para todas as cores
                     </Button>
                   </div>
                 </div>
@@ -1274,9 +1287,9 @@ function ColorGallerySection({
             data: {
               color_id: color.id,
               media_type: mediaType,
-              external_url: url,
+              external_url: a.storage_path ? null : url,
               external_id: a.external_id ?? null,
-              storage_path: null,
+              storage_path: a.storage_path ?? null,
               thumbnail_url: url,
               alt: a.alt_text ?? null,
               title: a.title ?? a.original_filename ?? null,
