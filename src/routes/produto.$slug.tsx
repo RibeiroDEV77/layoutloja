@@ -4,6 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { StorefrontShell, StorefrontNavbar } from '@/components/storefront/storefront';
+import { BackButton } from '@/components/storefront/back-button';
 import { useCart } from '@/components/storefront/cart-provider';
 import { formatBRL } from '@/hooks/use-storefront-cart';
 import { getStorefrontProduct, type StorefrontProductDetail } from '@/lib/business/storefront-product.functions';
