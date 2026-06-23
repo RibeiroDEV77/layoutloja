@@ -108,11 +108,12 @@ export const updateMyProfile = createServerFn({ method: "POST" })
 
     if (data.doc_number !== undefined) {
       update.doc_number = data.doc_number || null;
-      if (data.doc_number && pii()) {
+      const key2 = pii();
+      if (data.doc_number && key2) {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: enc } = await supabaseAdmin.rpc("encrypt_pii", {
           p_value: data.doc_number,
-          p_key: pii(),
+          p_key: key2,
         });
         update.doc_number_encrypted = enc ?? null;
       } else if (!data.doc_number) {
@@ -120,7 +121,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await context.supabase
+    const { error } = await (context.supabase as any)
       .from("customers")
       .update(update)
       .eq("id", customer.id);
