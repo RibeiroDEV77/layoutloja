@@ -1,61 +1,56 @@
 ## Objetivo
 
-Vitrine com checkout próprio onde o cliente informa o CEP, recebe automaticamente cotações Melhor Envio (PAC, SEDEX e demais), escolhe a modalidade, preenche dados e finaliza o pedido (sem gateway). A modalidade, valor e código do serviço ficam salvos no pedido. No admin do pedido, um botão "Gerar etiqueta" emite a etiqueta via Melhor Envio.
+Tornar o cadastro de produtos mental e visualmente mais simples, no modelo que você descreveu:
 
-Reusa toda a infraestrutura já existente (Cart Engine, Shipping Adapter Registry com Melhor Envio, `shipment_purchase_label` RPC, `order_persist_shipping_snapshot` RPC). Adiciona somente o que falta: RPC de conversão carrinho→pedido, endpoints anônimos, a UI da loja, e o botão do admin.
+> "Calça → Azul Escuro / Azul Médio / Azul Claro → cada cor tem suas fotos e seus tamanhos"
 
-## Backend
+Hoje existem 3 blocos separados ("Fotos", "Variações", "Estoque e Preços") que falam da mesma coisa em lugares diferentes. Vou unificar tudo em **um único bloco por cor**.
 
-### 1. Migration SQL
-- `order_create_from_cart(_cart_id, _email, _name, _phone, _address jsonb)` — RPC SECURITY DEFINER que:
-  - Cria/recupera customer pelo email
-  - Insere `orders` (status `pending_payment`) com totais copiados do carrinho
-  - Copia `cart_items` → `order_items`
-  - Insere `order_addresses` (billing+shipping iguais)
-  - Chama internamente `order_persist_shipping_snapshot(order_id, cart_id)` para gravar carrier, service_code, price, ETA
-  - Marca o carrinho como `converted`
-  - Retorna `order_id`
-- GRANT EXECUTE para `anon` e `authenticated` (write controlada inteiramente dentro da função)
+## Nova estrutura da página de cadastro
 
-### 2. Server functions novas (`src/lib/business/checkout.functions.ts`)
-Todas via cliente publishable + `session_token` opaco no cookie/localStorage, sem auth (carrinho anônimo) — exceto a etiqueta, que é admin.
+```text
+1. Informações básicas
+   Nome • Descrição • Categoria • Marca • SKU raiz
 
-- `anonGetOrCreateCart({ store_id, session_token })`
-- `anonGetCart({ cart_id, session_token })`
-- `anonAddCartItem({ cart_id, variant_id, qty, session_token })`
-- `anonRemoveCartItem({ cart_id, item_id, session_token })`
-- `anonQuoteShipping({ cart_id, postal_code, session_token })` — chama o serviço já existente (`quoteShippingForCart`), que já mescla Melhor Envio via Registry
-- `anonSelectShipping({ cart_id, quote_id, session_token })`
-- `placeOrder({ cart_id, session_token, email, name, phone, address })` — chama `order_create_from_cart`
-- `purchaseOrderLabel({ order_id })` *(autenticada, `fulfillment.ship`/`shipping.manage`)* — resolve `shipment_id` do pedido, monta `to`/`from` a partir de `order_addresses` + endereço da `stores`, chama `purchaseShippingLabel`
+2. Esse produto tem cores/tamanhos?  [Não] [Sim]
 
-## Frontend
+   Se NÃO:
+     Preço • Estoque • Fotos do produto
 
-### 3. Vitrine (loja)
-- Botão "Adicionar à sacola" no card de produto e na página de categoria/produto (cria/usa cart anônimo via `session_token` em localStorage).
-- Drawer/badge da Sacola no `StorefrontNavbar` mostrando contagem + link `/sacola`.
-- Página `/sacola` — lista itens, qty +/-, remover, totais, botão "Finalizar compra" → `/checkout`.
-- Página `/checkout`:
-  - Form de identificação (nome, email, telefone)
-  - Form de endereço com CEP (autocomplete via `lookupPostalCode` já existente)
-  - Ao terminar o CEP (8 dígitos), dispara `anonQuoteShipping` automaticamente; mostra spinner; lista PAC, SEDEX e demais serviços ordenados por preço com prazo
-  - Cliente escolhe modalidade → `anonSelectShipping`
-  - Botão "Finalizar pedido" → `placeOrder` → redireciona para `/pedido/$id` com mensagem de "Aguardando pagamento" e dados do envio escolhido
+   Se SIM:
+     Tamanhos disponíveis: [P] [M] [G] [GG] (+ adicionar)
 
-### 4. Admin
-- Em `admin.orders.$orderId.tsx`, no card de Envio, adicionar botão "Gerar etiqueta" (e ao lado, link da etiqueta gerada / tracking) que chama `purchaseOrderLabel({ order_id })`. Estados: loading, sucesso (mostra link da etiqueta + código de rastreio), erro (toast).
+     ── Card por cor (ex: "Azul Escuro") ──────────────
+       Nome da cor + amostra de hex
+       [Fotos desta cor]  ← upload inline
+       [Tamanho | SKU | Estoque | Preço]   ← grade enxuta
+       Botão: aplicar preço/estoque a todos os tamanhos
+     ──────────────────────────────────────────────────
+     [+ Adicionar outra cor]
 
-## Detalhes técnicos
+3. Publicar
+   Status + botão salvar
+```
 
-- O Melhor Envio já está integrado no Shipping Adapter Registry; `quoteShippingForCart` mescla cotações dele para qualquer `shipping_carrier_account` ativa da loja. Nada a alterar na integração.
-- `session_token` do carrinho anônimo: UUID gerado no cliente, persistido em `localStorage` (`storefront.cart.session`).
-- `store_id` do storefront: ler o primeiro store ativo via fn pública existente (já usada pela vitrine).
-- Snapshot do envio no pedido (`order_shipping_snapshots`) é UNIQUE por order_id e já carrega `carrier`, `service_code`, `service_name`, `price`, `eta` — atende o requisito de "salvar modalidade, valor e código do serviço".
-- A geração de etiqueta usa `purchaseShippingLabel` existente, que já valida capability, decifra credenciais via RPC `shipping_get_credentials`, registra outbox e métricas.
+Resultado: para cadastrar a calça você só precisa pensar em "qual é a cor → quais fotos dela → quais tamanhos e quanto custa". Sem pular entre seções.
 
-## Fora do escopo
+## Mudanças técnicas
 
-- Pagamento integrado (Stripe/MP) — pedido criado como `pending_payment`.
-- Login do cliente no checkout (compra como guest).
-- Endereço de cobrança separado (usa o mesmo do envio).
-- Cupons no checkout público (a infra existe, mas adicionamos depois se quiserem).
+- `src/routes/_authenticated/admin.products.new.tsx`
+  - Remover os blocos `PhotosBlock`, `VariationsBlock`, `StockPriceBlock` separados.
+  - Criar um único `ColorBlock` que reúne, por cor: galeria (`ColorGallerySection`) + linha de tamanhos (preço/estoque/SKU) + ações em massa.
+  - Manter toggle "tem variantes" para produtos simples (sem cor/tamanho).
+  - Reaproveitar as server functions já existentes (`createProductColor`, `addColorMedia`, `generateProductVariants`, `updateProductVariant`) — sem mudanças no backend.
+
+- `src/routes/_authenticated/admin.products.$id.edit.tsx`
+  - Mesma reorganização na aba "Variantes + fotos": substituir a grade atual pelo mesmo `ColorBlock`, para que criar e editar tenham a mesma cara.
+
+- Nenhuma alteração de banco, RLS, ou storefront.
+
+## O que NÃO muda
+
+- Modelo de dados (produto → cores → mídia + variantes por tamanho) continua igual.
+- Fotos continuam sendo enviadas via DAM (bucket `dam`) e resolvidas no storefront via signed URL.
+- Permissões e auditoria seguem iguais.
+
+Posso seguir com essa reorganização?
