@@ -891,34 +891,67 @@ function CatalogBlock({
       {/* === Modo COM VARIAÇÕES === */}
       {hasVariations === "yes" && (
         <div className="space-y-5">
-          {/* Tamanhos globais */}
-          <div className="rounded-lg border bg-background p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h4 className="text-sm font-semibold">Tamanhos disponíveis</h4>
-                {sizeAttrQ.data?.attribute && (
-                  <p className="text-xs text-muted-foreground">{sizeAttrQ.data.attribute.name}</p>
-                )}
+          {/* Tamanhos globais — mesmos para todas as cores */}
+          <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <div className="min-w-0">
+                <h4 className="text-sm font-semibold">Mesmos tamanhos para todas as cores</h4>
+                <p className="text-xs text-muted-foreground">
+                  Os tamanhos que você marcar abaixo serão criados em <strong>todas</strong> as cores deste produto.
+                  {sizeAttrQ.data?.attribute && <> · Atributo: {sizeAttrQ.data.attribute.name}</>}
+                </p>
               </div>
               {sizeValues.length > 0 && (
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Todos</Button>
+                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
                   <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
                 </div>
               )}
             </div>
+
             {!sizeValues.length ? (
               <p className="text-xs text-muted-foreground">A categoria selecionada não possui atributo de tamanho. Será gerada 1 variante por cor.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {sizeValues.map((v) => (
-                  <button key={v.id} type="button" onClick={() => toggleSize(v.id)}
-                    className={cn("px-3 py-1.5 rounded-full border text-sm transition",
-                      selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
-                    {v.label}
-                  </button>
-                ))}
-              </div>
+              <>
+                {/* Presets rápidos por nome */}
+                {(() => {
+                  const presets: Array<{ label: string; match: RegExp }> = [
+                    { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
+                    { label: "P–G", match: /^(P|M|G)$/i },
+                    { label: "Numéricos", match: /^\d{2}$/ },
+                  ];
+                  const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
+                  if (applicable.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
+                      {applicable.map((p) => (
+                        <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
+                          onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <div className="flex flex-wrap gap-2">
+                  {sizeValues.map((v) => (
+                    <button key={v.id} type="button" onClick={() => toggleSize(v.id)}
+                      className={cn("px-3 py-1.5 rounded-full border text-sm transition",
+                        selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted")}>
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedSizes.length > 0 && colors.length > 0 && (
+                  <p className="text-xs text-muted-foreground border-t pt-2">
+                    Ao gerar: <strong>{selectedSizes.length}</strong> tamanho(s) × <strong>{colors.length}</strong> cor(es) ={" "}
+                    <strong>{selectedSizes.length * colors.length}</strong> variante(s).
+                  </p>
+                )}
+              </>
             )}
           </div>
 
