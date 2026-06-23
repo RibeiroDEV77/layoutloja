@@ -139,7 +139,7 @@ export async function getCart(supabase: SbClient, userId: string | null, cartId:
  * nome da cor e label do tamanho. Reaproveita a mesma lógica de DAM/signed URL
  * usada na vitrine — sem persistir no banco, apenas para exibição.
  */
-async function hydrateCartItemSnapshots(supabase: SbClient, items: Array<Record<string, unknown>>): Promise<Array<Record<string, unknown>>> {
+async function hydrateCartItemSnapshots<T extends { variant_id?: string | null; snapshot?: unknown }>(supabase: SbClient, items: T[]): Promise<T[]> {
   if (!items.length) return items;
   const variantIds = Array.from(new Set(items.map((i) => i.variant_id as string).filter(Boolean)));
   if (!variantIds.length) return items;
