@@ -16,6 +16,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/components/storefront/cart-provider";
 import { MiniCart } from "@/components/storefront/mini-cart";
+import { WhatsAppFab } from "@/components/storefront/whatsapp-fab";
 
 function installSafeDomMutationPatch() {
   if (typeof window === "undefined") return;
@@ -156,6 +157,7 @@ function RootComponent() {
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
             <MiniCart />
+            <WhatsAppFab />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>
