@@ -851,7 +851,7 @@ function VariantsTab({
           <h3 className="font-medium">2. Tamanhos e geração</h3>
           <Button
             size="sm"
-            onClick={generate}
+            onClick={() => generate()}
             disabled={!colors.length || (!sizeValues.length && !selectedSizes.length && !sizeAttrQ.data)}
             className="gap-2"
           >
@@ -926,7 +926,7 @@ function VariantsTab({
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button type="button" variant="outline" disabled={creatingSizes || !sizeTagInput.trim()} onClick={addCustomSizes} className="gap-2">
+                    <Button type="button" variant="outline" disabled={creatingSizes || !sizeTagInput.trim()} onClick={() => addCustomSizes()} className="gap-2">
                       {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Adicionar
                     </Button>
                   </div>
