@@ -54,11 +54,12 @@ export const getMyAccount = createServerFn({ method: "GET" })
 
     // Descriptografa CPF, se houver
     let doc_number: string | null = customer.doc_number ?? null;
-    if (customer.doc_number_encrypted && pii()) {
+    const key = pii();
+    if (customer.doc_number_encrypted && key) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data } = await supabaseAdmin.rpc("decrypt_pii", {
         p_value: customer.doc_number_encrypted,
-        p_key: pii(),
+        p_key: key,
       });
       if (data) doc_number = data as string;
     }
