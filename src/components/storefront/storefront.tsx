@@ -747,21 +747,24 @@ export function CategoryGrid({ categories }: { categories: StorefrontCategory[] 
   const roots = categories.filter((c) => !c.parent_id);
   if (roots.length === 0) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="relative overflow-hidden bg-[#F4F4F4] aspect-[4/5] animate-pulse" />
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="relative overflow-hidden bg-[#F4F4F4] aspect-square animate-pulse" />
         ))}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div
+      className="grid gap-3 grid-cols-3 sm:gap-4 sm:grid-cols-4 md:grid-cols-6 lg:gap-5"
+      style={{ gridTemplateColumns: `repeat(${roots.length}, minmax(0, 1fr))` }}
+    >
       {roots.map((c) => (
         <Link
           key={c.id}
           to="/categoria/$slug"
           params={{ slug: c.slug }}
-          className="group relative block overflow-hidden bg-[#F4F4F4] aspect-[4/5] cursor-pointer"
+          className="group relative block overflow-hidden bg-[#F4F4F4] aspect-square cursor-pointer"
         >
           {c.image_url ? (
             <>
@@ -772,13 +775,13 @@ export function CategoryGrid({ categories }: { categories: StorefrontCategory[] 
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/65" />
-              <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                <h3 className="text-xl md:text-2xl font-semibold">{c.name}</h3>
+              <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                <h3 className="text-sm md:text-base font-semibold truncate">{c.name}</h3>
               </div>
             </>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center p-5 bg-[#F4F4F4] group-hover:bg-[#EFEFEF] transition-colors duration-300">
-              <h3 className="text-center text-lg md:text-xl font-semibold text-[#111] uppercase tracking-[0.08em]">
+            <div className="absolute inset-0 flex items-center justify-center p-2 bg-[#F4F4F4] group-hover:bg-[#EFEFEF] transition-colors duration-300">
+              <h3 className="text-center text-xs md:text-sm font-semibold text-[#111] uppercase tracking-[0.08em] truncate">
                 {c.name}
               </h3>
             </div>
