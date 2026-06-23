@@ -239,7 +239,7 @@ async function hydrateCartItemSnapshots<T extends { variant_id?: string | null; 
     snap.image_url = snap.image_url ?? imageForColor(v.product_color_id, v.product_id);
     snap.color_name = snap.color_name ?? (v.product_color_id ? colorById.get(v.product_color_id)?.name ?? null : null);
     snap.size_label = snap.size_label ?? (v.size_attribute_value_id ? sizeById.get(v.size_attribute_value_id) ?? null : null);
-    return { ...it, snapshot: snap };
+    return { ...it, snapshot: snap } as T;
   });
 }
 
