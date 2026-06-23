@@ -722,9 +722,9 @@ function ColorGallerySection({
     <div className={cn(compact ? "space-y-3" : "rounded-lg border p-4 space-y-3 bg-muted/20")}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />
-          <span className="font-medium truncate">Cor: {color.name}</span>
-          {color.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
+          {!compact && <span className="h-4 w-4 rounded-full ring-1 ring-border shrink-0" style={{ background: color.hex ?? "#ccc" }} />}
+          <span className="font-medium truncate">{compact ? "Fotos" : `Cor: ${color.name}`}</span>
+          {!compact && color.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
           <span className="text-xs text-muted-foreground">· {media.data?.length ?? 0} mídia(s)</span>
         </div>
         <AssetPicker context="product" multiple onSelect={onPicked}>
