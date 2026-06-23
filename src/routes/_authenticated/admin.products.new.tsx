@@ -76,11 +76,10 @@ type PriceItemRow = Tables<"price_list_items">;
 type Row = { id: string; name: string };
 
 // ── Seções (single-page) ─────────────────────────────────────────────────────
+// Catálogo = fotos + cores + tamanhos + preço/estoque, tudo no mesmo lugar.
 const SECTIONS = [
   { key: "basic", label: "Dados Básicos" },
-  { key: "photos", label: "Fotos" },
-  { key: "variations", label: "Variações" },
-  { key: "stockprice", label: "Estoque e Preços" },
+  { key: "catalog", label: "Catálogo (fotos, cores, tamanhos e preço)" },
   { key: "organization", label: "Organização" },
   { key: "publish", label: "Publicação" },
 ] as const;
