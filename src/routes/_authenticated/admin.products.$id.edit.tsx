@@ -320,6 +320,8 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
   const fnCatAttrs = useServerFn(listCategoryAttributes);
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
+  const fnGetSections = useServerFn(listProductCategoryIds);
+  const fnSetSections = useServerFn(setProductCategories);
 
   const [form, setForm] = useState({
     category_id: product.category_id ?? "",
@@ -330,13 +332,14 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
     best_seller: product.best_seller,
   });
   const [saving, setSaving] = useState(false);
+  const [sectionIds, setSectionIds] = useState<Set<string>>(new Set());
 
   const cats = useQuery({
     queryKey: ["org-cats", storeId], enabled: !!storeId,
     queryFn: async () => {
-      const r = await fnCats({ data: { store_id: storeId!, pageSize: 100 } });
+      const r = await fnCats({ data: { store_id: storeId!, pageSize: 500 } });
       if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as { id: string; name: string }[];
+      return r.data.rows as { id: string; name: string; parent_id: string | null }[];
     },
   });
   const brands = useQuery({
@@ -347,6 +350,15 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
       return r.data.rows as { id: string; name: string }[];
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    fnGetSections({ data: { product_id: product.id } })
+      .then((r) => { if (!cancelled) setSectionIds(new Set(r.ids)); })
+      .catch(() => { /* keep empty */ });
+    return () => { cancelled = true; };
+  }, [fnGetSections, product.id]);
+
 
   const valsQ = useQuery({
     queryKey: ["org-attrs", product.id, form.category_id],
