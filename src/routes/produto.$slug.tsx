@@ -244,10 +244,13 @@ function ProductPage() {
               {media.length > 1 && (
                 <div className="mt-3 grid grid-cols-5 gap-2">
                   {media.map((m, i) => (
-                    <button key={m.id} type="button" onClick={() => setGalleryIdx(i)}
-                      className={`aspect-square bg-[#F8F8F8] overflow-hidden border ${i === galleryIdx ? 'border-[#111]' : 'border-transparent hover:border-[#999]'}`}
+                    <button key={m.id} type="button"
+                      onClick={() => setGalleryIdx(i)}
+                      onMouseEnter={() => setGalleryIdx(i)}
+                      onFocus={() => setGalleryIdx(i)}
+                      className={`aspect-square bg-[#F8F8F8] overflow-hidden border transition-colors ${i === galleryIdx ? 'border-[#111]' : 'border-transparent hover:border-[#111]'}`}
                     >
-                      <img src={m.url} alt={m.alt ?? ''} className="h-full w-full object-cover" />
+                      <img src={m.url} alt={m.alt ?? ''} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
                     </button>
                   ))}
                 </div>
