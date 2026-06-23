@@ -814,10 +814,33 @@ function VariantsTab({
               </p>
             ) : (
               <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
                   <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
                 </div>
+                {(() => {
+                  const presets: Array<{ label: string; match: RegExp }> = [
+                    { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
+                    { label: "P–G", match: /^(P|M|G)$/i },
+                    { label: "Numéricos", match: /^\d{2}$/ },
+                  ];
+                  const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
+                  if (!applicable.length) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
+                      {applicable.map((p) => (
+                        <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
+                          onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <div className="flex flex-wrap gap-2">
                   {sizeValues.map((v) => (
                     <button
@@ -830,6 +853,12 @@ function VariantsTab({
                     </button>
                   ))}
                 </div>
+                {selectedSizes.length > 0 && colors.length > 0 && (
+                  <p className="text-xs text-muted-foreground border-t pt-2">
+                    Ao gerar: <strong>{selectedSizes.length}</strong> tamanho(s) × <strong>{colors.length}</strong> cor(es) ={" "}
+                    <strong>{selectedSizes.length * colors.length}</strong> variante(s).
+                  </p>
+                )}
               </div>
             )}
           </div>
