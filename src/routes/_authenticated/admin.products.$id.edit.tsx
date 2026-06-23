@@ -762,6 +762,22 @@ function VariantsTab({
                   </div>
                 </div>
                 <ColorMediaQuickManager color={c} onSaved={onSaved} />
+                {(() => {
+                  const sizes = sizesByColor.get(c.id) ?? [];
+                  if (!sizes.length) return (
+                    <p className="text-[11px] text-muted-foreground border-t pt-2">Nenhum tamanho gerado para esta cor ainda.</p>
+                  );
+                  return (
+                    <div className="border-t pt-2 space-y-1">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tamanhos disponíveis ({sizes.length})</p>
+                      <div className="flex flex-wrap gap-1">
+                        {sizes.map((s) => (
+                          <span key={s} className="px-2 py-0.5 rounded-full border bg-muted text-[11px]">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
