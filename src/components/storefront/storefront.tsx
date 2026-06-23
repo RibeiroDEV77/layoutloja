@@ -798,6 +798,61 @@ export function CategoryGrid({ categories }: { categories: StorefrontCategory[] 
   );
 }
 
+export function CategoryCircles({ categories }: { categories: StorefrontCategory[] }) {
+  const roots = categories.filter((c) => !c.parent_id);
+  if (roots.length === 0) return null;
+  return (
+    <div className="w-full">
+      {/* Mobile: carrossel horizontal */}
+      <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="flex gap-4 w-max">
+          {roots.map((c) => (
+            <li key={c.id} className="snap-start">
+              <CategoryCircleItem category={c} />
+            </li>
+          ))}
+        </ul>
+      </div>
+      {/* Desktop: grid centralizado */}
+      <ul className="hidden md:grid gap-4 md:grid-cols-6 lg:grid-cols-8 justify-items-center">
+        {roots.map((c) => (
+          <li key={c.id}>
+            <CategoryCircleItem category={c} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CategoryCircleItem({ category }: { category: StorefrontCategory }) {
+  return (
+    <Link
+      to="/categoria/$slug"
+      params={{ slug: category.slug }}
+      className="group flex flex-col items-center gap-2 w-20 md:w-24 transition-all duration-200 hover:-translate-y-1 active:translate-y-0"
+    >
+      <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-gray-50 overflow-hidden ring-1 ring-black/5 group-hover:shadow-sm transition-all duration-200">
+        {category.image_url ? (
+          <img
+            src={category.image_url}
+            alt={category.name}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full grid place-items-center text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            {category.name.slice(0, 2)}
+          </div>
+        )}
+      </div>
+      <span className="text-xs md:text-sm font-medium text-gray-700 text-center truncate w-full">
+        {category.name}
+      </span>
+    </Link>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Card de produto (premium e-commerce style)
 // ---------------------------------------------------------------------------
