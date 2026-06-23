@@ -246,13 +246,30 @@ export async function generateVariants(
   );
 
   const created: Array<{ id: string; sku: string }> = [];
+  const touchedVariantIds = new Set<string>();
   let skipped = 0;
+  let stockInitialized = 0;
+
+  const { data: defaultWarehouse } = await supabase
+    .from('warehouses')
+    .select('id')
+    .eq('store_id', prod.store_id)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   for (const color of colors) {
     const colorCode = sanitizeCode(color.name);
     for (const s of sizeRows) {
       const key = `${color.id}|${s.id}`;
-      if (existingKey.has(key)) { skipped++; continue; }
+      if (existingKey.has(key)) {
+        const existingVariant = (existing ?? []).find((v) => `${v.product_color_id}|${v.size_attribute_value_id ?? ''}` === key);
+        if (existingVariant?.id) touchedVariantIds.add(existingVariant.id);
+        skipped++;
+        continue;
+      }
       const sizeCode = sanitizeCode(s.code ?? s.label);
       const sku = `${prod.sku_root}-${colorCode}-${sizeCode}`;
       const { data, error } = await supabase.from('product_variants').insert({
@@ -267,6 +284,21 @@ export async function generateVariants(
         throw Errors.internal(`Falha ao criar variante ${sku}`, { error: error.message });
       }
       created.push(data);
+      touchedVariantIds.add(data.id);
+    }
+  }
+
+  if (defaultWarehouse?.id) {
+    for (const variantId of touchedVariantIds) {
+      const { error: stockError } = await supabase.from('stock_levels').upsert({
+          store_id: prod.store_id,
+          warehouse_id: defaultWarehouse.id,
+          variant_id: variantId,
+          quantity_on_hand: 0,
+          quantity_reserved: 0,
+          quantity_incoming: 0,
+        }, { onConflict: 'warehouse_id,variant_id', ignoreDuplicates: true });
+      if (!stockError) stockInitialized++;
     }
   }
 
@@ -275,7 +307,7 @@ export async function generateVariants(
     aggregate_type: 'product',
     aggregate_id: productId,
     store_id: prod.store_id,
-    payload: { action: 'variants_generated', created: created.length, skipped },
+    payload: { action: 'variants_generated', created: created.length, skipped, stock_initialized: stockInitialized },
   });
 
   return { created: created.length, skipped, variants: created };
