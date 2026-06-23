@@ -493,7 +493,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const [active, setActive] = useState(0);
   useEffect(() => {
     if (slides.length <= 1) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), 5500);
+    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), 7500);
     return () => clearInterval(id);
   }, [slides.length]);
 
@@ -511,8 +511,8 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             loading={i === 0 ? "eager" : "lazy"}
             decoding="async"
             className={cn(
-              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity duration-[1200ms] ease-in-out",
-              i === active ? "opacity-100" : "opacity-0",
+              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out",
+              i === active ? "opacity-100 z-10" : "opacity-0 z-0",
             )}
           />
         ))}
