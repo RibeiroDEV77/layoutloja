@@ -5,6 +5,7 @@ import {
   Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid, SectionHeader,
   type FilterGroup,
 } from "@/components/storefront/storefront";
+import { BackButton } from "@/components/storefront/back-button";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
@@ -232,7 +233,10 @@ function CategoryPage() {
       <div className="min-h-screen flex flex-col bg-white">
         <StorefrontNavbar categories={categories} brands={brands} products={allProducts} />
 
-        <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 lg:px-10 pt-8 pb-24">
+        <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 lg:px-10 pt-6 pb-24 animate-fade-in">
+          <div className="mb-4 -ml-2 md:-ml-3">
+            <BackButton fallbackTo="/" />
+          </div>
           <Breadcrumb
             items={[
               { label: "Início", to: "/" },
