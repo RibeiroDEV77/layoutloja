@@ -74,10 +74,18 @@ export const Route = createFileRoute("/categoria/$slug")({
     const { map: extraCategoryMap } = await listProductCategoryMap({
       data: { product_ids: prods.rows.map((p) => p.id) },
     });
+    // Multi-categoria é a fonte da verdade. Se o produto tem entradas na
+    // junção (painel admin → Organização → Seções), usamos APENAS elas e
+    // ignoramos o `products.category_id` legado — assim trocar/remover uma
+    // seção no painel não deixa o produto "preso" na categoria antiga.
+    // Quando não há junção (produto antigo ainda não migrado), caímos no
+    // campo legado para não sumir produtos pré-existentes.
     const productInCategory = (product: { id: string; category_id: string | null }) => {
-      if (product.category_id && categoryIds.has(product.category_id)) return true;
       const extras = extraCategoryMap[product.id] ?? [];
-      return extras.some((cid) => categoryIds.has(cid));
+      if (extras.length > 0) {
+        return extras.some((cid) => categoryIds.has(cid));
+      }
+      return !!product.category_id && categoryIds.has(product.category_id);
     };
     const categoryProducts = category.id.startsWith("placeholder-")
       ? navItem?.key === "promocoes"
