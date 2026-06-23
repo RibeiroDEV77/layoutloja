@@ -918,7 +918,7 @@ function CatalogBlock({
           {variants.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center space-y-3">
               <p className="text-sm text-muted-foreground">Clique abaixo para criar a variante única e habilitar preço e estoque.</p>
-              <Button onClick={generate} className="gap-2"><Sparkles className="h-4 w-4" /> Criar variante única</Button>
+              <Button onClick={() => generate()} className="gap-2"><Sparkles className="h-4 w-4" /> Criar variante única</Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1105,7 +1105,7 @@ function CatalogBlock({
           )}
 
           <div className="pt-2 border-t flex flex-wrap justify-end gap-2">
-            <Button onClick={generate} disabled={!colors.length} className="gap-2">
+            <Button onClick={() => generate()} disabled={!colors.length} className="gap-2">
               <Sparkles className="h-4 w-4" /> {variants.length > 0 ? "Atualizar variantes" : "Gerar variantes"}
             </Button>
           </div>
