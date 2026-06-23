@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -69,6 +70,11 @@ const SacolaRoute = SacolaRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaContaRoute = MinhaContaRouteImport.update({
+  id: '/minha-conta',
+  path: '/minha-conta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -355,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -407,6 +414,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
@@ -459,6 +467,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -513,6 +522,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/checkout'
+    | '/minha-conta'
     | '/reset-password'
     | '/sacola'
     | '/admin'
@@ -565,6 +575,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/checkout'
+    | '/minha-conta'
     | '/reset-password'
     | '/sacola'
     | '/categoria/$slug'
@@ -616,6 +627,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/checkout'
+    | '/minha-conta'
     | '/reset-password'
     | '/sacola'
     | '/_authenticated/admin'
@@ -670,6 +682,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
+  MinhaContaRoute: typeof MinhaContaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SacolaRoute: typeof SacolaRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
@@ -696,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-conta': {
+      id: '/minha-conta'
+      path: '/minha-conta'
+      fullPath: '/minha-conta'
+      preLoaderRoute: typeof MinhaContaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -1222,6 +1242,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
+  MinhaContaRoute: MinhaContaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SacolaRoute: SacolaRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
