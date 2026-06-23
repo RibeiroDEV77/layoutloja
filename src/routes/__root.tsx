@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/components/storefront/cart-provider";
 import { MiniCart } from "@/components/storefront/mini-cart";
 import { WhatsAppFab } from "@/components/storefront/whatsapp-fab";
+import { AccountSheet } from "@/components/storefront/account-sheet";
 
 function installSafeDomMutationPatch() {
   if (typeof window === "undefined") return;
@@ -158,6 +159,7 @@ function RootComponent() {
             <Outlet />
             <MiniCart />
             <WhatsAppFab />
+            <AccountSheet />
             <Toaster richColors position="top-right" />
           </CartProvider>
         </AuthProvider>
