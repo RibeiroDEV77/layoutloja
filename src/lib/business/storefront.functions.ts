@@ -215,7 +215,7 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
         on_sale: p.on_sale || onSale,
       };
     });
-    return { rows: rowsWithImages };
+    return { rows: rowsWithImages.filter((r) => r.price != null && r.price > 0) };
   });
 
 export const listStorefrontBrands = createServerFn({ method: 'POST' })
