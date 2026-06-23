@@ -15,6 +15,28 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
+function installSafeDomMutationPatch() {
+  if (typeof window === "undefined") return;
+  const proto = window.Node?.prototype as (Node & {
+    __layoutSafeRemoveChild?: boolean;
+    removeChild: typeof Node.prototype.removeChild;
+  }) | undefined;
+  if (!proto || proto.__layoutSafeRemoveChild) return;
+
+  const nativeRemoveChild = proto.removeChild;
+  proto.removeChild = function patchedRemoveChild<T extends Node>(this: Node, child: T): T {
+    try {
+      return nativeRemoveChild.call(this, child) as T;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotFoundError") return child;
+      throw error;
+    }
+  };
+  proto.__layoutSafeRemoveChild = true;
+}
+
+installSafeDomMutationPatch();
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

@@ -9,6 +9,9 @@ export type AssetLike = {
   id: string;
   kind: string;
   storage_driver: string;
+  bucket?: string | null;
+  storage_path?: string | null;
+  thumb_path?: string | null;
   preview_url?: string | null;
   external_url?: string | null;
   external_id?: string | null;

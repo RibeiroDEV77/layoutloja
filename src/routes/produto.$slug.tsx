@@ -41,7 +41,11 @@ function ProductPage() {
     if (!product) { setColorId(null); setSizeId(null); return; }
     const currentColorStillExists = product.colors.some((c) => c.id === colorId);
     if (!currentColorStillExists) {
-      const def = product.colors.find((c) => c.is_default) ?? product.colors[0] ?? null;
+      const def = product.colors.find((c) => c.is_default && c.media.length > 0)
+        ?? product.colors.find((c) => c.media.length > 0)
+        ?? product.colors.find((c) => c.is_default)
+        ?? product.colors[0]
+        ?? null;
       setColorId(def?.id ?? null);
     }
     const currentSizeStillExists = product.sizes.some((s) => s.attribute_value_id === sizeId);

@@ -32,6 +32,8 @@ export type StorefrontProduct = {
   category_id: string | null; brand_id: string | null;
   on_sale: boolean; new_product: boolean;
   featured: boolean; best_seller: boolean;
+  image_url?: string | null;
+  hover_image_url?: string | null;
 };
 export type StorefrontBrand = {
   id: string; name: string; slug: string; logo_url: string | null;
@@ -85,7 +87,83 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     if (data.flag === 'sale') q = q.eq('on_sale', true);
     if (data.flag === 'featured') q = q.eq('featured', true);
     const { data: rows } = await q;
-    return { rows: (rows ?? []) as StorefrontProduct[] };
+    const products = (rows ?? []) as StorefrontProduct[];
+    if (!products.length) return { rows: products };
+
+    const productIds = products.map((p) => p.id);
+    const { data: colors } = await sb
+      .from('product_colors')
+      .select('id, product_id, is_default, sort_order')
+      .in('product_id', productIds)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    const colorIds = (colors ?? []).map((c) => c.id);
+    const { data: media } = colorIds.length
+      ? await sb
+          .from('product_color_media')
+          .select('id, product_color_id, external_url, storage_path, thumbnail_url, sort_order, is_cover, is_hover_media')
+          .in('product_color_id', colorIds)
+          .order('sort_order', { ascending: true })
+      : { data: [] };
+
+    const damPathFromUrl = (raw: string | null | undefined): string | null => {
+      if (!raw) return null;
+      const s = raw.trim();
+      if (!s) return null;
+      if (!/^https?:\/\//i.test(s)) return s.replace(/^\/?dam\//, '') || null;
+      const m = s.match(/\/object\/(?:sign|public|authenticated)\/dam\/([^?#]+)/i);
+      return m?.[1] ? decodeURIComponent(m[1]) : null;
+    };
+
+    type RawMedia = {
+      id: string; product_color_id: string; external_url: string | null; storage_path: string | null;
+      thumbnail_url: string | null; sort_order: number | null; is_cover: boolean | null; is_hover_media: boolean | null;
+    };
+    const rawMedia = (media ?? []) as RawMedia[];
+    const resolvedById = new Map<string, string>();
+    const toSign: Array<{ id: string; path: string }> = [];
+    for (const m of rawMedia) {
+      const path = damPathFromUrl(m.storage_path) ?? damPathFromUrl(m.external_url) ?? damPathFromUrl(m.thumbnail_url);
+      if (path) toSign.push({ id: m.id, path });
+      else if (m.external_url || m.thumbnail_url) resolvedById.set(m.id, m.external_url ?? m.thumbnail_url!);
+    }
+    if (toSign.length) {
+      try {
+        const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+        const { data: signed } = await supabaseAdmin.storage.from('dam').createSignedUrls(toSign.map((m) => m.path), 60 * 60 * 24 * 7);
+        signed?.forEach((row, i) => { if (row?.signedUrl) resolvedById.set(toSign[i].id, row.signedUrl); });
+      } catch { /* usa URLs originais quando possível */ }
+    }
+
+    const colorsByProduct = new Map<string, typeof colors>();
+    for (const c of colors ?? []) {
+      const list = colorsByProduct.get(c.product_id) ?? [];
+      list.push(c);
+      colorsByProduct.set(c.product_id, list);
+    }
+    const mediaByColor = new Map<string, RawMedia[]>();
+    for (const m of rawMedia) {
+      const list = mediaByColor.get(m.product_color_id) ?? [];
+      list.push(m);
+      mediaByColor.set(m.product_color_id, list);
+    }
+
+    const rowsWithImages = products.map((p) => {
+      const pColors = (colorsByProduct.get(p.id) ?? []).sort((a, b) =>
+        Number(b.is_default) - Number(a.is_default) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+      );
+      const medias = pColors.flatMap((c) => mediaByColor.get(c.id) ?? []).sort((a, b) =>
+        Number(b.is_cover) - Number(a.is_cover) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+      );
+      const cover = medias.find((m) => m.is_cover) ?? medias[0] ?? null;
+      const hover = medias.find((m) => m.is_hover_media && m.id !== cover?.id) ?? medias.find((m) => m.id !== cover?.id) ?? null;
+      return {
+        ...p,
+        image_url: cover ? (resolvedById.get(cover.id) ?? cover.external_url ?? cover.thumbnail_url ?? cover.storage_path) : null,
+        hover_image_url: hover ? (resolvedById.get(hover.id) ?? hover.external_url ?? hover.thumbnail_url ?? hover.storage_path) : null,
+      };
+    });
+    return { rows: rowsWithImages };
   });
 
 export const listStorefrontBrands = createServerFn({ method: 'POST' })

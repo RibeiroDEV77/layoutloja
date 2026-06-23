@@ -817,6 +817,8 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
     : null;
   const rating = x.rating ?? null;
   const initial = p.name.charAt(0).toUpperCase();
+  const imageUrl = (p as StorefrontProduct & { image_url?: string | null }).image_url ?? null;
+  const hoverImageUrl = x.hover_image_url ?? null;
 
   return (
     <div className="group block">
@@ -845,13 +847,25 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
           <Heart className="h-4 w-4" strokeWidth={1.5} />
         </button>
 
-        {/* Placeholder image — troca no hover */}
-        <div className="absolute inset-0 grid place-items-center transition-opacity duration-500 group-hover:opacity-0">
-          <span className="text-7xl font-semibold text-[#EFEFEF]">{initial}</span>
-        </div>
-        <div className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-[#EFEFEF]">
-          <span className="text-7xl font-semibold text-white">{initial}</span>
-        </div>
+        {imageUrl ? (
+          <>
+            <img src={imageUrl} alt={p.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
+            {hoverImageUrl ? (
+              <img src={hoverImageUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+            ) : (
+              <img src={imageUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+            )}
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 grid place-items-center transition-opacity duration-500 group-hover:opacity-0">
+              <span className="text-7xl font-semibold text-[#EFEFEF]">{initial}</span>
+            </div>
+            <div className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-[#EFEFEF]">
+              <span className="text-7xl font-semibold text-white">{initial}</span>
+            </div>
+          </>
+        )}
 
         {/* Botão Adicionar à sacola — aparece no hover */}
         <div className="absolute inset-x-3 bottom-3 z-10 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
