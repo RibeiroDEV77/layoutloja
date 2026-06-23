@@ -10,6 +10,7 @@ import {
   listStorefrontBrands,
   type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
+import { listProductCategoryMap } from "@/lib/business/product-categories.functions";
 import { getCategoryFilters, type StorefrontFilterGroup } from "@/lib/business/storefront-filters.functions";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
