@@ -5,6 +5,7 @@ import {
   Breadcrumb, SidebarFilter, CategoryToolbar, ProductGrid, SectionHeader,
   type FilterGroup,
 } from "@/components/storefront/storefront";
+import { BackButton } from "@/components/storefront/back-button";
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
