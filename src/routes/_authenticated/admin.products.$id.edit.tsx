@@ -58,6 +58,7 @@ import {
   listProductPrices, setVariantPrice,
 } from "@/lib/business/product-children.functions";
 import { listCategories } from "@/lib/business/categories.functions";
+import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
 import { listBrands } from "@/lib/business/brands.functions";
 import { listAttributes } from "@/lib/business/attributes.functions";
 import { createAttributeValue, listAttributeValues } from "@/lib/business/attribute-values.functions";
