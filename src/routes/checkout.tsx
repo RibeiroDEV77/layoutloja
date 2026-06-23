@@ -1,7 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
-import { StorefrontShell } from '@/components/storefront/storefront';
+import {
+  StorefrontShell, StorefrontNavbar, StorefrontLogoStrip, StorefrontFooter,
+} from '@/components/storefront/storefront';
+import {
+  getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
+  listStorefrontBrands,
+} from '@/lib/business/storefront.functions';
 import { useStorefrontCart, formatBRL, clearStoredCart } from '@/hooks/use-storefront-cart';
 import {
   anonQuoteShipping,
@@ -13,6 +19,16 @@ import { Loader2, Truck, Check } from 'lucide-react';
 
 export const Route = createFileRoute('/checkout')({
   head: () => ({ meta: [{ title: 'Checkout — Layout Loja' }] }),
+  loader: async () => {
+    const { store } = await getStorefrontStore();
+    const store_id = store?.id;
+    const [cats, brands, all] = await Promise.all([
+      listStorefrontCategories({ data: { store_id } }),
+      listStorefrontBrands({ data: { store_id } }),
+      listStorefrontProducts({ data: { store_id, limit: 24 } }),
+    ]);
+    return { categories: cats.rows, brands: brands.rows, products: all.rows };
+  },
   component: CheckoutPage,
 });
 
