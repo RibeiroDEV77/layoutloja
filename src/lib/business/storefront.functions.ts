@@ -30,6 +30,7 @@ export type StorefrontProduct = {
   id: string; name: string; slug: string;
   short_description: string | null;
   category_id: string | null; brand_id: string | null;
+  category_ids?: string[];
   on_sale: boolean; new_product: boolean;
   featured: boolean; best_seller: boolean;
   image_url?: string | null;
@@ -94,6 +95,17 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     if (!products.length) return { rows: products };
 
     const productIds = products.map((p) => p.id);
+    const { data: productCategoryRows } = await sb
+      .from('product_categories')
+      .select('product_id, category_id')
+      .in('product_id', productIds);
+    const categoriesByProduct = new Map<string, string[]>();
+    for (const row of (productCategoryRows ?? []) as Array<{ product_id: string; category_id: string }>) {
+      const list = categoriesByProduct.get(row.product_id) ?? [];
+      list.push(row.category_id);
+      categoriesByProduct.set(row.product_id, list);
+    }
+
     const { data: colors } = await sb
       .from('product_colors')
       .select('id, product_id, is_default, sort_order')
@@ -194,6 +206,7 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
       const onSale = !!(pr && pr.list > pr.price);
       return {
         ...p,
+        category_ids: categoriesByProduct.get(p.id) ?? [],
         image_url: cover ? (resolvedById.get(cover.id) ?? cover.external_url ?? cover.thumbnail_url ?? cover.storage_path) : null,
         hover_image_url: hover ? (resolvedById.get(hover.id) ?? hover.external_url ?? hover.thumbnail_url ?? hover.storage_path) : null,
         price: pr ? (onSale ? pr.list : pr.price) : null,

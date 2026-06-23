@@ -12,7 +12,7 @@ import bannerSportFino from "@/assets/banner-sport-fino.jpg";
 
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
-  listStorefrontBrands,
+  listStorefrontBrands, type StorefrontCategory, type StorefrontProduct,
 } from "@/lib/business/storefront.functions";
 
 export const Route = createFileRoute("/")({
@@ -69,10 +69,37 @@ function HomePage() {
   ];
 
 
-  // Divide o pool em "estilos" diferentes para preencher as seções temáticas
-  const sportFino = todos.slice(0, 8);
-  const country = todos.slice(2, 10);
-  const social = todos.slice(4, 12);
+  const collectCategoryIds = (slugs: string[]) => {
+    const targets = new Set(
+      categories
+        .filter((category: StorefrontCategory) => slugs.includes(category.slug))
+        .map((category: StorefrontCategory) => category.id),
+    );
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const category of categories as StorefrontCategory[]) {
+        if (category.parent_id && targets.has(category.parent_id) && !targets.has(category.id)) {
+          targets.add(category.id);
+          changed = true;
+        }
+      }
+    }
+    return targets;
+  };
+
+  const filterByCategory = (slugs: string[]) => {
+    const ids = collectCategoryIds(slugs);
+    if (!ids.size) return [];
+    return (todos as StorefrontProduct[]).filter((product) => {
+      const assigned = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
+      return assigned.some((categoryId) => ids.has(categoryId));
+    });
+  };
+
+  const sportFino = filterByCategory(["sport-fino", "esporte-fino", "masc-esporte-fino", "masc-calcas-sport-fino", "masc-bermudas-sport-fino", "fem-calcas-sport-fino"]);
+  const country = filterByCategory(["country", "masc-calcas-country", "fem-calcas-country"]);
+  const social = filterByCategory(["social", "masc-social", "masc-calcas-social", "fem-calcas-social"]);
 
   return (
     <StorefrontShell>
@@ -125,7 +152,7 @@ function HomePage() {
               description="Seleção da linha sport fino."
               action={{ label: "Ver coleção" }}
             />
-            <ProductCarousel products={sportFino.length ? sportFino : destaques.slice(0, 8)} />
+            <ProductCarousel products={sportFino} />
           </Section>
 
           {/* Country */}
@@ -136,7 +163,7 @@ function HomePage() {
               description="Seleção da linha country."
               action={{ label: "Ver coleção" }}
             />
-            <ProductCarousel products={country.length ? country : todos.slice(0, 8)} />
+            <ProductCarousel products={country} />
           </Section>
 
           {/* Social */}
@@ -147,7 +174,7 @@ function HomePage() {
               description="Seleção da linha social."
               action={{ label: "Ver coleção" }}
             />
-            <ProductCarousel products={social.length ? social : todos.slice(0, 8)} />
+            <ProductCarousel products={social} />
           </Section>
 
 

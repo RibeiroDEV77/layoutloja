@@ -14,7 +14,7 @@ import { listProductCategoryMap } from "@/lib/business/product-categories.functi
 import { getCategoryFilters, type StorefrontFilterGroup } from "@/lib/business/storefront-filters.functions";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { findStorefrontNavItem, storefrontCategoryLabel, resolveStorefrontCategory } from "@/lib/storefront-navigation";
+import { findStorefrontNavItem, storefrontCategoryLabel, resolveStorefrontCategory, resolveStorefrontCategories } from "@/lib/storefront-navigation";
 
 type SearchParams = {
   sort?: string;
@@ -60,7 +60,11 @@ export const Route = createFileRoute("/categoria/$slug")({
       seo_description: null,
     };
     const subcategories = cats.rows.filter((c) => c.parent_id === category.id);
-    const categoryIds = new Set<string>([category.id]);
+    const navCategories = navItem ? resolveStorefrontCategories(navItem, cats.rows) : [];
+    const categoryIds = new Set<string>([
+      category.id,
+      ...navCategories.map((c) => c.id),
+    ]);
     let changed = true;
     while (changed) {
       changed = false;
@@ -92,7 +96,7 @@ export const Route = createFileRoute("/categoria/$slug")({
         ? prods.rows.filter((product) => product.on_sale)
         : navItem?.key === "novidades"
           ? prods.rows.filter((product) => product.new_product)
-          : prods.rows
+          : prods.rows.filter(productInCategory)
       : prods.rows.filter(productInCategory);
     const parents: typeof cats.rows = [];
     let p = category.parent_id;

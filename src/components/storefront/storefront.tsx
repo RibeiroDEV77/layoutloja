@@ -13,7 +13,7 @@ import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
 
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
 import { COMPANY, whatsappUrl, mailtoUrl } from "@/lib/company";
-import { STOREFRONT_NAV_ITEMS, resolveStorefrontCategory } from "@/lib/storefront-navigation";
+import { STOREFRONT_NAV_ITEMS, resolveStorefrontCategory, resolveStorefrontCategories } from "@/lib/storefront-navigation";
 
 
 // ---------------------------------------------------------------------------
@@ -98,11 +98,13 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     slug: string;
     categoryId?: string;
     image?: string | null;
+    categoryIds: string[];
   };
 
   const navItems: NavItem[] = useMemo(() => {
     return STOREFRONT_NAV_ITEMS.map((entry) => {
       const resolved = resolveStorefrontCategory(entry, categories);
+      const resolvedList = resolveStorefrontCategories(entry, categories);
       return {
         key: entry.key,
         label: entry.label,
@@ -111,6 +113,7 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         slug: entry.slug,
         categoryId: resolved?.id,
         image: resolved?.image_url,
+        categoryIds: resolvedList.map((category) => category.id),
       };
     });
   }, [categories]);
@@ -119,8 +122,8 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     if (!hover) return null;
     const item = navItems.find((n) => n.key === hover);
     if (!item) return null;
-    const categoryIds = new Set<string>(item.categoryId ? [item.categoryId] : []);
-    if (item.categoryId) {
+    const categoryIds = new Set<string>(item.categoryIds.length ? item.categoryIds : item.categoryId ? [item.categoryId] : []);
+    if (categoryIds.size) {
       let changed = true;
       while (changed) {
         changed = false;
@@ -132,8 +135,11 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         }
       }
     }
-    const categoryProducts = item.categoryId
-      ? products.filter((product) => product.category_id && categoryIds.has(product.category_id))
+    const categoryProducts = categoryIds.size
+      ? products.filter((product) => {
+          const assigned = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
+          return assigned.some((categoryId) => categoryIds.has(categoryId));
+        })
       : products;
     const productPool = categoryProducts.length ? categoryProducts : products;
     const subcategoryItems: MegaListItem[] = item.kind === "brands"
