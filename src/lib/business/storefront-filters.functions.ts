@@ -42,6 +42,21 @@ export type StorefrontFilterGroup = {
 
 export type StorefrontProductAttributeMap = Record<string, string[]>; // product_id -> attribute_value_id[]
 
+function normalizeFilterToken(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(',', '.')
+    .replace(/\.0+$/, '')
+    .replace(/\s+/g, ' ');
+}
+
+function filterTokens(...values: unknown[]): string[] {
+  return Array.from(new Set(values.map(normalizeFilterToken).filter(Boolean)));
+}
+
 export const getCategoryFilters = createServerFn({ method: 'POST' })
   .inputValidator((input: { category_id?: string | null; product_ids?: string[] }) => input ?? {})
   .handler(async ({ data }): Promise<{ groups: StorefrontFilterGroup[]; productAttrs: StorefrontProductAttributeMap }> => {
@@ -88,31 +103,115 @@ export const getCategoryFilters = createServerFn({ method: 'POST' })
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
+    const rawValues = ((values ?? []) as Array<{
+      id: string; attribute_id: string; code: string; label: string; sort_order: number; meta_json: unknown;
+    }>);
+    const valueById = new Map(rawValues.map((v) => [v.id, v]));
+    const valueIdsByAttributeAndToken = new Map<string, string[]>();
+    for (const value of rawValues) {
+      for (const token of filterTokens(value.id, value.code, value.label)) {
+        const key = `${value.attribute_id}:${token}`;
+        const list = valueIdsByAttributeAndToken.get(key) ?? [];
+        if (!list.includes(value.id)) list.push(value.id);
+        valueIdsByAttributeAndToken.set(key, list);
+      }
+    }
+
+    const resolveValueIds = (attributeId: string, raw: unknown) => {
+      const resolved = new Set<string>();
+      for (const token of filterTokens(raw)) {
+        for (const id of valueIdsByAttributeAndToken.get(`${attributeId}:${token}`) ?? []) {
+          resolved.add(id);
+        }
+      }
+      return Array.from(resolved);
+    };
+
+    const valueProducts = new Map<string, Set<string>>();
+    const addProductValue = (productId: string, valueId: string | null | undefined) => {
+      if (!valueId || !valueById.has(valueId)) return;
+      const arr = pavMap[productId] ?? (pavMap[productId] = []);
+      if (!arr.includes(valueId)) arr.push(valueId);
+      const productsForValue = valueProducts.get(valueId) ?? new Set<string>();
+      productsForValue.add(productId);
+      valueProducts.set(valueId, productsForValue);
+    };
+
     // 2) Counts based on product_ids of the current category (server-side join).
+    //    Product attributes may be saved as an attribute_value_id, text, or number.
+    //    Normalize all of them so "44" and 44 resolve to the same filter option.
+    //    Size filters also read product_variants.size_attribute_value_id, because
+    //    the Admin panel stores generated sizes on variants rather than on the
+    //    descriptive product_attribute_values table.
     let pavMap: StorefrontProductAttributeMap = {};
-    const valueCount = new Map<string, number>();
     if (productIds.length > 0) {
       const { data: pavRows } = await sb
         .from('product_attribute_values')
-        .select('product_id, attribute_value_id')
+        .select('product_id, attribute_id, attribute_value_id, value_text, value_number, value_boolean')
         .in('product_id', productIds)
         .in('attribute_id', attrIds);
-      for (const row of (pavRows ?? []) as Array<{ product_id: string; attribute_value_id: string | null }>) {
-        if (!row.attribute_value_id) continue;
-        const arr = pavMap[row.product_id] ?? (pavMap[row.product_id] = []);
-        if (!arr.includes(row.attribute_value_id)) arr.push(row.attribute_value_id);
-        valueCount.set(row.attribute_value_id, (valueCount.get(row.attribute_value_id) ?? 0) + 1);
+      for (const row of (pavRows ?? []) as Array<{
+        product_id: string; attribute_id: string; attribute_value_id: string | null;
+        value_text: string | null; value_number: number | null; value_boolean: boolean | null;
+      }>) {
+        if (row.attribute_value_id) {
+          addProductValue(row.product_id, row.attribute_value_id);
+          continue;
+        }
+        const raw = row.value_text ?? row.value_number ?? row.value_boolean;
+        for (const valueId of resolveValueIds(row.attribute_id, raw)) addProductValue(row.product_id, valueId);
+      }
+
+      const targetSizeAttributeIds = attributes
+        .filter((a) => a.is_size || a.filter_ui === 'size' || /tamanho|numera|size/i.test(`${a.name} ${a.code}`))
+        .map((a) => a.id);
+      if (targetSizeAttributeIds.length) {
+        const { data: variantRows } = await sb
+          .from('product_variants')
+          .select('product_id, size_attribute_value_id')
+          .in('product_id', productIds)
+          .eq('is_active', true)
+          .not('size_attribute_value_id', 'is', null);
+        const variantValueIds = Array.from(new Set(
+          ((variantRows ?? []) as Array<{ size_attribute_value_id: string | null }>)
+            .map((row) => row.size_attribute_value_id)
+            .filter(Boolean) as string[],
+        ));
+        const { data: variantValues } = variantValueIds.length
+          ? await sb
+              .from('attribute_values')
+              .select('id, code, label')
+              .in('id', variantValueIds)
+          : { data: [] };
+        const variantValueById = new Map(
+          ((variantValues ?? []) as Array<{ id: string; code: string | null; label: string }>).map((value) => [value.id, value]),
+        );
+
+        for (const row of (variantRows ?? []) as Array<{ product_id: string; size_attribute_value_id: string | null }>) {
+          if (!row.size_attribute_value_id) continue;
+          if (valueById.has(row.size_attribute_value_id)) {
+            addProductValue(row.product_id, row.size_attribute_value_id);
+            continue;
+          }
+          const variantValue = variantValueById.get(row.size_attribute_value_id);
+          if (!variantValue) continue;
+          for (const attributeId of targetSizeAttributeIds) {
+            for (const valueId of resolveValueIds(attributeId, variantValue.label)) addProductValue(row.product_id, valueId);
+            for (const valueId of resolveValueIds(attributeId, variantValue.code)) addProductValue(row.product_id, valueId);
+          }
+        }
       }
     }
+
+    const valueCount = new Map<string, number>();
+    for (const [valueId, productSet] of valueProducts) valueCount.set(valueId, productSet.size);
 
     const linkOrder = new Map<string, number>();
     for (const l of links) linkOrder.set(l.attribute_id, l.filter_order || l.sort_order || 0);
 
     const groups: StorefrontFilterGroup[] = attributes
       .map((a) => {
-        const vs = ((values ?? []) as Array<{
-          id: string; attribute_id: string; code: string; label: string; sort_order: number; meta_json: unknown;
-        }>)
+        const vs = rawValues
           .filter((v) => v.attribute_id === a.id)
           .map((v) => {
             const meta = (v.meta_json && typeof v.meta_json === 'object') ? (v.meta_json as Record<string, unknown>) : {};
