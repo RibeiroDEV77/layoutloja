@@ -188,8 +188,12 @@ function CheckoutPage() {
 
   return (
     <StorefrontShell>
-      <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Checkout</h1>
+      <div className="min-h-screen flex flex-col bg-white">
+        <StorefrontNavbar categories={categories} brands={brands} products={products} />
+        <StorefrontLogoStrip />
+        <main className="flex-1">
+          <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Checkout</h1>
         {!cart.ready ? (
           <p className="mt-8 text-[#666]">Carregando…</p>
         ) : cart.items.length === 0 ? (
