@@ -311,9 +311,13 @@ function CheckoutPage() {
             </aside>
           </div>
         )}
+          </div>
+        </main>
+        <StorefrontFooter />
       </div>
     </StorefrontShell>
   );
+}
 }
 
 function Field({
