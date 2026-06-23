@@ -271,16 +271,14 @@ function ProductPage() {
                 <span>Sem avaliações ainda</span>
               </div>
 
-              <div className="mt-4 flex items-baseline gap-3">
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-3">
                 {product.list_price_from && product.price_from && product.list_price_from > product.price_from && (
-                  <span className="text-[14px] text-[#999] line-through">{formatBRL(product.list_price_from)}</span>
+                  <span className="text-sm text-gray-400 line-through">{formatBRL(product.list_price_from)}</span>
                 )}
-                <span className="text-2xl font-semibold">
-                  {product.price_from
-                    ? (product.price_to && product.price_to !== product.price_from
-                        ? `${formatBRL(product.price_from)} – ${formatBRL(product.price_to)}`
-                        : formatBRL(product.price_from))
-                    : 'Sob consulta'}
+                <span className="text-2xl md:text-3xl font-extrabold">
+                  {product.price_to && product.price_from && product.price_to !== product.price_from
+                    ? `${formatBRL(product.price_from)} – ${formatBRL(product.price_to)}`
+                    : formatBRL(product.price_from ?? 0)}
                 </span>
               </div>
 
