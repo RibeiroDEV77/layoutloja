@@ -1,6 +1,7 @@
 /**
  * AssetThumb — preview compacto de um asset (resolve URL conforme driver).
  */
+import { useState } from "react";
 import { Image as ImageIcon, FileText, Film, Youtube, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,28 @@ export type AssetLike = {
 
 function ytThumb(id: string) { return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`; }
 
+function isUnsupportedImage(filename?: string | null) {
+  if (!filename) return false;
+  return /\.(heic|heif|tiff?|avif)$/i.test(filename);
+}
+
+function ImagePreview({ src, alt, filename }: { src: string; alt: string; filename?: string | null }) {
+  const [errored, setErrored] = useState(false);
+  const unsupported = isUnsupportedImage(filename);
+  if (errored || unsupported) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
+        <ImageIcon className="h-6 w-6" />
+        <span className="text-[10px] leading-tight break-all line-clamp-2">
+          {filename ?? alt}
+        </span>
+        {unsupported && <span className="text-[9px] uppercase opacity-60">formato não suportado pelo navegador</span>}
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} loading="lazy" onError={() => setErrored(true)} className="h-full w-full object-cover" />;
+}
+
 export function AssetThumb({ asset, className }: { asset: AssetLike; className?: string }) {
   const alt = asset.alt_text || asset.title || asset.original_filename || "Asset";
   const wrapper = cn(
@@ -27,7 +50,7 @@ export function AssetThumb({ asset, className }: { asset: AssetLike; className?:
 
   if (asset.kind === "image" || asset.kind === "svg") {
     const src = asset.preview_url ?? asset.external_url ?? undefined;
-    if (src) return <div className={wrapper}><img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" /></div>;
+    if (src) return <div className={wrapper}><ImagePreview src={src} alt={alt} filename={asset.original_filename} /></div>;
   }
   if (asset.kind === "youtube" && asset.external_id) {
     return <div className={wrapper}><img src={ytThumb(asset.external_id)} alt={alt} loading="lazy" className="h-full w-full object-cover" /><Youtube className="absolute h-8 w-8 text-white drop-shadow" /></div>;
