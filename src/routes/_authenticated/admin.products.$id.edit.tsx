@@ -58,6 +58,7 @@ import {
   listProductPrices, setVariantPrice,
 } from "@/lib/business/product-children.functions";
 import { listCategories } from "@/lib/business/categories.functions";
+import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
 import { listBrands } from "@/lib/business/brands.functions";
 import { listAttributes } from "@/lib/business/attributes.functions";
 import { createAttributeValue, listAttributeValues } from "@/lib/business/attribute-values.functions";
@@ -319,6 +320,8 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
   const fnCatAttrs = useServerFn(listCategoryAttributes);
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
+  const fnGetSections = useServerFn(listProductCategoryIds);
+  const fnSetSections = useServerFn(setProductCategories);
 
   const [form, setForm] = useState({
     category_id: product.category_id ?? "",
@@ -329,13 +332,14 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
     best_seller: product.best_seller,
   });
   const [saving, setSaving] = useState(false);
+  const [sectionIds, setSectionIds] = useState<Set<string>>(new Set());
 
   const cats = useQuery({
     queryKey: ["org-cats", storeId], enabled: !!storeId,
     queryFn: async () => {
-      const r = await fnCats({ data: { store_id: storeId!, pageSize: 100 } });
+      const r = await fnCats({ data: { store_id: storeId!, pageSize: 500 } });
       if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as { id: string; name: string }[];
+      return r.data.rows as { id: string; name: string; parent_id: string | null }[];
     },
   });
   const brands = useQuery({
@@ -346,6 +350,15 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
       return r.data.rows as { id: string; name: string }[];
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    fnGetSections({ data: { product_id: product.id } })
+      .then((r) => { if (!cancelled) setSectionIds(new Set(r.ids)); })
+      .catch(() => { /* keep empty */ });
+    return () => { cancelled = true; };
+  }, [fnGetSections, product.id]);
+
 
   const valsQ = useQuery({
     queryKey: ["org-attrs", product.id, form.category_id],
@@ -381,19 +394,38 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
   const save = async () => {
     setSaving(true);
     const ok = await runAction(
-      () => fnUpd({ data: { id: product.id, patch: {
-        category_id: form.category_id || null,
-        brand_id: form.brand_id || null,
-        featured: form.featured,
-        on_sale: form.on_sale,
-        new_product: form.new_product,
-        best_seller: form.best_seller,
-      } } }),
+      async () => {
+        const r = await fnUpd({ data: { id: product.id, patch: {
+          category_id: form.category_id || null,
+          brand_id: form.brand_id || null,
+          featured: form.featured,
+          on_sale: form.on_sale,
+          new_product: form.new_product,
+          best_seller: form.best_seller,
+        } } });
+        if (form.category_id) {
+          await fnSetSections({ data: {
+            product_id: product.id,
+            category_ids: Array.from(sectionIds),
+            primary_id: form.category_id,
+          } });
+        }
+        return r;
+      },
       { loading: "Salvando...", success: "Organização salva" },
     );
     setSaving(false);
     if (ok) onSaved();
   };
+
+  const toggleSection = (id: string) => {
+    setSectionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
 
   const setAttr = async (payload: Parameters<typeof fnSet>[0]["data"]) => {
     const ok = await runAction(() => fnSet({ data: payload }), { success: "Atributo salvo" });
@@ -433,6 +465,56 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
           </div>
         ))}
       </div>
+
+      <div className="space-y-2 pt-4 border-t">
+        <div className="flex items-baseline justify-between">
+          <p className="text-sm font-medium">Seções adicionais</p>
+          <span className="text-xs text-muted-foreground">
+            Marque todas as seções em que este produto deve aparecer (Country, Calças, Masculino, Promoções…).
+            A categoria primária acima é selecionada automaticamente.
+          </span>
+        </div>
+        <div className="max-h-72 overflow-auto rounded-md border p-3 space-y-3">
+          {(() => {
+            const rows = cats.data ?? [];
+            const roots = rows.filter((c) => !c.parent_id);
+            const byParent = new Map<string, typeof rows>();
+            for (const c of rows) {
+              if (!c.parent_id) continue;
+              const list = byParent.get(c.parent_id) ?? [];
+              list.push(c); byParent.set(c.parent_id, list);
+            }
+            const Row = (c: { id: string; name: string }, depth: number) => {
+              const isPrimary = c.id === form.category_id;
+              const checked = sectionIds.has(c.id) || isPrimary;
+              return (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/40 px-2 py-1 rounded"
+                  style={{ paddingLeft: 8 + depth * 16 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isPrimary}
+                    onChange={() => toggleSection(c.id)}
+                  />
+                  <span>{c.name}</span>
+                  {isPrimary && <Badge variant="outline" className="text-[10px]">primária</Badge>}
+                </label>
+              );
+            };
+            const renderTree = (parentId: string | null, depth: number): React.ReactNode[] => {
+              const children = parentId === null ? roots : byParent.get(parentId) ?? [];
+              return children.flatMap((c) => [Row(c, depth), ...renderTree(c.id, depth + 1)]);
+            };
+            return cats.isLoading ? (
+              <p className="text-xs text-muted-foreground">Carregando categorias…</p>
+            ) : renderTree(null, 0);
+          })()}
+        </div>
+      </div>
+
 
       {form.category_id && (
         <div className="space-y-3 pt-4 border-t">

@@ -10,6 +10,7 @@ import {
   listStorefrontBrands,
   type StorefrontCategory,
 } from "@/lib/business/storefront.functions";
+import { listProductCategoryMap } from "@/lib/business/product-categories.functions";
 import { getCategoryFilters, type StorefrontFilterGroup } from "@/lib/business/storefront-filters.functions";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -70,13 +71,21 @@ export const Route = createFileRoute("/categoria/$slug")({
         }
       }
     }
+    const { map: extraCategoryMap } = await listProductCategoryMap({
+      data: { product_ids: prods.rows.map((p) => p.id) },
+    });
+    const productInCategory = (product: { id: string; category_id: string | null }) => {
+      if (product.category_id && categoryIds.has(product.category_id)) return true;
+      const extras = extraCategoryMap[product.id] ?? [];
+      return extras.some((cid) => categoryIds.has(cid));
+    };
     const categoryProducts = category.id.startsWith("placeholder-")
       ? navItem?.key === "promocoes"
         ? prods.rows.filter((product) => product.on_sale)
         : navItem?.key === "novidades"
           ? prods.rows.filter((product) => product.new_product)
           : prods.rows
-      : prods.rows.filter((product) => product.category_id && categoryIds.has(product.category_id));
+      : prods.rows.filter(productInCategory);
     const parents: typeof cats.rows = [];
     let p = category.parent_id;
     while (p) {
