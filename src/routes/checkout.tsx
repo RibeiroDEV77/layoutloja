@@ -318,7 +318,6 @@ function CheckoutPage() {
     </StorefrontShell>
   );
 }
-}
 
 function Field({
   label, value, onChange, type = 'text', className = '',
