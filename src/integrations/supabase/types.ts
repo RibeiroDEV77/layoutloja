@@ -2129,6 +2129,7 @@ export type Database = {
           default_price_list_id: string | null
           deleted_at: string | null
           doc_number: string | null
+          doc_number_encrypted: string | null
           email: string | null
           gender: string | null
           id: string
@@ -2166,6 +2167,7 @@ export type Database = {
           default_price_list_id?: string | null
           deleted_at?: string | null
           doc_number?: string | null
+          doc_number_encrypted?: string | null
           email?: string | null
           gender?: string | null
           id?: string
@@ -2203,6 +2205,7 @@ export type Database = {
           default_price_list_id?: string | null
           deleted_at?: string | null
           doc_number?: string | null
+          doc_number_encrypted?: string | null
           email?: string | null
           gender?: string | null
           id?: string
@@ -12848,10 +12851,12 @@ export type Database = {
         Args: { _code: string; _store_id: string }
         Returns: Json
       }
+      current_customer_id: { Args: never; Returns: string }
       current_user_context: { Args: never; Returns: Json }
       customer_dashboard_refresh: { Args: never; Returns: undefined }
       customer_store_id: { Args: { _customer_id: string }; Returns: string }
       customer_timeline_refresh: { Args: never; Returns: undefined }
+      decrypt_pii: { Args: { p_key: string; p_value: string }; Returns: string }
       delivery_attempt_register: {
         Args: {
           p_notes?: string
@@ -12874,6 +12879,7 @@ export type Database = {
         }
         Returns: string
       }
+      encrypt_pii: { Args: { p_key: string; p_value: string }; Returns: string }
       enqueue_outbox_event: {
         Args: {
           _aggregate_id: string
