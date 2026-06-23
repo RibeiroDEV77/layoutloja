@@ -60,7 +60,7 @@ import {
 import { listCategories } from "@/lib/business/categories.functions";
 import { listBrands } from "@/lib/business/brands.functions";
 import { listAttributes } from "@/lib/business/attributes.functions";
-import { listAttributeValues } from "@/lib/business/attribute-values.functions";
+import { createAttributeValue, listAttributeValues } from "@/lib/business/attribute-values.functions";
 import { listCategoryAttributes } from "@/lib/business/category-attributes.functions";
 import { listPriceLists } from "@/lib/business/price-lists.functions";
 import { listAdminStock, bulkAdjustStock } from "@/lib/business/inventory.functions";
@@ -88,6 +88,15 @@ const TABS = [
   { key: "advanced", label: "Avançado" },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
+
+function sizeCodeFromLabel(label: string) {
+  return label.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "TAM";
+}
+
+function parseSizeTags(raw: string) {
+  return Array.from(new Set(raw.split(/[;,\n]/).map((s) => s.trim()).filter(Boolean))).slice(0, 40);
+}
 
 function ProductEditPage() {
   const { id } = Route.useParams();
@@ -147,6 +156,10 @@ function ProductEditPage() {
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ["product", id] });
     qc.invalidateQueries({ queryKey: ["product", id, "readiness"] });
+    if (product?.slug) {
+      qc.invalidateQueries({ queryKey: ["storefront", "product", product.slug] });
+    }
+    qc.invalidateQueries({ queryKey: ["storefront"] });
   };
 
   const onPublish = async () => {
@@ -488,6 +501,7 @@ function VariantsTab({
   const fnCatAttrs = useServerFn(listCategoryAttributes);
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
+  const fnCreateSize = useServerFn(createAttributeValue);
   const fnStock = useServerFn(listAdminStock);
   const fnBulkStock = useServerFn(bulkAdjustStock);
   const fnPrices = useServerFn(listProductPrices);
@@ -583,8 +597,49 @@ function VariantsTab({
 
   // ---------- Gerar variantes ----------
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [sizeTagInput, setSizeTagInput] = useState("");
+  const [creatingSizes, setCreatingSizes] = useState(false);
   const toggleSize = (id: string) =>
     setSelectedSizes((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  useEffect(() => {
+    const used = Array.from(new Set((variantsQ.data ?? []).map((v) => v.size_attribute_value_id).filter(Boolean) as string[]));
+    if (used.length) setSelectedSizes((prev) => prev.length ? prev : used);
+  }, [variantsQ.data]);
+
+  const addCustomSizes = async () => {
+    const attributeId = sizeAttrQ.data?.attribute?.id;
+    const labels = parseSizeTags(sizeTagInput);
+    if (!attributeId) { notify.error("A categoria precisa ter um atributo de tamanho"); return; }
+    if (!labels.length) return;
+    setCreatingSizes(true);
+    const selected = new Set(selectedSizes);
+    try {
+      for (let i = 0; i < labels.length; i++) {
+        const label = labels[i];
+        const code = sizeCodeFromLabel(label);
+        const existing = sizeValues.find((v) => v.label.trim().toLowerCase() === label.toLowerCase() || sizeCodeFromLabel(v.label) === code);
+        if (existing) { selected.add(existing.id); continue; }
+        const r = await fnCreateSize({ data: { attribute_id: attributeId, code, label, sort_order: sizeValues.length + i } });
+        if (r.ok) selected.add(r.data.id);
+        else if (r.error.code === "CONFLICT") {
+          const fresh = await fnVals({ data: { attribute_id: attributeId, pageSize: 100 } });
+          const match = fresh.ok
+            ? (fresh.data.rows as Array<{ id: string; label: string; code: string | null }>).find((v) => v.code === code || v.label.trim().toLowerCase() === label.toLowerCase())
+            : null;
+          if (match) selected.add(match.id);
+        } else throw new Error(r.error.message);
+      }
+      setSelectedSizes(Array.from(selected));
+      setSizeTagInput("");
+      await sizeAttrQ.refetch();
+      notify.success("Tamanhos adicionados e selecionados");
+    } catch (e) {
+      notify.error((e as Error).message || "Falha ao adicionar tamanho");
+    } finally {
+      setCreatingSizes(false);
+    }
+  };
 
   const generate = async () => {
     const ok = await runAction(
@@ -598,6 +653,7 @@ function VariantsTab({
       });
       qc.invalidateQueries({ queryKey: ["variants", productId] });
       qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
     }
   };
@@ -606,6 +662,7 @@ function VariantsTab({
     const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
     if (ok) {
       qc.invalidateQueries({ queryKey: ["variants", productId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
     }
   };
@@ -622,6 +679,8 @@ function VariantsTab({
     if (ok) {
       record({ name: "product.variant.edited", tags: { variant_id: id, fields: Object.keys(patch).join(",") } });
       qc.invalidateQueries({ queryKey: ["variants", productId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
+      onSaved();
     }
   };
 
@@ -630,7 +689,7 @@ function VariantsTab({
       () => fnBulkStock({ data: { items: [{ stock_level_id: stockLevelId, new_quantity: newQty, reason: "Ajuste via cadastro de produto" }] } }),
       { success: "Estoque ajustado" },
     );
-    if (ok) qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+    if (ok) { qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] }); qc.invalidateQueries({ queryKey: ["storefront"] }); onSaved(); }
   };
 
   const savePrice = async (variantId: string, price: number, salePrice: number | null) => {
@@ -645,7 +704,7 @@ function VariantsTab({
       } }),
       { success: "Preço salvo" },
     );
-    if (ok) qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+    if (ok) { qc.invalidateQueries({ queryKey: ["product-prices", productId] }); qc.invalidateQueries({ queryKey: ["storefront"] }); onSaved(); }
   };
 
   const [bulkPrice, setBulkPrice] = useState("");
@@ -808,7 +867,7 @@ function VariantsTab({
                 <span className="normal-case ml-1 text-muted-foreground/70">({sizeAttrQ.data.attribute.name})</span>
               )}
             </p>
-            {!sizeValues.length ? (
+            {!sizeAttrQ.data?.attribute ? (
               <p className="text-xs text-muted-foreground">
                 Categoria sem atributo de tamanho — será gerada 1 variante por cor.
               </p>
@@ -852,6 +911,23 @@ function VariantsTab({
                       {v.label}
                     </button>
                   ))}
+                </div>
+                <div className="grid gap-2 rounded-md border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="min-w-0">
+                    <Label className="text-xs font-medium">Adicionar tamanhos por tag</Label>
+                    <Input
+                      value={sizeTagInput}
+                      onChange={(e) => setSizeTagInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addCustomSizes(); } }}
+                      placeholder="Ex.: 54, G, GG"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" variant="outline" disabled={creatingSizes || !sizeTagInput.trim()} onClick={addCustomSizes} className="gap-2">
+                      {creatingSizes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Adicionar
+                    </Button>
+                  </div>
                 </div>
                 {selectedSizes.length > 0 && colors.length > 0 && (
                   <p className="text-xs text-muted-foreground border-t pt-2">

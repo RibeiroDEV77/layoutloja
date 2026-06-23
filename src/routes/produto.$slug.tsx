@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
+import { useQuery } from '@tanstack/react-query';
 import { StorefrontShell } from '@/components/storefront/storefront';
 import { useStorefrontCart, formatBRL } from '@/hooks/use-storefront-cart';
 import { getStorefrontProduct, type StorefrontProductDetail } from '@/lib/business/storefront-product.functions';
@@ -17,8 +18,6 @@ function ProductPage() {
   const cart = useStorefrontCart();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState<StorefrontProductDetail | null>(null);
   const [colorId, setColorId] = useState<string | null>(null);
   const [sizeId, setSizeId] = useState<string | null>(null);
   const [galleryIdx, setGalleryIdx] = useState(0);
@@ -26,24 +25,28 @@ function ProductPage() {
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const productQ = useQuery({
+    queryKey: ['storefront', 'product', slug],
+    queryFn: async () => {
+      const { product } = await fnGet({ data: { slug } });
+      return product as StorefrontProductDetail | null;
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+  });
+  const product = productQ.data ?? null;
+
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      try {
-        const { product } = await fnGet({ data: { slug } });
-        if (cancelled) return;
-        setProduct(product);
-        if (product) {
-          const def = product.colors.find((c) => c.is_default) ?? product.colors[0] ?? null;
-          setColorId(def?.id ?? null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [slug, fnGet]);
+    if (!product) { setColorId(null); setSizeId(null); return; }
+    const currentColorStillExists = product.colors.some((c) => c.id === colorId);
+    if (!currentColorStillExists) {
+      const def = product.colors.find((c) => c.is_default) ?? product.colors[0] ?? null;
+      setColorId(def?.id ?? null);
+    }
+    const currentSizeStillExists = product.sizes.some((s) => s.attribute_value_id === sizeId);
+    if (sizeId && !currentSizeStillExists) setSizeId(null);
+  }, [product, colorId, sizeId]);
 
   const color = useMemo(
     () => product?.colors.find((c) => c.id === colorId) ?? null,
@@ -99,7 +102,7 @@ function ProductPage() {
   return (
     <StorefrontShell>
       <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
-        {loading ? (
+        {productQ.isLoading ? (
           <div className="grid place-items-center py-32"><Loader2 className="h-6 w-6 animate-spin text-[#666]" /></div>
         ) : !product ? (
           <div className="py-24 text-center">

@@ -43,6 +43,9 @@ export function ProductOperationsMenu({
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["products"] });
     qc.invalidateQueries({ queryKey: ["product", product.id] });
+    if (product.slug) {
+      qc.invalidateQueries({ queryKey: ["storefront", "product", product.slug] });
+    }
   };
 
   const onDuplicate = async () => {
