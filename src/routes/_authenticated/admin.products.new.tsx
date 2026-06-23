@@ -962,7 +962,7 @@ function CatalogBlock({
               )}
             </div>
 
-            {!sizeValues.length ? (
+            {!sizeAttrQ.data?.attribute ? (
               <p className="text-xs text-muted-foreground">A categoria selecionada não possui atributo de tamanho. Será gerada 1 variante por cor.</p>
             ) : (
               <>
