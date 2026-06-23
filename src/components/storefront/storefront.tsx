@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Search, Heart, User, ShoppingBag, Menu, X,
   Star, ChevronDown, ChevronLeft, ChevronRight, Truck, MessageCircle, Tag,
-  CreditCard, RotateCcw, ShieldCheck,
+  CreditCard, ShieldCheck, Shirt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import lookCowboy from "@/assets/look-cowboy.jpg";
