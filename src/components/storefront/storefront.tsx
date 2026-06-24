@@ -489,8 +489,8 @@ import heroBrasilAsset from "@/assets/hero-brasil.png.asset.json";
 
 const HERO_FALLBACK_IMAGES = [heroCountryAsset.url, heroFemininoAsset.url, heroBrasilAsset.url];
 
-const HERO_SLIDE_MS = 3000;
-const HERO_FADE_MS = 500;
+const HERO_SLIDE_MS = 5500;
+const HERO_FADE_MS = 1000;
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const slides: HeroBanner[] = useMemo(() => {
@@ -500,6 +500,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   }, [banners]);
 
   const [active, setActive] = useState(0);
+  const pausedRef = useRef(false);
 
   // Preload all hero images to avoid flicker on slide change.
   useEffect(() => {
@@ -509,11 +510,11 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     });
   }, [slides]);
 
-  // Autoplay: single interval, depends only on slide count.
-  // Never paused — manual navigation simply resets timing on next tick.
+  // Autoplay: single stable interval; hover pause read via ref to avoid recreating timer.
   useEffect(() => {
     if (slides.length <= 1) return;
     const id = window.setInterval(() => {
+      if (pausedRef.current) return;
       setActive((i) => (i + 1) % slides.length);
     }, HERO_SLIDE_MS);
     return () => window.clearInterval(id);
@@ -539,6 +540,8 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   return (
     <section
       className="relative w-full overflow-hidden bg-neutral-100"
+      onMouseEnter={() => { pausedRef.current = true; }}
+      onMouseLeave={() => { pausedRef.current = false; }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -554,7 +557,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             fetchPriority={i === 0 ? "high" : "auto"}
             style={{
               transitionDuration: `${HERO_FADE_MS}ms`,
-              animation: i === active ? `heroKenBurns ${HERO_SLIDE_MS}ms ease-out forwards` : undefined,
+              animation: i === active ? `heroKenBurns ${HERO_SLIDE_MS + HERO_FADE_MS}ms ease-out forwards` : undefined,
             }}
             className={cn(
               "absolute inset-0 block h-full w-full object-cover object-center transition-opacity ease-in-out will-change-[opacity,transform]",
@@ -562,7 +565,8 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
             )}
           />
         ))}
-        <style>{`@keyframes heroKenBurns { from { transform: scale(1); } to { transform: scale(1.03); } }`}</style>
+        <style>{`@keyframes heroKenBurns { from { transform: scale(1); } to { transform: scale(1.02); } }`}</style>
+
         <div className="absolute inset-0 bg-black/20 z-10 pointer-events-none" />
         {hasOverlay && (
           <>
