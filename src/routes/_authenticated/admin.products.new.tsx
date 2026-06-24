@@ -315,7 +315,7 @@ function ProductNewWizardPage() {
           )}
         </main>
 
-        <aside className="lg:sticky lg:top-32 lg:self-start space-y-4">
+        <aside className="hidden lg:block lg:sticky lg:top-32 lg:self-start space-y-4">
           <ReadinessCard
             enabled={!!productId}
             loading={readinessQ.isLoading}
