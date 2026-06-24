@@ -19,13 +19,7 @@ import { useActiveStore } from "@/hooks/use-active-store";
 import { listProducts } from "@/lib/business/products.functions";
 import { listCategories } from "@/lib/business/categories.functions";
 import { ProductOperationsMenu, type ProductLite } from "@/components/admin/products/product-operations-menu";
-
-const CATEGORY_TABS: { key: string; label: string; slugs: string[] }[] = [
-  { key: "all", label: "Todos", slugs: [] },
-  { key: "camisas", label: "Camisas", slugs: ["masc-camisas", "fem-camisas", "masc-camisetas", "fem-camisetas"] },
-  { key: "calcas", label: "Calças", slugs: ["masc-calcas", "fem-calcas"] },
-  { key: "bermudas", label: "Bermudas", slugs: ["masc-bermudas"] },
-];
+import { CATEGORY_TABS, resolveCategoryIds, type CategoryNode } from "@/lib/category-tabs";
 
 export const Route = createFileRoute("/_authenticated/admin/products/")({
   head: () => ({ meta: [{ title: "Produtos — Admin" }] }),
