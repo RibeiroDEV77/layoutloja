@@ -30,6 +30,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "Atributos", url: "/admin/attributes", icon: ClipboardList, permission: "products.read" },
       { title: "Valores de Atributos", url: "/admin/attribute-values", icon: ClipboardList, permission: "products.read" },
       { title: "Atributos × Categoria", url: "/admin/category-attributes", icon: ClipboardList, permission: "products.read" },
+      { title: "Auditoria de Catálogo", url: "/admin/catalog-audit", icon: ClipboardCheck, permission: "products.read" },
     ],
   },
   {
