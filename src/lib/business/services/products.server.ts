@@ -167,36 +167,49 @@ export async function createProductDraft(
 
   await requirePermission(supabase, userId, 'products.create', input.store_id);
 
-  const slug = input.slug?.trim() || slugify(input.name);
+  const baseSlug = input.slug?.trim() || slugify(input.name);
+  const baseSku = input.sku_root.trim().toUpperCase();
 
-  const { data, error } = await supabase
-    .from('products')
-    .insert({
-      store_id: input.store_id,
-      name: input.name.trim(),
-      sku_root: input.sku_root.trim().toUpperCase(),
-      slug,
-      category_id: input.category_id ?? null,
-      brand_id: input.brand_id ?? null,
-      short_description: input.short_description ?? null,
-      // Produto já nasce publicado: aparece imediatamente na loja, sem etapa manual.
-      status: 'published',
-      visibility: 'published',
-      sale_channel: 'ambos',
-      featured: false,
-      new_product: true,
-      best_seller: false,
-      on_sale: false,
-      published_at: new Date().toISOString(),
-    })
-    .select('*')
-    .single();
+  // Auto-resolve conflitos: se slug/SKU já existirem na loja, anexa sufixo incremental.
+  let slug = baseSlug;
+  let sku = baseSku;
+  const insertOnce = (s: string, k: string) =>
+    supabase
+      .from('products')
+      .insert({
+        store_id: input.store_id,
+        name: input.name.trim(),
+        sku_root: k,
+        slug: s,
+        category_id: input.category_id ?? null,
+        brand_id: input.brand_id ?? null,
+        short_description: input.short_description ?? null,
+        status: 'published',
+        visibility: 'published',
+        sale_channel: 'ambos',
+        featured: false,
+        new_product: true,
+        best_seller: false,
+        on_sale: false,
+        published_at: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
 
-  if (error) {
-    if (error.code === '23505') throw Errors.conflict('SKU Root ou slug já em uso', { error: error.message });
-    if (error.code === '23503') throw Errors.validation('Referência inválida (categoria/marca)', { error: error.message });
-    throw Errors.internal('Falha ao criar produto', { error: error.message });
+  let res = await insertOnce(slug, sku);
+  for (let attempt = 0; attempt < 8 && res.error?.code === '23505'; attempt++) {
+    const suffix = `-${Math.random().toString(36).slice(2, 6)}`;
+    slug = `${baseSlug}${suffix}`;
+    sku = `${baseSku}${suffix.toUpperCase()}`;
+    res = await insertOnce(slug, sku);
   }
+
+  if (res.error) {
+    if (res.error.code === '23505') throw Errors.conflict('SKU Root ou slug já em uso', { error: res.error.message });
+    if (res.error.code === '23503') throw Errors.validation('Referência inválida (categoria/marca)', { error: res.error.message });
+    throw Errors.internal('Falha ao criar produto', { error: res.error.message });
+  }
+  const data = res.data!;
 
   if (input.collection_id) {
     await supabase
