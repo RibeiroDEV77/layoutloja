@@ -29,6 +29,7 @@ export interface ListProductsInput {
   q?: string;
   status?: ProductStatus | 'all';
   category_id?: string;
+  category_ids?: string[];
   brand_id?: string;
   collection_id?: string;
   page?: number;
