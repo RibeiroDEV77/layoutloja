@@ -6,6 +6,7 @@ import {
   NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
+import { CATEGORY_TABS, resolveCategoryIds, type CategoryNode } from "@/lib/category-tabs";
 import heroCountry from "@/assets/hero-country.png.asset.json";
 import heroFeminino from "@/assets/hero-feminino.png.asset.json";
 import heroBrasil from "@/assets/hero-brasil.png.asset.json";
@@ -174,7 +175,7 @@ function HomePage() {
           </Section>
 
           {/* Todos os Produtos */}
-          <TodosProdutosSection todos={todos as StorefrontProduct[]} filterByCategory={filterByCategory} />
+          <TodosProdutosSection todos={todos as StorefrontProduct[]} categories={categories as StorefrontCategory[]} />
 
 
 
@@ -196,29 +197,36 @@ function HomePage() {
   );
 }
 
-type CatKey = "all" | "camisas" | "calcas" | "bermudas";
-const CAT_TABS: { key: CatKey; label: string; slugs: string[] }[] = [
-  { key: "all", label: "Todos", slugs: [] },
-  { key: "camisas", label: "Camisas", slugs: ["masc-camisas", "fem-camisas", "masc-camisetas", "fem-camisetas"] },
-  { key: "calcas", label: "Calças", slugs: ["masc-calcas", "fem-calcas"] },
-  { key: "bermudas", label: "Bermudas", slugs: ["masc-bermudas"] },
-];
-
 function TodosProdutosSection({
   todos,
-  filterByCategory,
+  categories,
 }: {
   todos: StorefrontProduct[];
-  filterByCategory: (slugs: string[]) => StorefrontProduct[];
+  categories: StorefrontCategory[];
 }) {
-  const [active, setActive] = useState<CatKey>("all");
+  const [active, setActive] = useState<string>("all");
+
+  // Resolve ids descendentes por aba (memoizado).
+  const tabsWithData = useMemo(() => {
+    const nodes = categories as unknown as CategoryNode[];
+    const productCatIds = (p: StorefrontProduct) =>
+      p.category_ids?.length ? p.category_ids : p.category_id ? [p.category_id] : [];
+    return CATEGORY_TABS.map((tab) => {
+      const ids = new Set(resolveCategoryIds(nodes, tab.roots));
+      const matches =
+        tab.key === "all"
+          ? todos
+          : todos.filter((p) => productCatIds(p).some((id) => ids.has(id)));
+      return { ...tab, count: matches.length, matches };
+    }).filter((t) => t.key === "all" || t.count > 0);
+  }, [todos, categories]);
 
   const sorted = useMemo(() => {
     const score = (p: StorefrontProduct) =>
       (p.featured ? 100 : 0) + (p.new_product ? 10 : 0) + (p.best_seller ? 1 : 0);
-    const base = active === "all" ? todos : filterByCategory(CAT_TABS.find((t) => t.key === active)!.slugs);
-    return [...base].sort((a, b) => score(b) - score(a)).slice(0, 12);
-  }, [active, todos, filterByCategory]);
+    const tab = tabsWithData.find((t) => t.key === active) ?? tabsWithData[0];
+    return [...tab.matches].sort((a, b) => score(b) - score(a)).slice(0, 12);
+  }, [active, tabsWithData]);
 
   return (
     <Section id="todos-os-produtos">
@@ -230,7 +238,7 @@ function TodosProdutosSection({
       />
 
       <div className="mb-8 flex flex-wrap justify-center gap-2 md:gap-3" role="tablist" aria-label="Filtrar por categoria">
-        {CAT_TABS.map((tab) => {
+        {tabsWithData.map((tab) => {
           const isActive = tab.key === active;
           return (
             <button
@@ -248,6 +256,9 @@ function TodosProdutosSection({
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
             >
               {tab.label}
+              <span className={"ml-2 text-[10px] " + (isActive ? "opacity-70" : "opacity-50")}>
+                ({tab.count})
+              </span>
             </button>
           );
         })}
@@ -275,4 +286,5 @@ function TodosProdutosSection({
     </Section>
   );
 }
+
 
