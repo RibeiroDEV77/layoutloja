@@ -50,18 +50,36 @@ const STATUS_LABEL: Record<string, string> = {
 function ProductsPage() {
   const { storeId, loading } = useActiveStore();
   const fn = useServerFn(listProducts);
+  const listCatsFn = useServerFn(listCategories);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | "draft" | "published" | "archived">("all");
+  const [catTab, setCatTab] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  
 
-  const query = useQuery({
-    queryKey: ["products", storeId, q, status, page, pageSize],
+  const categoriesQuery = useQuery({
+    queryKey: ["categories-all", storeId],
     enabled: !!storeId,
     queryFn: async () => {
+      const r = await listCatsFn({ data: { store_id: storeId!, pageSize: 200 } });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.data.rows as Array<{ id: string; slug: string }>;
+    },
+  });
+
+  const tabCategoryIds = (() => {
+    if (catTab === "all" || !categoriesQuery.data) return undefined;
+    const slugs = new Set(CATEGORY_TABS.find((t) => t.key === catTab)?.slugs ?? []);
+    const ids = categoriesQuery.data.filter((c) => slugs.has(c.slug)).map((c) => c.id);
+    return ids.length ? ids : ["__none__"];
+  })();
+
+  const query = useQuery({
+    queryKey: ["products", storeId, q, status, page, pageSize, catTab, tabCategoryIds],
+    enabled: !!storeId && (catTab === "all" || !!categoriesQuery.data),
+    queryFn: async () => {
       const r = await fn({
-        data: { store_id: storeId!, q: q || undefined, status, page, pageSize },
+        data: { store_id: storeId!, q: q || undefined, status, page, pageSize, category_ids: tabCategoryIds },
       });
       if (!r.ok) throw new Error(r.error.message);
       return r.data;
