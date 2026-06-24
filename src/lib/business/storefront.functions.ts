@@ -215,7 +215,9 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
         on_sale: p.on_sale || onSale,
       };
     });
-    return { rows: rowsWithImages.filter((r) => r.price != null && r.price > 0) };
+    // Não filtrar por preço: produtos publicados sem preço ainda devem aparecer
+    // na vitrine ("Preço sob consulta"); RLS já garante visibilidade.
+    return { rows: rowsWithImages };
   });
 
 export const listStorefrontBrands = createServerFn({ method: 'POST' })
