@@ -156,6 +156,29 @@ function ProductsPage() {
         />
       }
     >
+      <div className="mb-4 flex flex-wrap gap-2 border-b border-border" role="tablist" aria-label="Filtrar por categoria">
+        {CATEGORY_TABS.map((tab) => {
+          const isActive = tab.key === catTab;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => { setCatTab(tab.key); setPage(1); }}
+              className={
+                "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors " +
+                (isActive
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground")
+              }
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {!storeId && !loading ? (
         <EmptyState
           title="Nenhuma loja selecionada"
