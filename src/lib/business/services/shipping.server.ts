@@ -63,8 +63,14 @@ export async function quoteShippingForCart(
   const { cart, weight_g } = await cartTotals(supabase, input.cart_id);
   if (!cart) throw Errors.notFound('Carrinho', input.cart_id);
 
-  // limpa cotações anteriores ativas (não-selecionadas)
-  await supabase.from('shipping_quotes').delete().eq('cart_id', input.cart_id).eq('selected', false);
+  // Uma nova consulta de CEP invalida TODAS as cotações anteriores, inclusive
+  // a selecionada. Antes só removíamos as não-selecionadas; isso deixava um
+  // SEDEX antigo/barato misturado com as opções atuais do Melhor Envio.
+  await supabase.from('carts').update({
+    selected_shipping_quote_id: null,
+    shipping_total: 0,
+  }).eq('id', input.cart_id);
+  await supabase.from('shipping_quotes').delete().eq('cart_id', input.cart_id);
 
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const quotedAt = new Date().toISOString();
@@ -98,6 +104,7 @@ export async function quoteShippingForCart(
   }
 
   if (inserts.length === 0) {
+    await supabase.rpc('cart_recalculate', { _cart_id: input.cart_id });
     await supabase.rpc('record_cart_timeline_event', {
       _cart_id: input.cart_id, _event_type: 'shipping_calculated', _payload: { count: 0 } as never,
     });
@@ -108,6 +115,7 @@ export async function quoteShippingForCart(
   await supabase.rpc('record_cart_timeline_event', {
     _cart_id: input.cart_id, _event_type: 'shipping_calculated', _payload: { count: inserts.length } as never,
   });
+  await supabase.rpc('cart_recalculate', { _cart_id: input.cart_id });
   await recordMetric(supabase, { scope: 'cart', name: 'shipping.quotes', value: inserts.length, storeId: cart.store_id });
   return created ?? [];
 }
