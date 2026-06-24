@@ -61,10 +61,9 @@ function HomePage() {
     return candidates.find((s) => set.has(s));
   };
   const heroBanners: HeroBanner[] = [
-    { image: bannerCountry, ctaSlug: findSlug("country") },
-    { image: bannerMasculino, ctaSlug: findSlug("masculino", "homem") },
-    { image: bannerFeminino, ctaSlug: findSlug("feminino", "mulher") },
-    { image: bannerSportFino, ctaSlug: findSlug("sport-fino", "social") },
+    { image: heroCountry.url, ctaSlug: findSlug("country") },
+    { image: heroFeminino.url, ctaSlug: findSlug("feminino", "mulher") },
+    { image: heroBrasil.url, ctaSlug: findSlug("brasil", "selecao", "futebol") },
   ];
 
 
