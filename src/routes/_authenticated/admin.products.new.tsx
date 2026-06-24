@@ -394,7 +394,25 @@ function BasicBlock({
 
   const patch = (p: Partial<typeof form>) => setForm((s) => ({ ...s, ...p }));
 
-  const canSubmit = !!form.name.trim() && !!form.sku_root.trim() && !!form.category_id && !!storeId;
+  // Cascade Departamento → Categoria → Subcategoria a partir de parent_id.
+  // O trigger products_category_must_be_leaf exige que category_id seja folha
+  // (sem filhos ativos). Por isso filtramos cada nível e só permitimos enviar
+  // a seleção mais profunda quando ela for folha.
+  const allCats = cats.data ?? [];
+  const childrenOf = (parentId: string | null) =>
+    allCats.filter((c) => (c.parent_id ?? null) === parentId && c.is_active !== false);
+  const hasChildren = (id: string) => childrenOf(id).length > 0;
+
+  const departments = childrenOf(null);
+  const categoryOptions = form.department_id ? childrenOf(form.department_id) : [];
+  const subcategoryOptions = form.category_id ? childrenOf(form.category_id) : [];
+
+  // ID final que vai para o banco: a folha mais profunda selecionada.
+  const leafId = form.subcategory_id || form.category_id || form.department_id || "";
+  const leafIsValid = !!leafId && !hasChildren(leafId);
+
+  const canSubmit =
+    !!form.name.trim() && !!form.sku_root.trim() && leafIsValid && !!storeId;
 
   const submit = async () => {
     if (!storeId || !canSubmit) return;
@@ -406,7 +424,7 @@ function BasicBlock({
             store_id: storeId,
             name: form.name.trim(),
             sku_root: form.sku_root.trim(),
-            category_id: form.category_id || null,
+            category_id: leafId,
             brand_id: form.brand_id || null,
             collection_id: form.collection_id || null,
             short_description: form.short_description || null,
@@ -415,7 +433,6 @@ function BasicBlock({
         { loading: "Criando produto...", success: "Produto criado" },
       );
       if (created) {
-        // Salva descrição completa em seguida se preenchida
         if (form.description.trim()) {
           await fnUpdate({ data: { id: created.id, patch: { description: form.description } } });
         }
@@ -428,7 +445,7 @@ function BasicBlock({
             id: productId,
             patch: {
               name: form.name.trim(),
-              category_id: form.category_id || null,
+              category_id: leafId,
               brand_id: form.brand_id || null,
               short_description: form.short_description || null,
               description: form.description || null,
