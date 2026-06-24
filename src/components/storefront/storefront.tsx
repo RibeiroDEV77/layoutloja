@@ -483,52 +483,89 @@ export type HeroBanner = {
   ctaSlug?: string;
 };
 
-import bannerCountry from "@/assets/banner-country.jpg";
-import bannerMasculino from "@/assets/banner-masculino.jpg";
-import bannerFeminino from "@/assets/banner-feminino.jpg";
-import bannerSportFino from "@/assets/banner-sport-fino.jpg";
+import heroCountryAsset from "@/assets/hero-country.png.asset.json";
+import heroFemininoAsset from "@/assets/hero-feminino.png.asset.json";
+import heroBrasilAsset from "@/assets/hero-brasil.png.asset.json";
 
-const HERO_FALLBACK_IMAGES = [bannerCountry, bannerMasculino, bannerFeminino, bannerSportFino];
+const HERO_FALLBACK_IMAGES = [heroCountryAsset.url, heroFemininoAsset.url, heroBrasilAsset.url];
+
+const HERO_SLIDE_MS = 3500;
+const HERO_FADE_MS = 600;
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const slides: HeroBanner[] = useMemo(() => {
     const list = (banners ?? []).filter((b) => !!b.image).slice(0, 6);
     if (list.length > 0) return list;
-    // Fallback visual: mantém o Hero presente até que existam banners do Admin.
     return HERO_FALLBACK_IMAGES.map((image) => ({ image }));
   }, [banners]);
 
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  // Preload all hero images to avoid flicker on slide change.
   useEffect(() => {
-    if (slides.length <= 1) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), 7500);
+    slides.forEach((s) => {
+      const img = new Image();
+      img.src = s.image;
+    });
+  }, [slides]);
+
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), HERO_SLIDE_MS);
     return () => clearInterval(id);
-  }, [slides.length]);
+  }, [slides.length, paused]);
+
+  // Swipe gesture (mobile)
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) {
+      setActive((i) => (dx < 0 ? (i + 1) % slides.length : (i - 1 + slides.length) % slides.length));
+    }
+    touchStartX.current = null;
+  };
 
   const current = slides[active];
   const hasOverlay = !!(current?.tag || current?.title || current?.subtitle || (current?.ctaSlug && current?.ctaLabel));
 
   return (
-    <section className="relative w-full overflow-hidden bg-neutral-100">
+    <section
+      className="relative w-full overflow-hidden bg-neutral-100"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <div className="relative w-full h-[45vh] md:h-[52vh] lg:h-[60vh]">
         {slides.map((s, i) => (
           <img
             key={`${s.image}-${i}`}
             src={s.image}
             alt={s.tag ?? ""}
-            loading={i === 0 ? "eager" : "lazy"}
+            loading="eager"
             decoding="async"
+            fetchPriority={i === 0 ? "high" : "auto"}
+            style={{
+              transitionDuration: `${HERO_FADE_MS}ms`,
+              animation: i === active ? `heroKenBurns ${HERO_SLIDE_MS}ms ease-out forwards` : undefined,
+            }}
             className={cn(
-              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out",
+              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity ease-in-out will-change-[opacity,transform]",
               i === active ? "opacity-100 z-10" : "opacity-0 z-0",
             )}
           />
         ))}
-        <div className="absolute inset-0 bg-black/20" />
+        <style>{`@keyframes heroKenBurns { from { transform: scale(1); } to { transform: scale(1.03); } }`}</style>
+        <div className="absolute inset-0 bg-black/20 z-10 pointer-events-none" />
         {hasOverlay && (
           <>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
-            <div className="absolute inset-0 flex items-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-0 flex items-center z-20">
               <div className="mx-auto w-full max-w-[1440px] px-5 lg:px-10">
                 <div className="max-w-xl text-white">
                   {current?.tag && (
@@ -562,7 +599,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
         )}
 
         {slides.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
             {slides.map((_, i) => (
               <button
                 key={i}

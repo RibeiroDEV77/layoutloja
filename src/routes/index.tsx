@@ -5,10 +5,9 @@ import {
   NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
-import bannerCountry from "@/assets/banner-country.jpg";
-import bannerMasculino from "@/assets/banner-masculino.jpg";
-import bannerFeminino from "@/assets/banner-feminino.jpg";
-import bannerSportFino from "@/assets/banner-sport-fino.jpg";
+import heroCountry from "@/assets/hero-country.png.asset.json";
+import heroFeminino from "@/assets/hero-feminino.png.asset.json";
+import heroBrasil from "@/assets/hero-brasil.png.asset.json";
 
 import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
@@ -62,10 +61,9 @@ function HomePage() {
     return candidates.find((s) => set.has(s));
   };
   const heroBanners: HeroBanner[] = [
-    { image: bannerCountry, ctaSlug: findSlug("country") },
-    { image: bannerMasculino, ctaSlug: findSlug("masculino", "homem") },
-    { image: bannerFeminino, ctaSlug: findSlug("feminino", "mulher") },
-    { image: bannerSportFino, ctaSlug: findSlug("sport-fino", "social") },
+    { image: heroCountry.url, ctaSlug: findSlug("country") },
+    { image: heroFeminino.url, ctaSlug: findSlug("feminino", "mulher") },
+    { image: heroBrasil.url, ctaSlug: findSlug("brasil", "selecao", "futebol") },
   ];
 
 
