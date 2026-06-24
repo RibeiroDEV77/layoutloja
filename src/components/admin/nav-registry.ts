@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Tags, Layers, ShoppingCart, Warehouse, Users,
   Building2, ShoppingBag, Receipt, Megaphone, Settings, Shield, FileText, UserCog,
-  ClipboardList, Image as ImageIcon,
+  ClipboardList, Image as ImageIcon, ClipboardCheck,
 } from "lucide-react";
 
 export type NavItem = {
@@ -30,6 +30,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "Atributos", url: "/admin/attributes", icon: ClipboardList, permission: "products.read" },
       { title: "Valores de Atributos", url: "/admin/attribute-values", icon: ClipboardList, permission: "products.read" },
       { title: "Atributos × Categoria", url: "/admin/category-attributes", icon: ClipboardList, permission: "products.read" },
+      { title: "Auditoria de Catálogo", url: "/admin/catalog-audit", icon: ClipboardCheck, permission: "products.read" },
     ],
   },
   {
