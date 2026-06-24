@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   upsertMyAddress, deleteMyAddress,
 } from "@/lib/business/storefront-account.functions";
+import { AddressForm, type AddressFormValue } from "@/components/storefront/address-form";
 
 export const Route = createFileRoute("/minha-conta/enderecos")({
   component: AddressesPage,
