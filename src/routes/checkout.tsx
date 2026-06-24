@@ -63,6 +63,15 @@ function isValidName(s: string) {
   return t.length >= 5 && t.includes(' ') && /^[\p{L}\s'.-]+$/u.test(t);
 }
 
+function unwrapBusinessResponse<T>(value: unknown): T {
+  if (value && typeof value === 'object' && 'ok' in value) {
+    const response = value as { ok: boolean; data?: T; error?: { message?: string } };
+    if (!response.ok) throw new Error(response.error?.message ?? 'Falha na consulta');
+    return response.data as T;
+  }
+  return value as T;
+}
+
 function CheckoutPage() {
   const { categories, brands, products } = Route.useLoaderData();
   const cart = useStorefrontCart();
@@ -96,13 +105,14 @@ function CheckoutPage() {
     setQuoteError(null);
     (async () => {
       try {
-        const lookup = await fnLookup({ data: { postal_code: cep } });
-        // lookupPostalCode retorna PostalLookup diretamente (sem wrapper .ok).
-        // Sempre sobrescreve rua/bairro/cidade/UF com o resultado do ViaCEP —
-        // assim trocar o CEP atualiza o endereço, sem manter resquícios da
-        // consulta anterior. Número/complemento ficam intactos (não vêm do CEP).
-        if (!cancelled && lookup && typeof lookup === 'object' && 'city' in lookup) {
-          const d = lookup as { street?: string; district?: string; city?: string; state?: string };
+        const lookup = unwrapBusinessResponse<{ street?: string; district?: string; city?: string; state?: string }>(
+          await fnLookup({ data: { postal_code: cep } }),
+        );
+        // lookupPostalCode usa withBusiness e pode retornar { ok, data }.
+        // Depois de desembrulhar, sempre sobrescreve rua/bairro/cidade/UF com
+        // o ViaCEP. Número/complemento ficam intactos (não vêm do CEP).
+        if (!cancelled && lookup && typeof lookup === 'object') {
+          const d = lookup;
           setAddress((a) => ({
             ...a,
             street:   d.street   ?? '',
