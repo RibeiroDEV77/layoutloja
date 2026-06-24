@@ -120,6 +120,7 @@ export async function listProducts(
 
   if (p.status && p.status !== 'all') q = q.eq('status', p.status);
   if (p.category_id) q = q.eq('category_id', p.category_id);
+  if (p.category_ids && p.category_ids.length) q = q.in('category_id', p.category_ids);
   if (p.brand_id) q = q.eq('brand_id', p.brand_id);
   if (p.q && p.q.trim()) {
     const safe = p.q.replace(/[%,]/g, '');
