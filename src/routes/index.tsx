@@ -180,7 +180,17 @@ function HomePage() {
               description="Confira todos os produtos disponíveis da Layout."
               action={{ label: "Ver todos", href: "/produtos" }}
             />
-            <ProductGrid products={(todos as StorefrontProduct[]).slice(0, 12)} minCount={12} />
+            <ProductGrid
+              products={[...(todos as StorefrontProduct[])]
+                .sort((a, b) => {
+                  const score = (p: StorefrontProduct) =>
+                    (p.featured ? 100 : 0) + (p.new_product ? 10 : 0) + (p.best_seller ? 1 : 0);
+                  return score(b) - score(a);
+                })
+                .slice(0, 12)}
+              minCount={12}
+            />
+
             <div className="mt-12 flex justify-center">
               <a
                 href="/produtos"
