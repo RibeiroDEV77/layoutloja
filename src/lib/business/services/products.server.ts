@@ -247,11 +247,34 @@ export async function updateProduct(
 export async function deleteProduct(supabase: SbClient, userId: string, productId: string) {
   const storeId = await fetchProductStoreId(supabase, productId);
   await requirePermission(supabase, userId, 'products.delete', storeId);
-  // Remove referências fracas (carrinhos abertos) que bloqueiam o delete por RESTRICT.
+
+  // Limpa referências fracas que bloqueariam o delete por RESTRICT, sem
+  // tocar em dados de negócio (pedidos, NFs, estoque histórico).
+  const variantIds = await supabase
+    .from('product_variants').select('id').eq('product_id', productId)
+    .then((r) => (r.data ?? []).map((v) => v.id));
+
   await supabase.from('cart_items').delete().eq('product_id', productId);
+  if (variantIds.length) {
+    await supabase.from('cart_items').delete().in('variant_id', variantIds);
+  }
+  await supabase.from('wishlist_items').delete().eq('product_id', productId);
+
   const { error } = await supabase.from('products').delete().eq('id', productId);
   if (error) {
-    if (error.code === '23503') throw Errors.conflict('Produto possui vínculos (pedidos ou notas fiscais) e não pode ser removido. Arquive o produto.');
+    if (error.code === '23503') {
+      // Possui vínculos duros (pedidos, NFs, estoque). Faz arquivamento lógico
+      // para que suma das listagens da loja e do admin "Publicados".
+      await supabase.from('products').update({ status: 'archived' }).eq('id', productId);
+      await dispatchEvent(supabase, {
+        event_type: DomainEvent.ProductUpdated,
+        aggregate_type: 'product',
+        aggregate_id: productId,
+        store_id: storeId,
+        payload: { archived: true, reason: 'delete_fallback' },
+      });
+      return { ok: true as const, id: productId, archived: true };
+    }
     throw Errors.internal('Falha ao remover produto', { error: error.message });
   }
   await dispatchEvent(supabase, {
@@ -260,8 +283,9 @@ export async function deleteProduct(supabase: SbClient, userId: string, productI
     aggregate_id: productId,
     store_id: storeId,
   });
-  return { ok: true as const, id: productId };
+  return { ok: true as const, id: productId, archived: false };
 }
+
 
 // ---------- Operações (Fase 4.2C) ----------
 
