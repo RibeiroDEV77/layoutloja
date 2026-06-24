@@ -495,32 +495,41 @@ function BasicBlock({
         </div>
         <FormRow>
           <SelectField
-            label="Departamento"
+            label="Departamento" required
             value={form.department_id || "__none__"}
             onChange={(v) => patch({ department_id: v === "__none__" ? "" : v, category_id: "", subcategory_id: "" })}
             options={[
-              { value: "__none__", label: "— Selecionar —" },
-              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+              { value: "__none__", label: cats.isLoading ? "Carregando..." : "— Selecionar —" },
+              ...departments.map((c) => ({ value: c.id, label: c.name })),
             ]}
-            hint="Estrutura em cascata será habilitada em breve."
+            hint="Escolha o departamento raiz do produto."
           />
           <SelectField
-            label="Categoria" required
-            value={form.category_id}
-            onChange={(v) => patch({ category_id: v, subcategory_id: "" })}
-            options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-            placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
+            label="Categoria"
+            required={categoryOptions.length > 0}
+            value={form.category_id || "__none__"}
+            onChange={(v) => patch({ category_id: v === "__none__" ? "" : v, subcategory_id: "" })}
+            disabled={!form.department_id || categoryOptions.length === 0}
+            options={[
+              { value: "__none__", label: form.department_id
+                ? (categoryOptions.length ? "— Selecione —" : "— Departamento é folha —")
+                : "— Escolha o departamento primeiro —" },
+              ...categoryOptions.map((c) => ({ value: c.id, label: c.name })),
+            ]}
           />
         </FormRow>
         <FormRow>
           <SelectField
             label="Subcategoria"
+            required={subcategoryOptions.length > 0}
             value={form.subcategory_id || "__none__"}
             onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
-            disabled={!form.category_id}
+            disabled={!form.category_id || subcategoryOptions.length === 0}
             options={[
-              { value: "__none__", label: form.category_id ? "— Opcional —" : "— Escolha a categoria primeiro —" },
-              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+              { value: "__none__", label: form.category_id
+                ? (subcategoryOptions.length ? "— Selecione —" : "— Categoria é folha —")
+                : "— Escolha a categoria primeiro —" },
+              ...subcategoryOptions.map((c) => ({ value: c.id, label: c.name })),
             ]}
           />
           <SelectField
@@ -533,6 +542,11 @@ function BasicBlock({
             ]}
           />
         </FormRow>
+        {!leafIsValid && (form.department_id || form.category_id) && (
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Selecione até o nível mais específico (folha) — produtos não podem ser cadastrados em categorias que possuem subcategorias.
+          </p>
+        )}
       </div>
 
       <SelectField
