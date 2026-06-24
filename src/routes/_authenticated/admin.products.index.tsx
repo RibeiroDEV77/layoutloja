@@ -55,16 +55,16 @@ function ProductsPage() {
     queryKey: ["categories-all", storeId],
     enabled: !!storeId,
     queryFn: async () => {
-      const r = await listCatsFn({ data: { store_id: storeId!, pageSize: 200 } });
+      const r = await listCatsFn({ data: { store_id: storeId!, pageSize: 500 } });
       if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Array<{ id: string; slug: string }>;
+      return r.data.rows as CategoryNode[];
     },
   });
 
   const tabCategoryIds = (() => {
     if (catTab === "all" || !categoriesQuery.data) return undefined;
-    const slugs = new Set(CATEGORY_TABS.find((t) => t.key === catTab)?.slugs ?? []);
-    const ids = categoriesQuery.data.filter((c) => slugs.has(c.slug)).map((c) => c.id);
+    const roots = CATEGORY_TABS.find((t) => t.key === catTab)?.roots ?? [];
+    const ids = resolveCategoryIds(categoriesQuery.data, roots);
     return ids.length ? ids : ["__none__"];
   })();
 
