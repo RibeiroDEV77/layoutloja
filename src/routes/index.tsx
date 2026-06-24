@@ -172,6 +172,27 @@ function HomePage() {
             <ProductCarousel products={social} />
           </Section>
 
+          {/* Todos os Produtos */}
+          <Section id="todos-os-produtos">
+            <SectionHeader
+              eyebrow="Nosso catálogo"
+              title="Todos os Produtos"
+              description="Confira todos os produtos disponíveis da Layout."
+              action={{ label: "Ver todos", href: "/produtos" }}
+            />
+            <ProductGrid products={(todos as StorefrontProduct[]).slice(0, 12)} minCount={12} />
+            <div className="mt-12 flex justify-center">
+              <a
+                href="/produtos"
+                className="inline-flex items-center gap-2 border border-[#111111] px-8 py-4 text-[12px] md:text-[13px] uppercase tracking-[0.22em] text-[#111111] hover:bg-[#111111] hover:text-white transition-colors duration-200"
+                style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+              >
+                VER TODOS OS PRODUTOS →
+              </a>
+            </div>
+          </Section>
+
+
 
 
           {/* Newsletter */}
