@@ -6,6 +6,7 @@ import {
   NewsletterSection, TrustStrip, ProductGrid,
   type HeroBanner,
 } from "@/components/storefront/storefront";
+import { CATEGORY_TABS, resolveCategoryIds, type CategoryNode } from "@/lib/category-tabs";
 import heroCountry from "@/assets/hero-country.png.asset.json";
 import heroFeminino from "@/assets/hero-feminino.png.asset.json";
 import heroBrasil from "@/assets/hero-brasil.png.asset.json";
