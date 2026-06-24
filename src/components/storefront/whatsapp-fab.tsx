@@ -1,14 +1,17 @@
+import { COMPANY } from "@/lib/company";
+
 type WhatsAppFabProps = {
-  /** Telefone no formato internacional, somente dígitos. Ex: 5511999999999 */
+  /** Telefone no formato internacional, somente dígitos. Ex: 5567996620187 */
   phone?: string;
   message?: string;
 };
 
 export function WhatsAppFab({
-  phone = "5511999999999",
+  phone = COMPANY.whatsapp.e164,
   message = "Olá! Gostaria de mais informações.",
 }: WhatsAppFabProps) {
   const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
   return (
     <a
       href={href}
