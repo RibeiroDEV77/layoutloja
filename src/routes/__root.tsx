@@ -149,6 +149,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const pathname = router.state.location.pathname;
+  const isAdmin = pathname.startsWith("/admin");
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -158,7 +161,7 @@ function RootComponent() {
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
             <MiniCart />
-            <WhatsAppFab />
+            {!isAdmin && <WhatsAppFab />}
             <AccountSheet />
             <Toaster richColors position="top-right" />
           </CartProvider>
@@ -167,3 +170,4 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
