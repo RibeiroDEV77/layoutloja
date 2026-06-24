@@ -247,9 +247,11 @@ export async function updateProduct(
 export async function deleteProduct(supabase: SbClient, userId: string, productId: string) {
   const storeId = await fetchProductStoreId(supabase, productId);
   await requirePermission(supabase, userId, 'products.delete', storeId);
+  // Remove referências fracas (carrinhos abertos) que bloqueiam o delete por RESTRICT.
+  await supabase.from('cart_items').delete().eq('product_id', productId);
   const { error } = await supabase.from('products').delete().eq('id', productId);
   if (error) {
-    if (error.code === '23503') throw Errors.conflict('Produto possui vínculos e não pode ser removido');
+    if (error.code === '23503') throw Errors.conflict('Produto possui vínculos (pedidos ou notas fiscais) e não pode ser removido. Arquive o produto.');
     throw Errors.internal('Falha ao remover produto', { error: error.message });
   }
   await dispatchEvent(supabase, {
