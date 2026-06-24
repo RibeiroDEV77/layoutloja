@@ -7,12 +7,11 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 
 import { useStorefrontCustomer } from "@/hooks/use-storefront-customer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   upsertMyAddress, deleteMyAddress,
 } from "@/lib/business/storefront-account.functions";
+import { AddressForm, type AddressFormValue } from "@/components/storefront/address-form";
 
 export const Route = createFileRoute("/minha-conta/enderecos")({
   component: AddressesPage,
@@ -106,32 +105,20 @@ function AddressesPage() {
           </DialogHeader>
           {editing && (
             <form
-              className="grid grid-cols-2 gap-3"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!editing.number) {
+                  toast.error("Informe o número");
+                  return;
+                }
                 save.mutate(editing);
               }}
             >
-              <Field label="Apelido" value={editing.label} onChange={(v) => setEditing({ ...editing, label: v })} />
-              <Field label="Destinatário" value={editing.recipient} onChange={(v) => setEditing({ ...editing, recipient: v })} />
-              <Field label="CEP" value={editing.zipcode} onChange={(v) => setEditing({ ...editing, zipcode: v })} />
-              <Field label="Telefone" value={editing.phone} onChange={(v) => setEditing({ ...editing, phone: v })} />
-              <div className="col-span-2"><Field label="Rua" value={editing.street} onChange={(v) => setEditing({ ...editing, street: v })} /></div>
-              <Field label="Número" value={editing.number} onChange={(v) => setEditing({ ...editing, number: v })} />
-              <Field label="Complemento" value={editing.complement} onChange={(v) => setEditing({ ...editing, complement: v })} />
-              <Field label="Bairro" value={editing.district} onChange={(v) => setEditing({ ...editing, district: v })} />
-              <Field label="Cidade" value={editing.city} onChange={(v) => setEditing({ ...editing, city: v })} />
-              <Field label="Estado" value={editing.state} onChange={(v) => setEditing({ ...editing, state: v })} />
-              <Field label="País" value={editing.country} onChange={(v) => setEditing({ ...editing, country: v })} />
-              <label className="col-span-2 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={editing.is_default_shipping}
-                  onChange={(e) => setEditing({ ...editing, is_default_shipping: e.target.checked })}
-                />
-                Definir como endereço padrão de entrega
-              </label>
-              <DialogFooter className="col-span-2">
+              <AddressForm
+                value={editing as AddressFormValue}
+                onChange={(v) => setEditing({ ...empty, ...editing, ...v } as typeof empty)}
+              />
+              <DialogFooter className="mt-4">
                 <Button type="button" variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
                 <Button type="submit" disabled={save.isPending}>Salvar</Button>
               </DialogFooter>
@@ -143,11 +130,3 @@ function AddressesPage() {
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string | null | undefined; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  );
-}

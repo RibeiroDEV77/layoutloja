@@ -298,3 +298,33 @@ export const removeFromWishlist = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// ---------- shipping quote (Melhor Envio, sem autenticação) ----------
+export const quoteShippingForAddress = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        destination_postal_code: z.string().min(8).max(9),
+        weight_g: z.number().int().positive().max(30000).default(500),
+        declared_value: z.number().nonnegative().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { calculateQuotes } = await import(
+        "@/lib/business/services/shipping/melhor-envio-direct.server"
+      );
+      const quotes = await calculateQuotes({
+        destination_postal_code: data.destination_postal_code,
+        weight_g: data.weight_g,
+        declared_value: data.declared_value,
+      });
+      return {
+        quotes: quotes.map(({ raw: _r, ...q }) => q).sort((a, b) => a.price - b.price),
+        error: null as string | null,
+      };
+    } catch (e) {
+      return { quotes: [], error: (e as Error).message };
+    }
+  });
