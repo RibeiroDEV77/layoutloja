@@ -173,17 +173,14 @@ export async function createProductDraft(
   // Auto-resolve conflitos: se slug/SKU já existirem na loja, anexa sufixo incremental.
   let slug = baseSlug;
   let sku = baseSku;
-  let data: { id: string } & Record<string, unknown> = null as never;
-  let lastError: { code?: string; message: string } | null = null;
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const res = await supabase
+  const insertOnce = (s: string, k: string) =>
+    supabase
       .from('products')
       .insert({
         store_id: input.store_id,
         name: input.name.trim(),
-        sku_root: sku,
-        slug,
+        sku_root: k,
+        slug: s,
         category_id: input.category_id ?? null,
         brand_id: input.brand_id ?? null,
         short_description: input.short_description ?? null,
@@ -199,23 +196,20 @@ export async function createProductDraft(
       .select('*')
       .single();
 
-    if (!res.error) {
-      data = res.data as typeof data;
-      lastError = null;
-      break;
-    }
-    lastError = res.error;
-    if (res.error.code !== '23505') break;
+  let res = await insertOnce(slug, sku);
+  for (let attempt = 0; attempt < 8 && res.error?.code === '23505'; attempt++) {
     const suffix = `-${Math.random().toString(36).slice(2, 6)}`;
     slug = `${baseSlug}${suffix}`;
     sku = `${baseSku}${suffix.toUpperCase()}`;
+    res = await insertOnce(slug, sku);
   }
 
-  if (lastError) {
-    if (lastError.code === '23505') throw Errors.conflict('SKU Root ou slug já em uso', { error: lastError.message });
-    if (lastError.code === '23503') throw Errors.validation('Referência inválida (categoria/marca)', { error: lastError.message });
-    throw Errors.internal('Falha ao criar produto', { error: lastError.message });
+  if (res.error) {
+    if (res.error.code === '23505') throw Errors.conflict('SKU Root ou slug já em uso', { error: res.error.message });
+    if (res.error.code === '23503') throw Errors.validation('Referência inválida (categoria/marca)', { error: res.error.message });
+    throw Errors.internal('Falha ao criar produto', { error: res.error.message });
   }
+  const data = res.data!;
 
   if (input.collection_id) {
     await supabase
