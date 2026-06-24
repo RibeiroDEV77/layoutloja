@@ -96,10 +96,10 @@ type AuditRow = ChecklistItem & {
   presence: Presence;
 };
 
-const PRESENCE: Record<Presence, { label: string; tone: "success" | "warning" | "destructive" }> = {
+const PRESENCE: Record<Presence, { label: string; tone: "success" | "warning" | "danger" }> = {
   available: { label: "Disponível", tone: "success" },
   low:       { label: "Pouco Estoque", tone: "warning" },
-  missing:   { label: "Ausente", tone: "destructive" },
+  missing:   { label: "Ausente", tone: "danger" },
 };
 
 function CatalogAuditPage() {
