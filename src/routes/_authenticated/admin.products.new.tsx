@@ -73,7 +73,7 @@ type MediaRow = Tables<"product_color_media">;
 type VariantRow = Tables<"product_variants">;
 type PriceItemRow = Tables<"price_list_items">;
 
-type Row = { id: string; name: string };
+type Row = { id: string; name: string; parent_id?: string | null; is_active?: boolean };
 
 // ── Seções (single-page) ─────────────────────────────────────────────────────
 // Catálogo = fotos + cores + tamanhos + preço/estoque, tudo no mesmo lugar.
@@ -315,7 +315,7 @@ function ProductNewWizardPage() {
           )}
         </main>
 
-        <aside className="lg:sticky lg:top-32 lg:self-start space-y-4">
+        <aside className="hidden lg:block lg:sticky lg:top-32 lg:self-start space-y-4">
           <ReadinessCard
             enabled={!!productId}
             loading={readinessQ.isLoading}
@@ -394,7 +394,25 @@ function BasicBlock({
 
   const patch = (p: Partial<typeof form>) => setForm((s) => ({ ...s, ...p }));
 
-  const canSubmit = !!form.name.trim() && !!form.sku_root.trim() && !!form.category_id && !!storeId;
+  // Cascade Departamento → Categoria → Subcategoria a partir de parent_id.
+  // O trigger products_category_must_be_leaf exige que category_id seja folha
+  // (sem filhos ativos). Por isso filtramos cada nível e só permitimos enviar
+  // a seleção mais profunda quando ela for folha.
+  const allCats = cats.data ?? [];
+  const childrenOf = (parentId: string | null) =>
+    allCats.filter((c) => (c.parent_id ?? null) === parentId && c.is_active !== false);
+  const hasChildren = (id: string) => childrenOf(id).length > 0;
+
+  const departments = childrenOf(null);
+  const categoryOptions = form.department_id ? childrenOf(form.department_id) : [];
+  const subcategoryOptions = form.category_id ? childrenOf(form.category_id) : [];
+
+  // ID final que vai para o banco: a folha mais profunda selecionada.
+  const leafId = form.subcategory_id || form.category_id || form.department_id || "";
+  const leafIsValid = !!leafId && !hasChildren(leafId);
+
+  const canSubmit =
+    !!form.name.trim() && !!form.sku_root.trim() && leafIsValid && !!storeId;
 
   const submit = async () => {
     if (!storeId || !canSubmit) return;
@@ -406,7 +424,7 @@ function BasicBlock({
             store_id: storeId,
             name: form.name.trim(),
             sku_root: form.sku_root.trim(),
-            category_id: form.category_id || null,
+            category_id: leafId,
             brand_id: form.brand_id || null,
             collection_id: form.collection_id || null,
             short_description: form.short_description || null,
@@ -415,7 +433,6 @@ function BasicBlock({
         { loading: "Criando produto...", success: "Produto criado" },
       );
       if (created) {
-        // Salva descrição completa em seguida se preenchida
         if (form.description.trim()) {
           await fnUpdate({ data: { id: created.id, patch: { description: form.description } } });
         }
@@ -428,7 +445,7 @@ function BasicBlock({
             id: productId,
             patch: {
               name: form.name.trim(),
-              category_id: form.category_id || null,
+              category_id: leafId,
               brand_id: form.brand_id || null,
               short_description: form.short_description || null,
               description: form.description || null,
@@ -478,32 +495,41 @@ function BasicBlock({
         </div>
         <FormRow>
           <SelectField
-            label="Departamento"
+            label="Departamento" required
             value={form.department_id || "__none__"}
             onChange={(v) => patch({ department_id: v === "__none__" ? "" : v, category_id: "", subcategory_id: "" })}
             options={[
-              { value: "__none__", label: "— Selecionar —" },
-              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+              { value: "__none__", label: cats.isLoading ? "Carregando..." : "— Selecionar —" },
+              ...departments.map((c) => ({ value: c.id, label: c.name })),
             ]}
-            hint="Estrutura em cascata será habilitada em breve."
+            hint="Escolha o departamento raiz do produto."
           />
           <SelectField
-            label="Categoria" required
-            value={form.category_id}
-            onChange={(v) => patch({ category_id: v, subcategory_id: "" })}
-            options={(cats.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-            placeholder={cats.isLoading ? "Carregando..." : "Selecione"}
+            label="Categoria"
+            required={categoryOptions.length > 0}
+            value={form.category_id || "__none__"}
+            onChange={(v) => patch({ category_id: v === "__none__" ? "" : v, subcategory_id: "" })}
+            disabled={!form.department_id || categoryOptions.length === 0}
+            options={[
+              { value: "__none__", label: form.department_id
+                ? (categoryOptions.length ? "— Selecione —" : "— Departamento é folha —")
+                : "— Escolha o departamento primeiro —" },
+              ...categoryOptions.map((c) => ({ value: c.id, label: c.name })),
+            ]}
           />
         </FormRow>
         <FormRow>
           <SelectField
             label="Subcategoria"
+            required={subcategoryOptions.length > 0}
             value={form.subcategory_id || "__none__"}
             onChange={(v) => patch({ subcategory_id: v === "__none__" ? "" : v })}
-            disabled={!form.category_id}
+            disabled={!form.category_id || subcategoryOptions.length === 0}
             options={[
-              { value: "__none__", label: form.category_id ? "— Opcional —" : "— Escolha a categoria primeiro —" },
-              ...(cats.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+              { value: "__none__", label: form.category_id
+                ? (subcategoryOptions.length ? "— Selecione —" : "— Categoria é folha —")
+                : "— Escolha a categoria primeiro —" },
+              ...subcategoryOptions.map((c) => ({ value: c.id, label: c.name })),
             ]}
           />
           <SelectField
@@ -516,6 +542,11 @@ function BasicBlock({
             ]}
           />
         </FormRow>
+        {!leafIsValid && (form.department_id || form.category_id) && (
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Selecione até o nível mais específico (folha) — produtos não podem ser cadastrados em categorias que possuem subcategorias.
+          </p>
+        )}
       </div>
 
       <SelectField
