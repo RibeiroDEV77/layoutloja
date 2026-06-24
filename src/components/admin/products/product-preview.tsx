@@ -23,6 +23,10 @@ export function ProductPreview({
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="flex items-center justify-between border-b bg-muted/40 px-4 py-2">
+        <h2 className="text-sm font-semibold">Pré-visualização</h2>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Como o cliente verá</span>
+      </div>
       <div className="aspect-square bg-muted relative overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
