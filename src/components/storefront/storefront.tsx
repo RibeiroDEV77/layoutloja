@@ -546,7 +546,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
       onTouchEnd={onTouchEnd}
     >
 
-      <div className="relative w-full h-[45vh] md:h-[52vh] lg:h-[60vh]">
+      <div className="relative w-full h-[32vh] sm:h-[42vh] md:h-[52vh] lg:h-[60vh]">
         {slides.map((s, i) => (
           <img
             key={`${s.image}-${i}`}
@@ -560,7 +560,7 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
               animation: i === active ? `heroKenBurns ${HERO_SLIDE_MS + HERO_FADE_MS}ms ease-out forwards` : undefined,
             }}
             className={cn(
-              "absolute inset-0 block h-full w-full object-cover object-center transition-opacity ease-in-out will-change-[opacity,transform]",
+              "absolute inset-0 block h-full w-full object-contain md:object-cover object-center transition-opacity ease-in-out will-change-[opacity,transform]",
               i === active ? "opacity-100 z-10" : "opacity-0 z-0",
             )}
           />
