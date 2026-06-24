@@ -97,21 +97,26 @@ function CheckoutPage() {
     (async () => {
       try {
         const lookup = await fnLookup({ data: { postal_code: cep } });
-        // lookupPostalCode retorna PostalLookup diretamente (sem wrapper .ok)
+        // lookupPostalCode retorna PostalLookup diretamente (sem wrapper .ok).
+        // Sempre sobrescreve rua/bairro/cidade/UF com o resultado do ViaCEP —
+        // assim trocar o CEP atualiza o endereço, sem manter resquícios da
+        // consulta anterior. Número/complemento ficam intactos (não vêm do CEP).
         if (!cancelled && lookup && typeof lookup === 'object' && 'city' in lookup) {
           const d = lookup as { street?: string; district?: string; city?: string; state?: string };
           setAddress((a) => ({
             ...a,
-            street:   a.street   || (d.street   ?? ''),
-            district: a.district || (d.district ?? ''),
-            city:     a.city     || (d.city     ?? ''),
-            state:    a.state    || (d.state    ?? ''),
+            street:   d.street   ?? '',
+            district: d.district ?? '',
+            city:     d.city     ?? '',
+            state:    d.state    ?? '',
           }));
         }
       } catch (err) {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : '';
-          if (/CEP/i.test(msg)) setQuoteError('CEP não encontrado. Verifique o número digitado.');
+          setQuoteError(/CEP/i.test(msg)
+            ? 'CEP não encontrado. Verifique o número digitado.'
+            : 'Não foi possível consultar o CEP agora. Tente novamente.');
         }
       }
       try {
