@@ -73,7 +73,7 @@ type MediaRow = Tables<"product_color_media">;
 type VariantRow = Tables<"product_variants">;
 type PriceItemRow = Tables<"price_list_items">;
 
-type Row = { id: string; name: string };
+type Row = { id: string; name: string; parent_id?: string | null; is_active?: boolean };
 
 // ── Seções (single-page) ─────────────────────────────────────────────────────
 // Catálogo = fotos + cores + tamanhos + preço/estoque, tudo no mesmo lugar.
