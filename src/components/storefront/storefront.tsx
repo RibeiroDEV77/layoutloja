@@ -489,8 +489,8 @@ import heroBrasilAsset from "@/assets/hero-brasil.png.asset.json";
 
 const HERO_FALLBACK_IMAGES = [heroCountryAsset.url, heroFemininoAsset.url, heroBrasilAsset.url];
 
-const HERO_SLIDE_MS = 3500;
-const HERO_FADE_MS = 600;
+const HERO_SLIDE_MS = 3000;
+const HERO_FADE_MS = 500;
 
 export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   const slides: HeroBanner[] = useMemo(() => {
@@ -500,7 +500,6 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   }, [banners]);
 
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
 
   // Preload all hero images to avoid flicker on slide change.
   useEffect(() => {
@@ -510,11 +509,15 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
     });
   }, [slides]);
 
+  // Autoplay: single interval, depends only on slide count.
+  // Never paused — manual navigation simply resets timing on next tick.
   useEffect(() => {
-    if (slides.length <= 1 || paused) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), HERO_SLIDE_MS);
-    return () => clearInterval(id);
-  }, [slides.length, paused]);
+    if (slides.length <= 1) return;
+    const id = window.setInterval(() => {
+      setActive((i) => (i + 1) % slides.length);
+    }, HERO_SLIDE_MS);
+    return () => window.clearInterval(id);
+  }, [slides.length]);
 
   // Swipe gesture (mobile)
   const touchStartX = useRef<number | null>(null);
@@ -536,11 +539,10 @@ export function StorefrontHero({ banners }: { banners?: HeroBanner[] }) {
   return (
     <section
       className="relative w-full overflow-hidden bg-neutral-100"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+
       <div className="relative w-full h-[45vh] md:h-[52vh] lg:h-[60vh]">
         {slides.map((s, i) => (
           <img
