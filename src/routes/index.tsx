@@ -175,7 +175,7 @@ function HomePage() {
           </Section>
 
           {/* Todos os Produtos */}
-          <TodosProdutosSection todos={todos as StorefrontProduct[]} filterByCategory={filterByCategory} />
+          <TodosProdutosSection todos={todos as StorefrontProduct[]} categories={categories as StorefrontCategory[]} />
 
 
 
