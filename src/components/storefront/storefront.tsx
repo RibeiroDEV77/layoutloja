@@ -1021,16 +1021,16 @@ export function ProductCard({ p }: { p: StorefrontProduct }) {
   );
 }
 
-export function ProductGrid({ products }: { products: StorefrontProduct[] }) {
-  const items: Array<StorefrontProduct | null> = products.length > 0
-    ? products
-    : Array.from({ length: 8 }, () => null);
+export function ProductGrid({ products, minCount }: { products: StorefrontProduct[]; minCount?: number }) {
+  const target = Math.max(minCount ?? 0, products.length > 0 ? products.length : 8);
+  const items: Array<StorefrontProduct | null> = Array.from({ length: target }, (_, i) => products[i] ?? null);
   return (
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-7 md:gap-y-12">
       {items.map((p, i) => p ? <ProductCard key={p.id} p={p} /> : <ProductCardSkeleton key={`sk-${i}`} />)}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Banner institucional
