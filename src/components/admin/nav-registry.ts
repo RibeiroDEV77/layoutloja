@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Tags, Layers, ShoppingCart, Warehouse, Users,
   Building2, ShoppingBag, Receipt, Megaphone, Settings, Shield, FileText, UserCog,
-  ClipboardList, Image as ImageIcon,
+  ClipboardList, Image as ImageIcon, ClipboardCheck,
 } from "lucide-react";
 
 export type NavItem = {
