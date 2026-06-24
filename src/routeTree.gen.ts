@@ -49,6 +49,7 @@ import { Route as AuthenticatedAdminCompaniesRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminCollectionsRouteImport } from './routes/_authenticated/admin.collections'
 import { Route as AuthenticatedAdminCategoryAttributesRouteImport } from './routes/_authenticated/admin.category-attributes'
 import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin.categories'
+import { Route as AuthenticatedAdminCatalogAuditRouteImport } from './routes/_authenticated/admin.catalog-audit'
 import { Route as AuthenticatedAdminCartsRouteImport } from './routes/_authenticated/admin.carts'
 import { Route as AuthenticatedAdminBrandsRouteImport } from './routes/_authenticated/admin.brands'
 import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin.audit'
@@ -286,6 +287,12 @@ const AuthenticatedAdminCategoriesRoute =
     path: '/categories',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCatalogAuditRoute =
+  AuthenticatedAdminCatalogAuditRouteImport.update({
+    id: '/catalog-audit',
+    path: '/catalog-audit',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCartsRoute = AuthenticatedAdminCartsRouteImport.update({
   id: '/carts',
   path: '/carts',
@@ -415,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/carts': typeof AuthenticatedAdminCartsRoute
+  '/admin/catalog-audit': typeof AuthenticatedAdminCatalogAuditRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
@@ -472,6 +480,7 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/admin/carts': typeof AuthenticatedAdminCartsRoute
+  '/admin/catalog-audit': typeof AuthenticatedAdminCatalogAuditRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/admin/collections': typeof AuthenticatedAdminCollectionsRoute
@@ -532,6 +541,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/_authenticated/admin/brands': typeof AuthenticatedAdminBrandsRoute
   '/_authenticated/admin/carts': typeof AuthenticatedAdminCartsRoute
+  '/_authenticated/admin/catalog-audit': typeof AuthenticatedAdminCatalogAuditRoute
   '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/_authenticated/admin/category-attributes': typeof AuthenticatedAdminCategoryAttributesRoute
   '/_authenticated/admin/collections': typeof AuthenticatedAdminCollectionsRoute
@@ -593,6 +603,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/brands'
     | '/admin/carts'
+    | '/admin/catalog-audit'
     | '/admin/categories'
     | '/admin/category-attributes'
     | '/admin/collections'
@@ -650,6 +661,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/brands'
     | '/admin/carts'
+    | '/admin/catalog-audit'
     | '/admin/categories'
     | '/admin/category-attributes'
     | '/admin/collections'
@@ -709,6 +721,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/audit'
     | '/_authenticated/admin/brands'
     | '/_authenticated/admin/carts'
+    | '/_authenticated/admin/catalog-audit'
     | '/_authenticated/admin/categories'
     | '/_authenticated/admin/category-attributes'
     | '/_authenticated/admin/collections'
@@ -1048,6 +1061,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCategoriesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/catalog-audit': {
+      id: '/_authenticated/admin/catalog-audit'
+      path: '/catalog-audit'
+      fullPath: '/admin/catalog-audit'
+      preLoaderRoute: typeof AuthenticatedAdminCatalogAuditRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/carts': {
       id: '/_authenticated/admin/carts'
       path: '/carts'
@@ -1275,6 +1295,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
   AuthenticatedAdminBrandsRoute: typeof AuthenticatedAdminBrandsRoute
   AuthenticatedAdminCartsRoute: typeof AuthenticatedAdminCartsRoute
+  AuthenticatedAdminCatalogAuditRoute: typeof AuthenticatedAdminCatalogAuditRoute
   AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
   AuthenticatedAdminCategoryAttributesRoute: typeof AuthenticatedAdminCategoryAttributesRoute
   AuthenticatedAdminCollectionsRoute: typeof AuthenticatedAdminCollectionsRoute
@@ -1307,6 +1328,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
   AuthenticatedAdminBrandsRoute: AuthenticatedAdminBrandsRoute,
   AuthenticatedAdminCartsRoute: AuthenticatedAdminCartsRoute,
+  AuthenticatedAdminCatalogAuditRoute: AuthenticatedAdminCatalogAuditRoute,
   AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
   AuthenticatedAdminCategoryAttributesRoute:
     AuthenticatedAdminCategoryAttributesRoute,
@@ -1393,13 +1415,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
