@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontLogoStrip, StorefrontHero, StorefrontFooter,
@@ -173,34 +174,12 @@ function HomePage() {
           </Section>
 
           {/* Todos os Produtos */}
-          <Section id="todos-os-produtos">
-            <SectionHeader
-              eyebrow="Nosso catálogo"
-              title="Todos os Produtos"
-              description="Confira todos os produtos disponíveis da Layout."
-              action={{ label: "Ver todos", href: "/produtos" }}
-            />
-            <ProductGrid
-              products={[...(todos as StorefrontProduct[])]
-                .sort((a, b) => {
-                  const score = (p: StorefrontProduct) =>
-                    (p.featured ? 100 : 0) + (p.new_product ? 10 : 0) + (p.best_seller ? 1 : 0);
-                  return score(b) - score(a);
-                })
-                .slice(0, 12)}
-              minCount={12}
-            />
+          <TodosProdutosSection todos={todos as StorefrontProduct[]} filterByCategory={filterByCategory} />
 
-            <div className="mt-12 flex justify-center">
-              <a
-                href="/produtos"
-                className="inline-flex items-center gap-2 border border-[#111111] px-8 py-4 text-[12px] md:text-[13px] uppercase tracking-[0.22em] text-[#111111] hover:bg-[#111111] hover:text-white transition-colors duration-200"
-                style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-              >
-                VER TODOS OS PRODUTOS →
-              </a>
-            </div>
-          </Section>
+
+
+
+
 
 
 
@@ -216,3 +195,84 @@ function HomePage() {
     </StorefrontShell>
   );
 }
+
+type CatKey = "all" | "camisas" | "calcas" | "bermudas";
+const CAT_TABS: { key: CatKey; label: string; slugs: string[] }[] = [
+  { key: "all", label: "Todos", slugs: [] },
+  { key: "camisas", label: "Camisas", slugs: ["masc-camisas", "fem-camisas", "masc-camisetas", "fem-camisetas"] },
+  { key: "calcas", label: "Calças", slugs: ["masc-calcas", "fem-calcas"] },
+  { key: "bermudas", label: "Bermudas", slugs: ["masc-bermudas"] },
+];
+
+function TodosProdutosSection({
+  todos,
+  filterByCategory,
+}: {
+  todos: StorefrontProduct[];
+  filterByCategory: (slugs: string[]) => StorefrontProduct[];
+}) {
+  const [active, setActive] = useState<CatKey>("all");
+
+  const sorted = useMemo(() => {
+    const score = (p: StorefrontProduct) =>
+      (p.featured ? 100 : 0) + (p.new_product ? 10 : 0) + (p.best_seller ? 1 : 0);
+    const base = active === "all" ? todos : filterByCategory(CAT_TABS.find((t) => t.key === active)!.slugs);
+    return [...base].sort((a, b) => score(b) - score(a)).slice(0, 12);
+  }, [active, todos, filterByCategory]);
+
+  return (
+    <Section id="todos-os-produtos">
+      <SectionHeader
+        eyebrow="Nosso catálogo"
+        title="Todos os Produtos"
+        description="Confira todos os produtos disponíveis da Layout."
+        action={{ label: "Ver todos", href: "/produtos" }}
+      />
+
+      <div className="mb-8 flex flex-wrap justify-center gap-2 md:gap-3" role="tablist" aria-label="Filtrar por categoria">
+        {CAT_TABS.map((tab) => {
+          const isActive = tab.key === active;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActive(tab.key)}
+              className={
+                "px-5 py-2.5 text-[12px] md:text-[13px] uppercase tracking-[0.22em] border transition-colors duration-200 " +
+                (isActive
+                  ? "bg-[#111111] text-white border-[#111111]"
+                  : "bg-white text-[#111111] border-[#111111]/20 hover:border-[#111111]")
+              }
+              style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div key={active} className="animate-in fade-in duration-300">
+        {sorted.length > 0 ? (
+          <ProductGrid products={sorted} minCount={sorted.length} />
+        ) : (
+          <div className="py-16 text-center text-sm text-gray-500" style={{ fontFamily: "Inter, sans-serif" }}>
+            Nenhum produto disponível nesta categoria no momento.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-12 flex justify-center">
+        <a
+          href="/produtos"
+          className="inline-flex items-center gap-2 border border-[#111111] px-8 py-4 text-[12px] md:text-[13px] uppercase tracking-[0.22em] text-[#111111] hover:bg-[#111111] hover:text-white transition-colors duration-200"
+          style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+        >
+          VER TODOS OS PRODUTOS →
+        </a>
+      </div>
+    </Section>
+  );
+}
+
