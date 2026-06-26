@@ -11657,6 +11657,103 @@ export type Database = {
           },
         ]
       }
+      wholesale_applications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_reason: string | null
+          id: string
+          metadata: Json
+          requested_group_id: string | null
+          requested_price_list_id: string | null
+          status: Database["public"]["Enums"]["wholesale_application_status"]
+          store_id: string
+          submitted_at: string | null
+          updated_at: string
+          workflow_instance_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          id?: string
+          metadata?: Json
+          requested_group_id?: string | null
+          requested_price_list_id?: string | null
+          status?: Database["public"]["Enums"]["wholesale_application_status"]
+          store_id: string
+          submitted_at?: string | null
+          updated_at?: string
+          workflow_instance_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          id?: string
+          metadata?: Json
+          requested_group_id?: string | null
+          requested_price_list_id?: string | null
+          status?: Database["public"]["Enums"]["wholesale_application_status"]
+          store_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          workflow_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wholesale_applications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_dashboard_v"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "wholesale_applications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wholesale_applications_requested_group_id_fkey"
+            columns: ["requested_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wholesale_applications_requested_price_list_id_fkey"
+            columns: ["requested_price_list_id"]
+            isOneToOne: false
+            referencedRelation: "price_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wholesale_applications_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wholesale_applications_workflow_instance_id_fkey"
+            columns: ["workflow_instance_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlist_items: {
         Row: {
           added_at: string
@@ -14409,6 +14506,13 @@ export type Database = {
         | "exception"
         | "returned"
         | "lost"
+      wholesale_application_status:
+        | "draft"
+        | "submitted"
+        | "in_review"
+        | "approved"
+        | "rejected"
+        | "cancelled"
       workflow_instance_status: "active" | "completed" | "cancelled" | "failed"
     }
     CompositeTypes: {
@@ -15065,6 +15169,14 @@ export const Constants = {
         "exception",
         "returned",
         "lost",
+      ],
+      wholesale_application_status: [
+        "draft",
+        "submitted",
+        "in_review",
+        "approved",
+        "rejected",
+        "cancelled",
       ],
       workflow_instance_status: ["active", "completed", "cancelled", "failed"],
     },
