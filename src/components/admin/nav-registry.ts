@@ -43,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "Listas de Preço", url: "/admin/price-lists", icon: Receipt, permission: "products.read" },
       { title: "Cupons", url: "/admin/coupons", icon: Tags, permission: "pricing.manage" },
       { title: "Empresas", url: "/admin/companies", icon: Building2, permission: "customers.read" },
+      { title: "Solicitações de Atacado", url: "/admin/wholesale-applications", icon: ClipboardCheck, permission: "customers.read", keywords: ["atacado", "comercial"] },
     ],
   },
   {
