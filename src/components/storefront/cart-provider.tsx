@@ -5,6 +5,7 @@
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useStorefrontCart, type SalesChannel } from '@/hooks/use-storefront-cart';
+import { useSalesChannel } from '@/components/storefront/sales-channel-provider';
 
 type Cart = ReturnType<typeof useStorefrontCart>;
 
@@ -18,7 +19,8 @@ type CartContextValue = Cart & {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children, salesChannel = 'retail' }: { children: ReactNode; salesChannel?: SalesChannel }) {
+export function CartProvider({ children }: { children: ReactNode }) {
+  const { channel: salesChannel } = useSalesChannel();
   const cart = useStorefrontCart(salesChannel);
   const [isOpen, setIsOpen] = useState(false);
   const value = useMemo<CartContextValue>(() => ({

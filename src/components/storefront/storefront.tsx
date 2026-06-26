@@ -15,6 +15,42 @@ import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
 import { COMPANY, whatsappUrl, mailtoUrl } from "@/lib/company";
 import { STOREFRONT_NAV_ITEMS, resolveStorefrontCategory, resolveStorefrontCategories } from "@/lib/storefront-navigation";
+import { useSalesChannel, useEnterWholesale } from "@/components/storefront/sales-channel-provider";
+
+// ---------------------------------------------------------------------------
+// Sales channel controls (Sprint 8) — botão "Atacado" + indicador discreto.
+// ---------------------------------------------------------------------------
+
+function SalesChannelControls() {
+  const { channel } = useSalesChannel();
+  const { enterWholesale, goRetail } = useEnterWholesale();
+  const isWholesale = channel === "wholesale";
+  return (
+    <div className="inline-flex items-center gap-3">
+      <span className="hidden sm:inline text-[12px] text-neutral-400">
+        Canal: <span className="text-white font-medium">{isWholesale ? "Atacado" : "Varejo"}</span>
+      </span>
+      {isWholesale ? (
+        <button
+          type="button"
+          onClick={() => { void goRetail(); }}
+          className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity"
+        >
+          Voltar ao varejo
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { void enterWholesale(); }}
+          className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity"
+          aria-label="Acessar canal Atacado"
+        >
+          Atacado
+        </button>
+      )}
+    </div>
+  );
+}
 
 
 // ---------------------------------------------------------------------------
@@ -179,11 +215,14 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
             <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Entrega para todo o Brasil</span>
             <a href={whatsappUrl()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp {COMPANY.whatsapp.display}</a>
           </div>
-          <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
-            <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
-            <span className="hidden sm:inline">Promoções da semana</span>
-            <span className="sm:hidden">Promoções</span>
-          </a>
+          <div className="flex items-center gap-4">
+            <SalesChannelControls />
+            <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
+              <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
+              <span className="hidden sm:inline">Promoções da semana</span>
+              <span className="sm:hidden">Promoções</span>
+            </a>
+          </div>
         </div>
       </div>
 

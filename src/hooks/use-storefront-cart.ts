@@ -119,12 +119,26 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
     }));
   }, []);
 
-  // bootstrap
+  // bootstrap — re-executa quando o canal muda (cartId namespaced por canal).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const sessionToken = ensureSessionToken();
-      setState((s) => ({ ...s, sessionToken, loading: true }));
+      // Reset do estado ao trocar de canal, evitando exibir o carrinho anterior.
+      setState((s) => ({
+        ...s,
+        sessionToken,
+        loading: true,
+        ready: false,
+        cartId: null,
+        items: [],
+        itemsCount: 0,
+        subtotal: 0,
+        total: 0,
+        shippingTotal: 0,
+        shippingQuotes: [],
+        selectedShippingQuoteId: null,
+      }));
       try {
         const { store } = await fnStore();
         if (cancelled) return;
@@ -155,7 +169,7 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [salesChannel]);
 
   const refresh = useCallback(async () => {
     if (!state.cartId) return;
