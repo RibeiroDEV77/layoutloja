@@ -68,12 +68,13 @@ export function useEnterWholesale() {
   const fetchApplications = useServerFn(listWholesaleApplicationsByCustomer);
 
   const enterWholesale = useCallback(async () => {
-    if (!customer?.id) {
+    const customerId = customer?.customer?.id;
+    if (!customerId) {
       openAccountSheet();
       return;
     }
     try {
-      const res = await fetchApplications({ data: { customer_id: customer.id } }) as unknown;
+      const res = await fetchApplications({ data: { customer_id: customerId } }) as unknown;
       const list = (res && typeof res === 'object' && 'ok' in res
         ? (res as { ok: boolean; data?: Array<{ status: string }> }).data ?? []
         : (res as Array<{ status: string }>)) ?? [];
@@ -87,7 +88,7 @@ export function useEnterWholesale() {
     } catch {
       await navigate({ to: '/atacado' });
     }
-  }, [customer?.id, fetchApplications, navigate, setChannel]);
+  }, [customer, fetchApplications, navigate, setChannel]);
 
   const goRetail = useCallback(async () => {
     setChannel('retail');
