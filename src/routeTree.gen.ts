@@ -15,6 +15,7 @@ import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AtacadoRouteImport } from './routes/atacado'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MinhaContaIndexRouteImport } from './routes/minha-conta.index'
@@ -97,6 +98,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtacadoRoute = AtacadoRouteImport.update({
+  id: '/atacado',
+  path: '/atacado',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -402,6 +408,7 @@ const AuthenticatedAdminProductsIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atacado': typeof AtacadoRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -462,6 +469,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/atacado': typeof AtacadoRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/produtos': typeof ProdutosRoute
@@ -521,6 +529,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/atacado': typeof AtacadoRoute
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -583,6 +592,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/atacado'
     | '/auth'
     | '/checkout'
     | '/minha-conta'
@@ -643,6 +653,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/atacado'
     | '/auth'
     | '/checkout'
     | '/produtos'
@@ -701,6 +712,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/atacado'
     | '/auth'
     | '/checkout'
     | '/minha-conta'
@@ -763,6 +775,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AtacadoRoute: typeof AtacadoRoute
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   MinhaContaRoute: typeof MinhaContaRouteWithChildren
@@ -821,6 +834,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atacado': {
+      id: '/atacado'
+      path: '/atacado'
+      fullPath: '/atacado'
+      preLoaderRoute: typeof AtacadoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -1395,6 +1415,7 @@ const MinhaContaRouteWithChildren = MinhaContaRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AtacadoRoute: AtacadoRoute,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   MinhaContaRoute: MinhaContaRouteWithChildren,
