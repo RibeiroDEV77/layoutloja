@@ -183,12 +183,20 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     const variantIds = (variantsForPrice ?? []).map((v) => v.id);
     const productByVariant = new Map((variantsForPrice ?? []).map((v) => [v.id, v.product_id]));
     if (variantIds.length) {
-      const { data: priceItems } = await sb
+      // Seleciona a tabela de preços conforme o contexto comercial:
+      //   - wholesale: filtra pelo `code = WHOLESALE-{store_id}`;
+      //   - retail/default: tabelas públicas (`is_public = true`).
+      let priceQ = sb
         .from('price_list_items')
-        .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, is_public)')
+        .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, is_public, code)')
         .in('variant_id', variantIds)
-        .eq('price_lists.is_active', true)
-        .eq('price_lists.is_public', true);
+        .eq('price_lists.is_active', true);
+      if (ctx.price_list_code) {
+        priceQ = priceQ.eq('price_lists.code', ctx.price_list_code);
+      } else {
+        priceQ = priceQ.eq('price_lists.is_public', true);
+      }
+      const { data: priceItems } = await priceQ;
       for (const it of (priceItems ?? []) as Array<{ variant_id: string; price: number; compare_at_price: number | null; min_quantity: number | null; max_quantity: number | null }>) {
         const minQ = it.min_quantity ?? 1;
         const maxQ = it.max_quantity ?? null;
