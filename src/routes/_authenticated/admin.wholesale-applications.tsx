@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CrudPage } from "@/components/admin/crud-page";
 import { CrudToolbar } from "@/components/admin/crud-toolbar";
@@ -10,14 +10,26 @@ import { DataTable } from "@/components/admin/data-table";
 import { EmptyState } from "@/components/admin/empty-state";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { CheckCircle2, XCircle, PlayCircle, History } from "lucide-react";
 import { useActiveStore } from "@/hooks/use-active-store";
-import { listWholesaleApplications } from "@/lib/business/wholesale-applications.functions";
+import { runAction } from "@/components/admin/notify";
+import {
+  listWholesaleApplications,
+  transitionWholesaleApplication,
+} from "@/lib/business/wholesale-applications.functions";
+import { getWorkflowForAggregate } from "@/lib/foundations/workflow.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/wholesale-applications")({
   head: () => ({ meta: [{ title: "Solicitações de Atacado — Admin" }] }),
@@ -126,12 +138,15 @@ function WholesaleApplicationsPage() {
 
   const rows = query.data?.rows ?? [];
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-wholesale-applications"] });
 
   return (
     <CrudPage
       title="Solicitações de Atacado"
-      description="Consulta somente leitura das solicitações de cadastro para atacado."
+      description="Consulta e decisão (aprovação/reprovação) das solicitações de cadastro para atacado."
       breadcrumbs={[{ label: "Comercial" }, { label: "Atacado" }, { label: "Solicitações" }]}
+
       toolbar={
         <CrudToolbar
           left={
@@ -240,7 +255,7 @@ function WholesaleApplicationsPage() {
 
       <Sheet open={!!selected} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-          {selected && <DetailsView row={selected} />}
+          {selected && <DetailsView row={selected} onChanged={refresh} />}
         </SheetContent>
       </Sheet>
     </CrudPage>
@@ -256,9 +271,63 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function DetailsView({ row }: { row: AdminRow }) {
+type DecisionMode = "approve" | "reject" | "start_review" | null;
+
+function DetailsView({ row, onChanged }: { row: AdminRow; onChanged: () => void }) {
   const meta = row.metadata ?? {};
   const isPj = row.customer?.type === "pj";
+  const qc = useQueryClient();
+  const transition = useServerFn(transitionWholesaleApplication);
+  const getWorkflow = useServerFn(getWorkflowForAggregate);
+
+  const [decision, setDecision] = useState<DecisionMode>(null);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const wfQuery = useQuery({
+    queryKey: ["wholesale-workflow", row.id],
+    queryFn: () => getWorkflow({ data: { aggregateType: "wholesale_application", aggregateId: row.id } }),
+  });
+
+  const canApprove = row.status === "in_review";
+  const canReject = row.status === "submitted" || row.status === "in_review";
+  const canStartReview = row.status === "submitted";
+
+  const openDecision = (mode: Exclude<DecisionMode, null>) => {
+    setReason("");
+    setDecision(mode);
+  };
+
+  const confirmDecision = async () => {
+    if (!decision) return;
+    const trimmed = reason.trim();
+    if (decision === "reject" && !trimmed) return;
+    const to: "approved" | "rejected" | "in_review" =
+      decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "in_review";
+    setSubmitting(true);
+    const labels: Record<typeof decision, { loading: string; success: string }> = {
+      approve: { loading: "Aprovando...", success: "Solicitação aprovada" },
+      reject: { loading: "Reprovando...", success: "Solicitação reprovada" },
+      start_review: { loading: "Iniciando análise...", success: "Análise iniciada" },
+    };
+    const result = await runAction(
+      async () => transition({
+        data: {
+          id: row.id,
+          to,
+          reason: trimmed || (decision === "approve" ? "Aprovado" : undefined),
+        },
+      }),
+      labels[decision],
+    );
+    setSubmitting(false);
+    if (result) {
+      setDecision(null);
+      await qc.invalidateQueries({ queryKey: ["wholesale-workflow", row.id] });
+      onChanged();
+    }
+  };
+
   return (
     <>
       <SheetHeader>
@@ -266,8 +335,32 @@ function DetailsView({ row }: { row: AdminRow }) {
           Solicitação <code className="text-xs">#{row.id.slice(0, 8)}</code>
           {statusBadge(row.status)}
         </SheetTitle>
-        <SheetDescription>Visualização somente leitura.</SheetDescription>
+        <SheetDescription>
+          {canApprove || canReject || canStartReview
+            ? "Aprove ou reprove. Apenas o status é alterado nesta etapa — nenhuma configuração comercial é aplicada."
+            : "Visualização somente leitura."}
+        </SheetDescription>
       </SheetHeader>
+
+      {(canApprove || canReject || canStartReview) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {canStartReview && (
+            <Button variant="outline" onClick={() => openDecision("start_review")}>
+              <PlayCircle className="h-4 w-4 mr-2" /> Iniciar análise
+            </Button>
+          )}
+          {canApprove && (
+            <Button onClick={() => openDecision("approve")}>
+              <CheckCircle2 className="h-4 w-4 mr-2" /> Aprovar
+            </Button>
+          )}
+          {canReject && (
+            <Button variant="destructive" onClick={() => openDecision("reject")}>
+              <XCircle className="h-4 w-4 mr-2" /> Reprovar
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 space-y-6">
         <section className="grid grid-cols-2 gap-4">
@@ -319,12 +412,100 @@ function DetailsView({ row }: { row: AdminRow }) {
         )}
 
         <section>
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <History className="h-4 w-4" /> Histórico do workflow
+          </h3>
+          <WorkflowHistory data={wfQuery.data} loading={wfQuery.isLoading} error={wfQuery.error} />
+        </section>
+
+        <section>
           <h3 className="text-sm font-semibold mb-2">Metadados</h3>
           <pre className="text-xs bg-muted/40 p-3 rounded overflow-auto max-h-80">
             {JSON.stringify(row.metadata ?? {}, null, 2)}
           </pre>
         </section>
       </div>
+
+      <Dialog open={!!decision} onOpenChange={(o) => { if (!o && !submitting) setDecision(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {decision === "approve" && "Aprovar solicitação"}
+              {decision === "reject" && "Reprovar solicitação"}
+              {decision === "start_review" && "Iniciar análise"}
+            </DialogTitle>
+            <DialogDescription>
+              {decision === "approve" && "Apenas o status será alterado. Nenhuma configuração comercial (grupo, lista de preço, acesso) será aplicada nesta etapa."}
+              {decision === "reject" && "Informe o motivo da reprovação. Ele será registrado no workflow e na auditoria."}
+              {decision === "start_review" && "A solicitação será movida para 'Em análise'."}
+            </DialogDescription>
+          </DialogHeader>
+          {decision !== "start_review" && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium">
+                {decision === "reject" ? "Motivo da reprovação (obrigatório)" : "Observação (opcional)"}
+              </label>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                placeholder={decision === "reject" ? "Ex.: documentação incompleta" : "Ex.: aprovado conforme contato comercial"}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={submitting} onClick={() => setDecision(null)}>Cancelar</Button>
+            <Button
+              variant={decision === "reject" ? "destructive" : "default"}
+              disabled={submitting || (decision === "reject" && !reason.trim())}
+              onClick={confirmDecision}
+            >
+              {submitting ? "Enviando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
+
+type WorkflowHistoryData = {
+  instance: { id: string; current_state?: { code?: string; name?: string } | null } | null;
+  history: Array<{
+    id: string;
+    occurred_at: string;
+    actor_user_id: string | null;
+    reason: string | null;
+    from_state_id: string | null;
+    to_state_id: string | null;
+  }>;
+} | null;
+
+function WorkflowHistory({
+  data, loading, error,
+}: { data: WorkflowHistoryData | undefined; loading: boolean; error: unknown }) {
+  if (loading) return <p className="text-xs text-muted-foreground">Carregando histórico...</p>;
+  if (error) return <p className="text-xs text-destructive">Falha ao carregar histórico.</p>;
+  if (!data || !data.instance) {
+    return <p className="text-xs text-muted-foreground">Sem instância de workflow vinculada.</p>;
+  }
+  const history = data.history ?? [];
+  if (!history.length) {
+    return <p className="text-xs text-muted-foreground">Nenhuma transição registrada ainda.</p>;
+  }
+  return (
+    <ol className="space-y-2">
+      {history.map((h) => (
+        <li key={h.id} className="text-xs border-l-2 border-muted pl-3">
+          <div className="text-muted-foreground">{fmtDateTime(h.occurred_at)}</div>
+          <div>
+            Transição: <code>{h.from_state_id ?? "—"}</code> → <code>{h.to_state_id ?? "—"}</code>
+          </div>
+          {h.actor_user_id && <div className="text-muted-foreground">Por: <code>{h.actor_user_id}</code></div>}
+          {h.reason && <div className="italic">"{h.reason}"</div>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
