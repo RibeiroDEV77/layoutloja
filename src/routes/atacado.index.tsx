@@ -23,7 +23,7 @@ import { useEnterWholesale } from "@/components/storefront/sales-channel-provide
 import { createWholesaleApplication } from "@/lib/business/wholesale-applications.functions";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/atacado")({
+export const Route = createFileRoute("/atacado/")({
   ssr: false,
   head: () => ({
     meta: [
