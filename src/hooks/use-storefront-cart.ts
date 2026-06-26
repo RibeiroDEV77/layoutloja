@@ -74,7 +74,8 @@ export type ShippingQuote = {
   selected: boolean;
 };
 
-export function useStorefrontCart() {
+export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
+  const CART_KEY = cartKeyFor(salesChannel);
   const fnStore = useServerFn(getStorefrontStore);
   const fnGetOrCreate = useServerFn(anonGetOrCreateCart);
   const fnGet = useServerFn(anonGetCart);
