@@ -158,14 +158,16 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system">
         <AuthProvider>
-          <CartProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <MiniCart />
-            {!isAdmin && <WhatsAppFab />}
-            <AccountSheet />
-            <Toaster richColors position="top-right" />
-          </CartProvider>
+          <SalesChannelProvider>
+            <CartProvider>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <MiniCart />
+              {!isAdmin && <WhatsAppFab />}
+              <AccountSheet />
+              <Toaster richColors position="top-right" />
+            </CartProvider>
+          </SalesChannelProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
