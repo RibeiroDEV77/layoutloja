@@ -138,12 +138,15 @@ function WholesaleApplicationsPage() {
 
   const rows = query.data?.rows ?? [];
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-wholesale-applications"] });
 
   return (
     <CrudPage
       title="Solicitações de Atacado"
-      description="Consulta somente leitura das solicitações de cadastro para atacado."
+      description="Consulta e decisão (aprovação/reprovação) das solicitações de cadastro para atacado."
       breadcrumbs={[{ label: "Comercial" }, { label: "Atacado" }, { label: "Solicitações" }]}
+
       toolbar={
         <CrudToolbar
           left={
