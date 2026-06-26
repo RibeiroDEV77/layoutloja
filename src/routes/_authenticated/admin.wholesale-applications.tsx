@@ -255,7 +255,7 @@ function WholesaleApplicationsPage() {
 
       <Sheet open={!!selected} onOpenChange={(o) => { if (!o) setSelectedId(null); }}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-          {selected && <DetailsView row={selected} />}
+          {selected && <DetailsView row={selected} onChanged={refresh} />}
         </SheetContent>
       </Sheet>
     </CrudPage>
