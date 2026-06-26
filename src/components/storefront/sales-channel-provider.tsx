@@ -123,7 +123,16 @@ export function useEnterWholesale() {
       openAccountSheet();
       return;
     }
-    const customerId = customer?.customer?.id;
+    let customerId = customer?.customer?.id;
+    if (!customerId) {
+      console.log('[WholesaleNavigation] customer missing; refetching customer before deciding request status');
+      const refreshedCustomer = await customerQuery.refetch();
+      customerId = refreshedCustomer.data?.customer?.id;
+      console.log('[WholesaleNavigation] customer refetch result', {
+        customer: refreshedCustomer.data?.customer ?? null,
+        customerStatus: refreshedCustomer.status,
+      });
+    }
     if (!customerId) {
       // Autenticado, mas ainda sem perfil de customer → segue para o portal.
       console.log("[WholesaleNavigation] navigate('/atacado')", {
