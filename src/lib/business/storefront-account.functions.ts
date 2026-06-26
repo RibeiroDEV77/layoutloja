@@ -34,8 +34,8 @@ async function ensureCustomer(ctx: any) {
     .from("customers")
     .insert({
       store_id: store.id,
-      type: "pessoa_fisica",
-      status: "ativo",
+      type: "pf",
+      status: "active",
       email,
       name,
       auth_user_id: userId,
