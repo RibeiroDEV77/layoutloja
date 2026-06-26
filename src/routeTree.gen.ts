@@ -15,6 +15,7 @@ import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AtacadoRouteImport } from './routes/atacado'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MinhaContaIndexRouteImport } from './routes/minha-conta.index'
@@ -102,6 +103,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtacadoRoute = AtacadoRouteImport.update({
+  id: '/atacado',
+  path: '/atacado',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -117,9 +123,9 @@ const MinhaContaIndexRoute = MinhaContaIndexRouteImport.update({
   getParentRoute: () => MinhaContaRoute,
 } as any)
 const AtacadoIndexRoute = AtacadoIndexRouteImport.update({
-  id: '/atacado/',
-  path: '/atacado/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AtacadoRoute,
 } as any)
 const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
   id: '/produto/$slug',
@@ -157,9 +163,9 @@ const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AtacadoHomeRoute = AtacadoHomeRouteImport.update({
-  id: '/atacado/home',
-  path: '/atacado/home',
-  getParentRoute: () => rootRouteImport,
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AtacadoRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
@@ -421,6 +427,7 @@ const AuthenticatedAdminProductsIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atacado': typeof AtacadoRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -546,6 +553,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/atacado': typeof AtacadoRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -611,6 +619,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/atacado'
     | '/auth'
     | '/checkout'
     | '/minha-conta'
@@ -735,6 +744,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/atacado'
     | '/auth'
     | '/checkout'
     | '/minha-conta'
@@ -800,17 +810,16 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AtacadoRoute: typeof AtacadoRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   MinhaContaRoute: typeof MinhaContaRouteWithChildren
   ProdutosRoute: typeof ProdutosRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SacolaRoute: typeof SacolaRoute
-  AtacadoHomeRoute: typeof AtacadoHomeRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   PedidoIdRoute: typeof PedidoIdRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
-  AtacadoIndexRoute: typeof AtacadoIndexRoute
   ApiPublicHooksMelhorEnvioCallbackRoute: typeof ApiPublicHooksMelhorEnvioCallbackRoute
   ApiPublicHooksMelhorEnvioWebhookRoute: typeof ApiPublicHooksMelhorEnvioWebhookRoute
   ApiPublicHooksMercadopagoRoute: typeof ApiPublicHooksMercadopagoRoute
@@ -862,6 +871,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atacado': {
+      id: '/atacado'
+      path: '/atacado'
+      fullPath: '/atacado'
+      preLoaderRoute: typeof AtacadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -885,10 +901,10 @@ declare module '@tanstack/react-router' {
     }
     '/atacado/': {
       id: '/atacado/'
-      path: '/atacado'
+      path: '/'
       fullPath: '/atacado/'
       preLoaderRoute: typeof AtacadoIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AtacadoRoute
     }
     '/produto/$slug': {
       id: '/produto/$slug'
@@ -941,10 +957,10 @@ declare module '@tanstack/react-router' {
     }
     '/atacado/home': {
       id: '/atacado/home'
-      path: '/atacado/home'
+      path: '/home'
       fullPath: '/atacado/home'
       preLoaderRoute: typeof AtacadoHomeRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AtacadoRoute
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -1435,6 +1451,19 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AtacadoRouteChildren {
+  AtacadoHomeRoute: typeof AtacadoHomeRoute
+  AtacadoIndexRoute: typeof AtacadoIndexRoute
+}
+
+const AtacadoRouteChildren: AtacadoRouteChildren = {
+  AtacadoHomeRoute: AtacadoHomeRoute,
+  AtacadoIndexRoute: AtacadoIndexRoute,
+}
+
+const AtacadoRouteWithChildren =
+  AtacadoRoute._addFileChildren(AtacadoRouteChildren)
+
 interface MinhaContaRouteChildren {
   MinhaContaDadosRoute: typeof MinhaContaDadosRoute
   MinhaContaEnderecosRoute: typeof MinhaContaEnderecosRoute
@@ -1458,17 +1487,16 @@ const MinhaContaRouteWithChildren = MinhaContaRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AtacadoRoute: AtacadoRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   MinhaContaRoute: MinhaContaRouteWithChildren,
   ProdutosRoute: ProdutosRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SacolaRoute: SacolaRoute,
-  AtacadoHomeRoute: AtacadoHomeRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
   PedidoIdRoute: PedidoIdRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
-  AtacadoIndexRoute: AtacadoIndexRoute,
   ApiPublicHooksMelhorEnvioCallbackRoute:
     ApiPublicHooksMelhorEnvioCallbackRoute,
   ApiPublicHooksMelhorEnvioWebhookRoute: ApiPublicHooksMelhorEnvioWebhookRoute,
