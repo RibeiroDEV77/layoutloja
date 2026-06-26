@@ -375,6 +375,10 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
       {open && (
         <div className="lg:hidden border-t border-[#EFEFEF] bg-white">
           <nav className="px-5 py-4 grid gap-1 text-[15px]">
+            <SalesChannelTopbarLink
+              className="py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors"
+              onNavigate={() => setOpen(false)}
+            />
             {navItems.map((i) =>
               <Link
                 key={i.key}
