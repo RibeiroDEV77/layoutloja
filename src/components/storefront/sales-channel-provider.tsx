@@ -84,7 +84,7 @@ export function useEnterWholesale() {
         return;
       }
       setChannel('wholesale');
-      await navigate({ to: '/' });
+      await navigate({ to: '/atacado/home' });
     } catch {
       await navigate({ to: '/atacado' });
     }

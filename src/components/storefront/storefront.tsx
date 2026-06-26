@@ -15,41 +15,53 @@ import logoTransparent from "@/assets/layout-logo-transparent.png.asset.json";
 import type { StorefrontCategory, StorefrontProduct, StorefrontBrand } from "@/lib/business/storefront.functions";
 import { COMPANY, whatsappUrl, mailtoUrl } from "@/lib/company";
 import { STOREFRONT_NAV_ITEMS, resolveStorefrontCategory, resolveStorefrontCategories } from "@/lib/storefront-navigation";
+import { Building2 } from "lucide-react";
 import { useSalesChannel, useEnterWholesale } from "@/components/storefront/sales-channel-provider";
+import { useWholesaleStatus } from "@/hooks/use-wholesale-status";
 
 // ---------------------------------------------------------------------------
-// Sales channel controls (Sprint 8) — botão "Atacado" + indicador discreto.
+// Sales channel controls (Sprint 10) — acesso permanente ao Canal Atacado
+// na Top Bar. O texto muda dinamicamente entre "Área do Lojista" (default)
+// e "Canal Atacado" (cliente aprovado). O comportamento do clique é
+// delegado integralmente a `useEnterWholesale`.
 // ---------------------------------------------------------------------------
 
-function SalesChannelControls() {
+export function SalesChannelTopbarLink({
+  className,
+  onNavigate,
+}: { className?: string; onNavigate?: () => void } = {}) {
   const { channel } = useSalesChannel();
   const { enterWholesale, goRetail } = useEnterWholesale();
+  const { isApproved } = useWholesaleStatus();
   const isWholesale = channel === "wholesale";
+
+  if (isWholesale) {
+    return (
+      <button
+        type="button"
+        onClick={() => { onNavigate?.(); void goRetail(); }}
+        className={cn("inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity", className)}
+      >
+        <Building2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+        Voltar ao varejo
+      </button>
+    );
+  }
   return (
-    <div className="inline-flex items-center gap-3">
-      <span className="hidden sm:inline text-[12px] text-neutral-400">
-        Canal: <span className="text-white font-medium">{isWholesale ? "Atacado" : "Varejo"}</span>
-      </span>
-      {isWholesale ? (
-        <button
-          type="button"
-          onClick={() => { void goRetail(); }}
-          className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity"
-        >
-          Voltar ao varejo
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => { void enterWholesale(); }}
-          className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity"
-          aria-label="Acessar canal Atacado"
-        >
-          Atacado
-        </button>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={() => { onNavigate?.(); void enterWholesale(); }}
+      className={cn("inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity", className)}
+      aria-label={isApproved ? "Entrar no Canal Atacado" : "Área do Lojista"}
+    >
+      <Building2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+      {isApproved ? "Canal Atacado" : "Área do Lojista"}
+    </button>
   );
+}
+
+function SalesChannelControls() {
+  return <SalesChannelTopbarLink className="text-white" />;
 }
 
 
@@ -363,6 +375,10 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
       {open && (
         <div className="lg:hidden border-t border-[#EFEFEF] bg-white">
           <nav className="px-5 py-4 grid gap-1 text-[15px]">
+            <SalesChannelTopbarLink
+              className="py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors"
+              onNavigate={() => setOpen(false)}
+            />
             {navItems.map((i) =>
               <Link
                 key={i.key}
