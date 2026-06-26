@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  CheckCircle2, Sparkles, TrendingUp, Truck, ShieldCheck, ChevronDown, Loader2,
+  CheckCircle2, Sparkles, TrendingUp, Truck, ShieldCheck, ChevronDown,
+  Loader2, Tag, Package, Headphones, ArrowRight, Clock, XCircle,
 } from "lucide-react";
 
 import { StorefrontShell } from "@/components/storefront/storefront";
@@ -17,37 +18,35 @@ import {
   useStorefrontCustomer,
   openAccountSheet,
 } from "@/hooks/use-storefront-customer";
-import {
-  createWholesaleApplication,
-  getActiveWholesaleApplication,
-} from "@/lib/business/wholesale-applications.functions";
+import { useWholesaleStatus, type WholesaleAppStatus } from "@/hooks/use-wholesale-status";
+import { useEnterWholesale } from "@/components/storefront/sales-channel-provider";
+import { createWholesaleApplication } from "@/lib/business/wholesale-applications.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/atacado")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Atacado — Layout" },
+      { title: "Canal Atacado — Layout" },
       {
         name: "description",
         content:
-          "Programa de Atacado da Layout: condições especiais para lojistas e revendedores. Solicite seu cadastro e comece a comprar com preços de atacado.",
+          "Solicite acesso ao Canal Atacado da Layout: programa exclusivo para lojistas, revendedores e empresas com preços e condições diferenciadas.",
       },
-      { property: "og:title", content: "Atacado — Layout" },
+      { property: "og:title", content: "Canal Atacado — Layout" },
       {
         property: "og:description",
         content:
-          "Condições especiais para lojistas e revendedores. Solicite seu cadastro no programa de Atacado da Layout.",
+          "Programa exclusivo para lojistas e revendedores. Solicite seu acesso ao Canal Atacado da Layout.",
       },
     ],
   }),
-  component: AtacadoPage,
+  component: AtacadoPortal,
 });
 
 type PersonType = "pf" | "pj";
-type Status = "draft" | "submitted" | "in_review" | "approved" | "rejected" | "cancelled";
 
-const STATUS_LABEL: Record<Status, string> = {
+const STATUS_LABEL: Record<WholesaleAppStatus, string> = {
   draft: "Rascunho",
   submitted: "Enviada — aguardando análise",
   in_review: "Em análise",
@@ -56,40 +55,57 @@ const STATUS_LABEL: Record<Status, string> = {
   cancelled: "Cancelada",
 };
 
-function AtacadoPage() {
-  const [open, setOpen] = useState(false);
+function AtacadoPortal() {
+  const [openForm, setOpenForm] = useState(false);
   return (
     <StorefrontShell>
-      <Hero onCta={() => setOpen(true)} />
-      <Benefits />
-      <HowItWorks />
-      <Faq />
-      <CtaBlock onCta={() => setOpen(true)} />
-      <ApplicationDialog open={open} onClose={() => setOpen(false)} />
+      <PortalHero onCta={() => setOpenForm(true)} />
+      <PortalBenefits />
+      <PortalHowItWorks />
+      <PortalFaq />
+      <ApplicationDialog open={openForm} onClose={() => setOpenForm(false)} />
     </StorefrontShell>
   );
 }
 
-// ---------------- Sections ----------------
-function Hero({ onCta }: { onCta: () => void }) {
+// ---------------- Hero (cabeçalho institucional + estado dinâmico) ----------------
+
+function PortalHero({ onCta }: { onCta: () => void }) {
+  const { ctx, loading: loadingAuth } = useAuth();
+  const authed = !!ctx?.authenticated;
+  const { loading, latest, isApproved, hasOpen, isRejected } = useWholesaleStatus();
+  const { enterWholesale } = useEnterWholesale();
+
   return (
     <section className="relative overflow-hidden border-b border-zinc-200 bg-gradient-to-br from-zinc-50 to-white">
       <div className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24">
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white">
-            <Sparkles className="h-3.5 w-3.5" /> Programa Atacado Layout
+            <Sparkles className="h-3.5 w-3.5" /> Programa exclusivo
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-zinc-900 md:text-5xl">
-            Compre Layout no Atacado
+            Canal Atacado
           </h1>
           <p className="mt-4 text-lg text-zinc-600">
-            Condições especiais para lojistas e revendedores que querem oferecer
-            o melhor do estilo country na sua loja física ou online.
+            Solicite acesso ao nosso programa exclusivo para lojistas, revendedores e empresas.
           </p>
+
           <div className="mt-8">
-            <Button size="lg" onClick={onCta} className="bg-zinc-900 text-white hover:bg-zinc-800">
-              Solicitar Cadastro
-            </Button>
+            {loadingAuth || (authed && loading) ? (
+              <div className="inline-flex items-center text-sm text-zinc-500">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando…
+              </div>
+            ) : !authed ? (
+              <StateVisitor onLogin={openAccountSheet} />
+            ) : isApproved ? (
+              <StateApproved onEnter={() => void enterWholesale()} />
+            ) : hasOpen ? (
+              <StatePending latest={latest} />
+            ) : isRejected ? (
+              <StateRejected latest={latest} onCta={onCta} />
+            ) : (
+              <StateAuthedNoApp onCta={onCta} />
+            )}
           </div>
         </div>
       </div>
@@ -97,12 +113,101 @@ function Hero({ onCta }: { onCta: () => void }) {
   );
 }
 
-function Benefits() {
+// Estado 1 — Visitante
+function StateVisitor({ onLogin }: { onLogin: () => void }) {
+  return (
+    <Button size="lg" onClick={onLogin} className="bg-zinc-900 text-white hover:bg-zinc-800">
+      Entrar para solicitar acesso
+    </Button>
+  );
+}
+
+// Estado 2 — Autenticado sem solicitação
+function StateAuthedNoApp({ onCta }: { onCta: () => void }) {
+  return (
+    <Button size="lg" onClick={onCta} className="bg-zinc-900 text-white hover:bg-zinc-800">
+      Solicitar acesso <ArrowRight className="ml-2 h-4 w-4" />
+    </Button>
+  );
+}
+
+// Estado 3 — Solicitação em análise
+function StatePending({ latest }: { latest: { status: WholesaleAppStatus; submitted_at: string | null; created_at: string } | null }) {
+  const when = latest?.submitted_at ?? latest?.created_at ?? null;
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm">
+      <div className="flex items-center gap-2 font-medium text-amber-900">
+        <Clock className="h-4 w-4" /> Sua solicitação está em análise
+      </div>
+      <dl className="mt-3 space-y-1 text-amber-900/90">
+        <div className="flex gap-2">
+          <dt className="text-amber-800/70">Status:</dt>
+          <dd className="font-medium">{latest ? STATUS_LABEL[latest.status] : "-"}</dd>
+        </div>
+        {when && (
+          <div className="flex gap-2">
+            <dt className="text-amber-800/70">Enviada em:</dt>
+            <dd className="font-medium">{new Date(when).toLocaleDateString("pt-BR")}</dd>
+          </div>
+        )}
+      </dl>
+      <p className="mt-3 text-amber-900/80">
+        Nossa equipe está avaliando seus dados. Você será notificado assim que houver uma decisão.
+      </p>
+    </div>
+  );
+}
+
+// Estado — Reprovado (variação institucional do fluxo)
+function StateRejected({
+  latest, onCta,
+}: { latest: { decision_reason: string | null } | null; onCta: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm">
+        <div className="flex items-center gap-2 font-medium text-red-900">
+          <XCircle className="h-4 w-4" /> Sua solicitação não foi aprovada
+        </div>
+        {latest?.decision_reason && (
+          <p className="mt-2 text-red-900/90">
+            <span className="text-red-800/70">Motivo:</span>{" "}
+            <span className="font-medium">{latest.decision_reason}</span>
+          </p>
+        )}
+        <p className="mt-2 text-red-900/80">
+          Você pode revisar suas informações e enviar uma nova solicitação.
+        </p>
+      </div>
+      <Button size="lg" onClick={onCta} className="bg-zinc-900 text-white hover:bg-zinc-800">
+        Enviar nova solicitação
+      </Button>
+    </div>
+  );
+}
+
+// Estado 4 — Aprovado
+function StateApproved({ onEnter }: { onEnter: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm">
+        <div className="flex items-center gap-2 font-medium text-emerald-900">
+          <CheckCircle2 className="h-4 w-4" /> Seu acesso ao Canal Atacado foi aprovado.
+        </div>
+      </div>
+      <Button size="lg" onClick={onEnter} className="bg-emerald-600 text-white hover:bg-emerald-700">
+        Entrar no Canal Atacado <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+// ---------------- Benefícios ----------------
+function PortalBenefits() {
   const items = [
-    { icon: TrendingUp, title: "Preços diferenciados", desc: "Tabela exclusiva para lojistas com margem competitiva." },
-    { icon: Truck, title: "Logística simplificada", desc: "Envios consolidados e prazos pensados para o seu giro." },
-    { icon: ShieldCheck, title: "Marca consolidada", desc: "Produtos com alta saída e identidade reconhecida pelo público country." },
-    { icon: CheckCircle2, title: "Suporte dedicado", desc: "Atendimento próximo para curadoria e reposição do mix." },
+    { icon: Tag, title: "Preços exclusivos", desc: "Tabela exclusiva para lojistas com margem competitiva." },
+    { icon: Truck, title: "Entrega para todo o Brasil", desc: "Logística pensada para o seu giro." },
+    { icon: Package, title: "Mesmo catálogo, condições diferentes", desc: "Acesso ao mix completo com condições comerciais diferenciadas." },
+    { icon: Headphones, title: "Atendimento especializado", desc: "Suporte próximo para curadoria e reposição." },
   ];
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 md:px-8">
@@ -120,12 +225,13 @@ function Benefits() {
   );
 }
 
-function HowItWorks() {
+// ---------------- Como funciona ----------------
+function PortalHowItWorks() {
   const steps = [
-    { n: 1, title: "Solicite o cadastro", desc: "Preencha o formulário com os dados do seu negócio." },
-    { n: 2, title: "Análise", desc: "Nossa equipe avalia a solicitação em poucos dias úteis." },
-    { n: 3, title: "Aprovação", desc: "Você é notificado e o acesso ao atacado é liberado." },
-    { n: 4, title: "Compre com preços de atacado", desc: "Navegue na loja com a tabela liberada para o seu perfil." },
+    { n: 1, title: "Solicite seu cadastro", desc: "Preencha o formulário com os dados do seu negócio.", icon: Sparkles },
+    { n: 2, title: "Nossa equipe analisa", desc: "Avaliamos sua solicitação em poucos dias úteis.", icon: ShieldCheck },
+    { n: 3, title: "Cadastro aprovado", desc: "Você é notificado e o acesso é liberado.", icon: CheckCircle2 },
+    { n: 4, title: "Compre no Canal Atacado", desc: "Navegue com condições comerciais diferenciadas.", icon: TrendingUp },
   ];
   return (
     <section className="border-y border-zinc-200 bg-zinc-50">
@@ -133,10 +239,13 @@ function HowItWorks() {
         <h2 className="text-2xl font-semibold text-zinc-900 md:text-3xl">Como funciona</h2>
         <ol className="mt-8 grid gap-4 md:grid-cols-4">
           {steps.map((s) => (
-            <li key={s.n} className="rounded-xl border border-zinc-200 bg-white p-6">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
-                {s.n}
-              </span>
+            <li key={s.n} className="relative rounded-xl border border-zinc-200 bg-white p-6">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
+                  {s.n}
+                </span>
+                <s.icon className="h-4 w-4 text-zinc-500" />
+              </div>
               <h3 className="mt-4 font-medium text-zinc-900">{s.title}</h3>
               <p className="mt-1 text-sm text-zinc-600">{s.desc}</p>
             </li>
@@ -147,12 +256,13 @@ function HowItWorks() {
   );
 }
 
-function Faq() {
+// ---------------- FAQ ----------------
+function PortalFaq() {
   const items = [
-    { q: "Qual o pedido mínimo?", a: "As condições comerciais são apresentadas após a aprovação do cadastro." },
-    { q: "Quem pode se cadastrar?", a: "Lojistas e revendedores, pessoa física ou jurídica, com atuação compatível com a marca." },
-    { q: "Quanto tempo leva a análise?", a: "Em média alguns dias úteis. Você recebe a comunicação assim que houver uma decisão." },
-    { q: "Posso comprar pelo site no varejo enquanto aguardo?", a: "Sim. O programa de atacado é complementar e não interfere nas compras no varejo." },
+    { q: "Quem pode comprar no atacado?", a: "Lojistas, revendedores e empresas, pessoa física ou jurídica, com atuação compatível com a marca." },
+    { q: "Como funciona a aprovação?", a: "Após enviar a solicitação, nossa equipe analisa os dados em poucos dias úteis e libera o acesso ao Canal Atacado quando aprovada." },
+    { q: "Existe pedido mínimo?", a: "As condições comerciais — incluindo eventuais pedidos mínimos — são apresentadas após a aprovação do cadastro." },
+    { q: "Como acompanho minha solicitação?", a: "Esta página exibe automaticamente o status atual da sua solicitação assim que você entra com sua conta." },
   ];
   return (
     <section className="mx-auto max-w-3xl px-4 py-16 md:px-8">
@@ -172,36 +282,15 @@ function Faq() {
   );
 }
 
-function CtaBlock({ onCta }: { onCta: () => void }) {
-  return (
-    <section className="border-t border-zinc-200 bg-zinc-900 text-white">
-      <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-12 md:flex-row md:items-center md:justify-between md:px-8">
-        <div>
-          <h2 className="text-2xl font-semibold md:text-3xl">Pronto para começar?</h2>
-          <p className="mt-2 text-zinc-300">Envie sua solicitação e nossa equipe entrará em contato.</p>
-        </div>
-        <Button size="lg" onClick={onCta} className="bg-white text-zinc-900 hover:bg-zinc-100">
-          Solicitar Cadastro
-        </Button>
-      </div>
-    </section>
-  );
-}
+// ---------------- Application Dialog (reutiliza o serviço existente) ----------------
 
-// ---------------- Dialog ----------------
 function ApplicationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { ctx, loading } = useAuth();
   const authed = !!ctx?.authenticated;
-
   if (!open) return null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 md:items-center md:p-4">
-      <div
-        className="absolute inset-0"
-        aria-hidden
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" aria-hidden onClick={onClose} />
       <div className="relative z-10 max-h-[92vh] w-full max-w-2xl overflow-auto rounded-t-2xl bg-white p-6 shadow-xl md:rounded-2xl md:p-8">
         <button
           onClick={onClose}
@@ -229,14 +318,11 @@ function SignInPrompt({ onClose }: { onClose: () => void }) {
     <div className="py-4">
       <h3 className="text-xl font-semibold text-zinc-900">Entre para continuar</h3>
       <p className="mt-2 text-sm text-zinc-600">
-        É necessário estar conectado à sua conta para enviar a solicitação de atacado.
+        É necessário estar conectado à sua conta para enviar a solicitação de acesso ao Canal Atacado.
       </p>
       <div className="mt-6 flex gap-3">
         <Button
-          onClick={() => {
-            onClose();
-            setTimeout(() => openAccountSheet(), 50);
-          }}
+          onClick={() => { onClose(); setTimeout(() => openAccountSheet(), 50); }}
           className="bg-zinc-900 text-white hover:bg-zinc-800"
         >
           Entrar / Criar conta
@@ -250,15 +336,9 @@ function SignInPrompt({ onClose }: { onClose: () => void }) {
 function ApplicationBody({ onClose }: { onClose: () => void }) {
   const { data: account, isLoading: loadingAccount } = useStorefrontCustomer();
   const customerId = account?.customer.id;
+  const { loading, hasOpen, latest } = useWholesaleStatus();
 
-  const getActive = useServerFn(getActiveWholesaleApplication);
-  const activeQuery = useQuery({
-    queryKey: ["wholesale", "active", customerId],
-    queryFn: () => getActive({ data: { customer_id: customerId! } }),
-    enabled: !!customerId,
-  });
-
-  if (loadingAccount || activeQuery.isLoading) {
+  if (loadingAccount || loading) {
     return (
       <div className="flex items-center justify-center py-16 text-zinc-500">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando…
@@ -266,34 +346,25 @@ function ApplicationBody({ onClose }: { onClose: () => void }) {
     );
   }
 
-  if (activeQuery.isError) {
-    return <p className="py-6 text-sm text-red-600">Erro ao carregar dados. Tente novamente.</p>;
+  if (hasOpen && latest) {
+    return (
+      <div className="py-2">
+        <h3 className="text-xl font-semibold text-zinc-900">Solicitação em andamento</h3>
+        <p className="mt-2 text-sm text-zinc-600">
+          Você já possui uma solicitação registrada. Não é possível abrir uma nova enquanto esta não for finalizada.
+        </p>
+        <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm">
+          <span className="text-zinc-500">Status atual:</span>{" "}
+          <span className="font-medium text-zinc-900">{STATUS_LABEL[latest.status]}</span>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <Button onClick={onClose}>Fechar</Button>
+        </div>
+      </div>
+    );
   }
 
-  const res = activeQuery.data;
-  const active = res?.ok ? res.data : null;
-
-  if (active) return <ExistingApplication status={active.status as Status} onClose={onClose} />;
-
   return <ApplicationForm customerId={customerId!} defaultName={account?.customer.name ?? ""} onClose={onClose} />;
-}
-
-function ExistingApplication({ status, onClose }: { status: Status; onClose: () => void }) {
-  return (
-    <div className="py-2">
-      <h3 className="text-xl font-semibold text-zinc-900">Solicitação em andamento</h3>
-      <p className="mt-2 text-sm text-zinc-600">
-        Você já possui uma solicitação de atacado registrada. Não é possível abrir uma nova enquanto esta não for finalizada.
-      </p>
-      <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm">
-        <span className="text-zinc-500">Status atual:</span>{" "}
-        <span className="font-medium text-zinc-900">{STATUS_LABEL[status]}</span>
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button onClick={onClose}>Fechar</Button>
-      </div>
-    </div>
-  );
 }
 
 function ApplicationForm({
@@ -303,16 +374,13 @@ function ApplicationForm({
   const createFn = useServerFn(createWholesaleApplication);
 
   const [personType, setPersonType] = useState<PersonType>("pf");
-  // PF
   const [name, setName] = useState(defaultName);
   const [cpf, setCpf] = useState("");
-  // PJ
   const [razao, setRazao] = useState("");
   const [fantasia, setFantasia] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [ie, setIe] = useState("");
   const [responsavel, setResponsavel] = useState(defaultName);
-  // comuns
   const [whatsapp, setWhatsapp] = useState("");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
@@ -355,6 +423,7 @@ function ApplicationForm({
     },
     onSuccess: () => {
       setSent(true);
+      qc.invalidateQueries({ queryKey: ["wholesale", "list", customerId] });
       qc.invalidateQueries({ queryKey: ["wholesale", "active", customerId] });
     },
     onError: (e: Error) => toast.error(e.message ?? "Erro ao enviar solicitação"),
@@ -381,7 +450,7 @@ function ApplicationForm({
       className="space-y-5"
     >
       <header>
-        <h3 className="text-xl font-semibold text-zinc-900">Solicitar Cadastro Atacado</h3>
+        <h3 className="text-xl font-semibold text-zinc-900">Solicitar acesso ao Canal Atacado</h3>
         <p className="mt-1 text-sm text-zinc-600">Preencha os dados do seu negócio. Campos com * são obrigatórios.</p>
       </header>
 
