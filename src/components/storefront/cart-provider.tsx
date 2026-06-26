@@ -4,7 +4,7 @@
  * para compartilhar o mesmo estado, sem duplicar consultas.
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { useStorefrontCart } from '@/hooks/use-storefront-cart';
+import { useStorefrontCart, type SalesChannel } from '@/hooks/use-storefront-cart';
 
 type Cart = ReturnType<typeof useStorefrontCart>;
 
@@ -13,12 +13,13 @@ type CartContextValue = Cart & {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
+  salesChannel: SalesChannel;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const cart = useStorefrontCart();
+export function CartProvider({ children, salesChannel = 'retail' }: { children: ReactNode; salesChannel?: SalesChannel }) {
+  const cart = useStorefrontCart(salesChannel);
   const [isOpen, setIsOpen] = useState(false);
   const value = useMemo<CartContextValue>(() => ({
     ...cart,
@@ -26,7 +27,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     openCart: () => setIsOpen(true),
     closeCart: () => setIsOpen(false),
     toggleCart: () => setIsOpen((v) => !v),
-  }), [cart, isOpen]);
+    salesChannel,
+  }), [cart, isOpen, salesChannel]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 

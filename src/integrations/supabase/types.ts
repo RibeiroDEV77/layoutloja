@@ -814,6 +814,7 @@ export type Database = {
           merged_into_cart_id: string | null
           metadata: Json
           price_list_id: string | null
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           selected_shipping_quote_id: string | null
           session_token: string | null
           shipping_address_id: string | null
@@ -840,6 +841,7 @@ export type Database = {
           merged_into_cart_id?: string | null
           metadata?: Json
           price_list_id?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           selected_shipping_quote_id?: string | null
           session_token?: string | null
           shipping_address_id?: string | null
@@ -866,6 +868,7 @@ export type Database = {
           merged_into_cart_id?: string | null
           metadata?: Json
           price_list_id?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           selected_shipping_quote_id?: string | null
           session_token?: string | null
           shipping_address_id?: string | null
@@ -5952,6 +5955,7 @@ export type Database = {
           metadata: Json
           order_number: string
           placed_at: string | null
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           shipping_total: number
           source_cart_id: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -5985,6 +5989,7 @@ export type Database = {
           metadata?: Json
           order_number: string
           placed_at?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           shipping_total?: number
           source_cart_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -6018,6 +6023,7 @@ export type Database = {
           metadata?: Json
           order_number?: string
           placed_at?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           shipping_total?: number
           source_cart_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -12887,6 +12893,7 @@ export type Database = {
           merged_into_cart_id: string | null
           metadata: Json
           price_list_id: string | null
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           selected_shipping_quote_id: string | null
           session_token: string | null
           shipping_address_id: string | null
@@ -14459,6 +14466,7 @@ export type Database = {
       reservation_status: "active" | "released" | "consumed" | "expired"
       review_status: "pending" | "approved" | "rejected" | "flagged" | "removed"
       sale_channel: "varejo" | "atacado" | "ambos"
+      sales_channel: "retail" | "wholesale"
       setting_scope: "global" | "store"
       shipment_status:
         | "created"
@@ -15119,6 +15127,7 @@ export const Constants = {
       reservation_status: ["active", "released", "consumed", "expired"],
       review_status: ["pending", "approved", "rejected", "flagged", "removed"],
       sale_channel: ["varejo", "atacado", "ambos"],
+      sales_channel: ["retail", "wholesale"],
       setting_scope: ["global", "store"],
       shipment_status: [
         "created",

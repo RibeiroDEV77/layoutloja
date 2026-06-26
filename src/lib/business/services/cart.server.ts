@@ -84,18 +84,23 @@ async function recalc(supabase: SbClient, cartId: string): Promise<CartRow> {
 
 // ---------------- Public API ----------------
 
+export type SalesChannel = 'retail' | 'wholesale';
+
 export interface GetOrCreateInput {
   store_id: string;
   customer_id?: string | null;
   session_token?: string | null;
+  /** Canal comercial (default: 'retail'). Sprint 7 — compat retroativa. */
+  sales_channel?: SalesChannel;
 }
 
 export async function getOrCreateCart(supabase: SbClient, userId: string | null, input: GetOrCreateInput): Promise<CartRow> {
   if (!input.customer_id && !input.session_token) {
     throw Errors.validation('Necessário customer_id ou session_token');
   }
+  const salesChannel: SalesChannel = input.sales_channel ?? 'retail';
   // try active
-  let q = supabase.from('carts').select('*').eq('store_id', input.store_id).eq('status', 'active');
+  let q = supabase.from('carts').select('*').eq('store_id', input.store_id).eq('status', 'active').eq('sales_channel', salesChannel as never);
   if (input.customer_id) q = q.eq('customer_id', input.customer_id);
   else q = q.eq('session_token', input.session_token!).is('customer_id', null);
   const { data: existing } = await q.maybeSingle();
@@ -110,7 +115,8 @@ export async function getOrCreateCart(supabase: SbClient, userId: string | null,
     session_token: input.session_token ?? null,
     customer_group_id: customerGroupId,
     price_list_id: priceListId,
-  }).select('*').single();
+    sales_channel: salesChannel,
+  } as never).select('*').single();
   if (error) throw Errors.internal('Falha ao criar carrinho', { error: error.message });
 
   await timeline(supabase, created.id, 'created', { customer_id: input.customer_id ?? null });

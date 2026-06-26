@@ -36,7 +36,7 @@ async function publicClient(): Promise<SupabaseClient<Database>> {
 // ---------------------------------------------------------------------------
 
 export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
-  .inputValidator((d: { store_id: string; session_token: string }) => d)
+  .inputValidator((d: { store_id: string; session_token: string; sales_channel?: 'retail' | 'wholesale' }) => d)
   .handler(async ({ data }) => {
     if (!data.store_id || !data.session_token) {
       throw Errors.validation('store_id e session_token obrigatórios');
@@ -45,6 +45,7 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
     return Cart.getOrCreateCart(sb, null, {
       store_id: data.store_id,
       session_token: data.session_token,
+      sales_channel: data.sales_channel ?? 'retail',
     });
   });
 

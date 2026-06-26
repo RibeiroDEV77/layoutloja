@@ -19,7 +19,12 @@ import {
 import { getStorefrontStore } from '@/lib/business/storefront.functions';
 
 const SESSION_KEY = 'storefront.cart.session';
-const CART_KEY = 'storefront.cart.id';
+const CART_KEY_BASE = 'storefront.cart.id';
+export type SalesChannel = 'retail' | 'wholesale';
+function cartKeyFor(channel: SalesChannel): string {
+  // Retroativo: o canal 'retail' continua usando a chave legada.
+  return channel === 'retail' ? CART_KEY_BASE : `${CART_KEY_BASE}:${channel}`;
+}
 
 function ensureSessionToken(): string {
   if (typeof window === 'undefined') return '';
@@ -69,7 +74,8 @@ export type ShippingQuote = {
   selected: boolean;
 };
 
-export function useStorefrontCart() {
+export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
+  const CART_KEY = cartKeyFor(salesChannel);
   const fnStore = useServerFn(getStorefrontStore);
   const fnGetOrCreate = useServerFn(anonGetOrCreateCart);
   const fnGet = useServerFn(anonGetCart);
@@ -136,7 +142,7 @@ export function useStorefrontCart() {
           }
         }
         if (!cartPayload) {
-          const cart = await fnGetOrCreate({ data: { store_id: store.id, session_token: sessionToken } });
+          const cart = await fnGetOrCreate({ data: { store_id: store.id, session_token: sessionToken, sales_channel: salesChannel } });
           window.localStorage.setItem(CART_KEY, String((cart as { id: string }).id));
           cartPayload = (await fnGet({ data: { cart_id: (cart as { id: string }).id, session_token: sessionToken } })) as never;
         }
@@ -213,7 +219,7 @@ export function formatBRL(n: number, currency = 'BRL'): string {
   }
 }
 
-export function clearStoredCart() {
+export function clearStoredCart(salesChannel: SalesChannel = 'retail') {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(CART_KEY);
+  window.localStorage.removeItem(cartKeyFor(salesChannel));
 }
