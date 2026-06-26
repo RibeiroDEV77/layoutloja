@@ -19,7 +19,12 @@ import {
 import { getStorefrontStore } from '@/lib/business/storefront.functions';
 
 const SESSION_KEY = 'storefront.cart.session';
-const CART_KEY = 'storefront.cart.id';
+const CART_KEY_BASE = 'storefront.cart.id';
+export type SalesChannel = 'retail' | 'wholesale';
+function cartKeyFor(channel: SalesChannel): string {
+  // Retroativo: o canal 'retail' continua usando a chave legada.
+  return channel === 'retail' ? CART_KEY_BASE : `${CART_KEY_BASE}:${channel}`;
+}
 
 function ensureSessionToken(): string {
   if (typeof window === 'undefined') return '';
