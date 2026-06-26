@@ -129,11 +129,18 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
             .in('id', sizeIds)
         : Promise.resolve({ data: [] }),
       variantIds.length
-        ? sb.from('price_list_items')
-            .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, starts_at, ends_at)')
-            .in('variant_id', variantIds)
-            .eq('price_lists.is_active', true)
-            .eq('price_lists.store_id', product.store_id)
+        ? (ctx.price_list_code
+            ? sb.from('price_list_items')
+                .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, code, starts_at, ends_at)')
+                .in('variant_id', variantIds)
+                .eq('price_lists.is_active', true)
+                .eq('price_lists.store_id', product.store_id)
+                .eq('price_lists.code', ctx.price_list_code)
+            : sb.from('price_list_items')
+                .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, starts_at, ends_at)')
+                .in('variant_id', variantIds)
+                .eq('price_lists.is_active', true)
+                .eq('price_lists.store_id', product.store_id))
         : Promise.resolve({ data: [] }),
     ]);
 
