@@ -50,7 +50,11 @@ export function SalesChannelTopbarLink({
   return (
     <button
       type="button"
-      onClick={() => { onNavigate?.(); void enterWholesale(); }}
+      onClick={() => {
+        console.log('[WholesaleNavigation] Top Bar click → enterWholesale()');
+        onNavigate?.();
+        void enterWholesale();
+      }}
       className={cn("inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity", className)}
       aria-label={isApproved ? "Entrar no Canal Atacado" : "Área do Lojista"}
     >

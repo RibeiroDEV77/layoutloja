@@ -44,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCtx({ authenticated: true, user_id: sess.user.id, roles: [], permissions: [], stores: [] });
       return;
     }
-    setCtx(data as unknown as UserContext);
+    const serverContext = data && typeof data === "object" ? data as Record<string, unknown> : {};
+    setCtx({
+      ...serverContext,
+      authenticated: true,
+      user_id: typeof serverContext.user_id === "string" ? serverContext.user_id : sess.user.id,
+    } as unknown as UserContext);
   };
 
   useEffect(() => {
