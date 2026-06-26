@@ -41,6 +41,8 @@ export function SalesChannelProvider({ children }: { children: ReactNode }) {
   const [channel, setChannelState] = useState<SalesChannel>(DEFAULT_SALES_CHANNEL);
   const router = useRouter();
   const hydratedRef = useRef(false);
+  const { ctx, loading: loadingAuth, session, user } = useAuth();
+  const authenticated = !loadingAuth && (!!ctx?.authenticated || !!session?.user || !!user);
 
   // Hidrata a partir do cookie (preferido) ou do localStorage (legado).
   useEffect(() => {
@@ -64,12 +66,28 @@ export function SalesChannelProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hardening (Sprint 10.7): canal persistido NUNCA é prova de autorização.
+  // Se o usuário não está autenticado, qualquer 'wholesale' residual em
+  // cookie/localStorage é descartado e o canal volta para 'retail'.
+  useEffect(() => {
+    if (loadingAuth) return;
+    if (!authenticated && channel === 'wholesale') {
+      setChannelState('retail');
+      clearSalesChannelCookieBrowser();
+      void router.invalidate();
+    }
+  }, [authenticated, loadingAuth, channel, router]);
+
   const setChannel = useCallback((c: SalesChannel) => {
     const next = normalizeSalesChannel(c);
     setChannelState(next);
-    writeSalesChannelCookieBrowser(next);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(SALES_CHANNEL_STORAGE_KEY, next); // mantém legado em sincronia
+    if (next === 'retail') {
+      clearSalesChannelCookieBrowser();
+    } else {
+      writeSalesChannelCookieBrowser(next);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SALES_CHANNEL_STORAGE_KEY, next); // mantém legado em sincronia
+      }
     }
     void router.invalidate();
   }, [router]);
@@ -77,6 +95,7 @@ export function SalesChannelProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ channel, setChannel }), [channel, setChannel]);
   return <SalesChannelContext.Provider value={value}>{children}</SalesChannelContext.Provider>;
 }
+
 
 export function useSalesChannel(): SalesChannelContextValue {
   const ctx = useContext(SalesChannelContext);
