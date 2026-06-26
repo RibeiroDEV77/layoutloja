@@ -142,7 +142,7 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
           }
         }
         if (!cartPayload) {
-          const cart = await fnGetOrCreate({ data: { store_id: store.id, session_token: sessionToken } });
+          const cart = await fnGetOrCreate({ data: { store_id: store.id, session_token: sessionToken, sales_channel: salesChannel } });
           window.localStorage.setItem(CART_KEY, String((cart as { id: string }).id));
           cartPayload = (await fnGet({ data: { cart_id: (cart as { id: string }).id, session_token: sessionToken } })) as never;
         }
