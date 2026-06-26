@@ -348,7 +348,7 @@ function ApplicationForm({
               message: mensagem.trim() || null,
             };
       const res = await createFn({
-        data: { customer_id: customerId, submit: true, metadata: metadata as Record<string, never> },
+        data: { customer_id: customerId, submit: true, metadata: metadata as unknown as Record<string, never> },
       });
       if (!res.ok) throw new Error(res.error.message);
       return res.data;
