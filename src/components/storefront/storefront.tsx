@@ -179,11 +179,14 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
             <span className="hidden md:inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" strokeWidth={1.5}/> Entrega para todo o Brasil</span>
             <a href={whatsappUrl()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors"><MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5}/> WhatsApp {COMPANY.whatsapp.display}</a>
           </div>
-          <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
-            <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
-            <span className="hidden sm:inline">Promoções da semana</span>
-            <span className="sm:hidden">Promoções</span>
-          </a>
+          <div className="flex items-center gap-4">
+            <SalesChannelControls />
+            <a href="#" className="inline-flex items-center gap-1.5 text-white hover:opacity-80 transition-opacity">
+              <Tag className="h-3.5 w-3.5" strokeWidth={1.5}/>
+              <span className="hidden sm:inline">Promoções da semana</span>
+              <span className="sm:hidden">Promoções</span>
+            </a>
+          </div>
         </div>
       </div>
 
