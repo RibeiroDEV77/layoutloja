@@ -302,7 +302,7 @@ export async function transitionApplication(
   }
 
   const nowIso = new Date().toISOString();
-  const patch: Partial<ApplicationRow> = { status: input.to };
+  const patch: Record<string, unknown> = { status: input.to };
   if (input.to === 'submitted' && !app.submitted_at) patch.submitted_at = nowIso;
   if (input.to === 'approved' || input.to === 'rejected') {
     patch.decided_at = nowIso;
@@ -312,7 +312,7 @@ export async function transitionApplication(
 
   const { data: updated, error } = await supabase
     .from('wholesale_applications')
-    .update(patch)
+    .update(patch as never)
     .eq('id', input.id)
     .select('*')
     .single();
