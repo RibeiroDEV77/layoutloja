@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/components/storefront/cart-provider";
+import { SalesChannelProvider } from "@/components/storefront/sales-channel-provider";
 import { MiniCart } from "@/components/storefront/mini-cart";
 import { WhatsAppFab } from "@/components/storefront/whatsapp-fab";
 import { AccountSheet } from "@/components/storefront/account-sheet";
