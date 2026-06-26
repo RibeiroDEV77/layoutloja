@@ -27,7 +27,8 @@ export function CartProvider({ children, salesChannel = 'retail' }: { children: 
     openCart: () => setIsOpen(true),
     closeCart: () => setIsOpen(false),
     toggleCart: () => setIsOpen((v) => !v),
-  }), [cart, isOpen]);
+    salesChannel,
+  }), [cart, isOpen, salesChannel]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
