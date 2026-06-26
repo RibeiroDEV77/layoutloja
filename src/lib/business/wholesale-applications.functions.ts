@@ -34,6 +34,13 @@ export const listWholesaleApplicationsByCustomer = createServerFn({ method: 'POS
   .handler(withBusiness(async ({ data, context }) =>
     Svc.listApplicationsByCustomer(context.supabase, context.userId, data.customer_id)));
 
+/** Listagem administrativa (somente leitura). Exige `customers.read`. */
+export const listWholesaleApplications = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: Svc.AdminListInput) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Svc.listApplications(context.supabase, context.userId, data)));
+
 export const transitionWholesaleApplication = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: Svc.TransitionInput) => d)
