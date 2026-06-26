@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -292,16 +293,39 @@ function GeneralTab({ product, onSaved }: { product: ProductRow; onSaved: () => 
       <FormField label="Descrição completa">
         <Textarea rows={8} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FormField>
-      <SelectField
-        label="Canal de venda"
-        value={form.sale_channel}
-        onChange={(v) => setForm({ ...form, sale_channel: v as ProductRow["sale_channel"] })}
-        options={[
-          { value: "ambos", label: "Varejo + Atacado" },
-          { value: "varejo", label: "Apenas Varejo" },
-          { value: "atacado", label: "Apenas Atacado" },
-        ]}
-      />
+      <FormField
+        label="Canais comerciais"
+        hint="Defina em quais canais este produto será vendido. Os preços de cada canal são configurados na aba Preços (Tabela Padrão = Varejo, Tabela Atacado = Atacado)."
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+          {([
+            { key: "varejo", label: "Varejo" },
+            { key: "atacado", label: "Atacado" },
+          ] as const).map(({ key, label }) => {
+            const checked = form.sale_channel === key || form.sale_channel === "ambos";
+            return (
+              <label key={key} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(v) => {
+                    const next = v === true;
+                    const hasVarejo = key === "varejo" ? next : form.sale_channel !== "atacado";
+                    const hasAtacado = key === "atacado" ? next : form.sale_channel !== "varejo";
+                    if (!hasVarejo && !hasAtacado) {
+                      notify.error("Selecione ao menos um canal comercial");
+                      return;
+                    }
+                    const channel: ProductRow["sale_channel"] =
+                      hasVarejo && hasAtacado ? "ambos" : hasVarejo ? "varejo" : "atacado";
+                    setForm({ ...form, sale_channel: channel });
+                  }}
+                />
+                <span>{label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </FormField>
     </TabShell>
   );
 }
