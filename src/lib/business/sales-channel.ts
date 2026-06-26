@@ -51,3 +51,10 @@ export function writeSalesChannelCookieBrowser(channel: SalesChannel): void {
   document.cookie =
     `${SALES_CHANNEL_COOKIE}=${encodeURIComponent(channel)}; Max-Age=${SALES_CHANNEL_COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}`;
 }
+
+export function clearSalesChannelCookieBrowser(): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${SALES_CHANNEL_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+  try { window.localStorage.removeItem(SALES_CHANNEL_STORAGE_KEY); } catch { /* ignore */ }
+}
+

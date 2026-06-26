@@ -28,7 +28,7 @@ export const Route = createFileRoute("/atacado/home")({
 });
 
 function AtacadoHome() {
-  const { channel } = useSalesChannel();
+  const { channel, setChannel } = useSalesChannel();
   const { authenticated, loading, isApproved } = useWholesaleStatus();
 
   if (loading) {
@@ -41,10 +41,14 @@ function AtacadoHome() {
     );
   }
 
-  // Sem aprovação → devolve ao Portal Institucional.
+  // Hardening (Sprint 10.7): cookie/localStorage não são prova de
+  // autorização. Sem autenticação ou aprovação validada no servidor,
+  // o canal wholesale é descartado e o usuário é devolvido ao portal.
   if (!authenticated || !isApproved) {
+    if (channel === 'wholesale') setChannel('retail');
     return <Navigate to="/atacado" />;
   }
+
 
   return (
     <StorefrontShell>
