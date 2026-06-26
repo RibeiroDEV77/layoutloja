@@ -219,7 +219,7 @@ export function formatBRL(n: number, currency = 'BRL'): string {
   }
 }
 
-export function clearStoredCart() {
+export function clearStoredCart(salesChannel: SalesChannel = 'retail') {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(CART_KEY);
+  window.localStorage.removeItem(cartKeyFor(salesChannel));
 }
