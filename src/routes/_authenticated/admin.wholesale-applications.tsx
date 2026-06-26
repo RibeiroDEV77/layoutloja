@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CrudPage } from "@/components/admin/crud-page";
 import { CrudToolbar } from "@/components/admin/crud-toolbar";
@@ -10,14 +10,26 @@ import { DataTable } from "@/components/admin/data-table";
 import { EmptyState } from "@/components/admin/empty-state";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { CheckCircle2, XCircle, PlayCircle, History } from "lucide-react";
 import { useActiveStore } from "@/hooks/use-active-store";
-import { listWholesaleApplications } from "@/lib/business/wholesale-applications.functions";
+import { runAction } from "@/components/admin/notify";
+import {
+  listWholesaleApplications,
+  transitionWholesaleApplication,
+} from "@/lib/business/wholesale-applications.functions";
+import { getWorkflowForAggregate } from "@/lib/foundations/workflow.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/wholesale-applications")({
   head: () => ({ meta: [{ title: "Solicitações de Atacado — Admin" }] }),
