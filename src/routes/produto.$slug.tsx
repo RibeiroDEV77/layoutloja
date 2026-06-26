@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { StorefrontShell, StorefrontNavbar } from '@/components/storefront/storefront';
 import { BackButton } from '@/components/storefront/back-button';
 import { useCart } from '@/components/storefront/cart-provider';
+import { useSalesChannel } from '@/components/storefront/sales-channel-provider';
 import { formatBRL } from '@/hooks/use-storefront-cart';
 import { getStorefrontProduct, type StorefrontProductDetail } from '@/lib/business/storefront-product.functions';
 import { listStorefrontProducts, type StorefrontProduct } from '@/lib/business/storefront.functions';
@@ -21,6 +22,7 @@ export const Route = createFileRoute('/produto/$slug')({
 
 function ProductPage() {
   const { slug } = Route.useParams();
+  const { channel } = useSalesChannel();
   const fnGet = useServerFn(getStorefrontProduct);
   const fnList = useServerFn(listStorefrontProducts);
   const cart = useCart();
@@ -36,7 +38,8 @@ function ProductPage() {
   const [related, setRelated] = useState<StorefrontProduct[]>([]);
 
   const productQ = useQuery({
-    queryKey: ['storefront', 'product', slug],
+    // Sprint 10.5: canal entra na cache key para isolar Retail × Wholesale.
+    queryKey: ['storefront', 'product', slug, channel],
     queryFn: async () => {
       const { product } = await fnGet({ data: { slug } });
       return product as StorefrontProductDetail | null;
@@ -84,12 +87,12 @@ function ProductPage() {
     } catch { /* ignore */ }
   }, [product]);
 
-  // produtos relacionados (featured fallback)
+  // produtos relacionados (featured fallback) — re-busca ao trocar de canal.
   useEffect(() => {
-    fnList({ data: { flag: 'featured', limit: 8 } })
+    fnList({ data: { flag: 'featured', limit: 8, sales_channel: channel } })
       .then((r) => setRelated((r.rows ?? []).filter((p) => p.id !== product?.id)))
       .catch(() => {});
-  }, [fnList, product?.id]);
+  }, [fnList, product?.id, channel]);
 
   const color = useMemo(
     () => product?.colors.find((c) => c.id === colorId) ?? null,

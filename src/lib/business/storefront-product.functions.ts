@@ -69,17 +69,29 @@ export type StorefrontProductDetail = {
 };
 
 export const getStorefrontProduct = createServerFn({ method: 'POST' })
-  .inputValidator((d: { slug: string }) => d)
+  .inputValidator((d: { slug: string; sales_channel?: 'retail' | 'wholesale' }) => d)
   .handler(async ({ data }): Promise<{ product: StorefrontProductDetail | null }> => {
     const sb = publicClient();
+    // Resolve o contexto comercial cedo (store_id ainda desconhecido).
+    const { resolveCommercialContext } = await import('./services/commercial-context.server');
+    const baseCtx = await resolveCommercialContext({
+      explicit_channel: data.sales_channel ?? null,
+      store_id: null,
+    });
     const { data: product } = await sb
       .from('products')
       .select('id, name, slug, short_description, description, brand_id, store_id')
       .eq('slug', data.slug)
       .eq('status', 'published')
       .in('visibility', ['published', 'catalog_only'])
+      .in('sale_channel', baseCtx.product_sale_channels)
       .maybeSingle();
     if (!product) return { product: null };
+    // Re-resolve já com store_id para obter o price_list_code de atacado.
+    const ctx = await resolveCommercialContext({
+      explicit_channel: data.sales_channel ?? null,
+      store_id: product.store_id,
+    });
 
     const [brandRes, colorsRes, variantsRes, pavRes] = await Promise.all([
       product.brand_id
@@ -117,11 +129,18 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
             .in('id', sizeIds)
         : Promise.resolve({ data: [] }),
       variantIds.length
-        ? sb.from('price_list_items')
-            .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, starts_at, ends_at)')
-            .in('variant_id', variantIds)
-            .eq('price_lists.is_active', true)
-            .eq('price_lists.store_id', product.store_id)
+        ? (ctx.price_list_code
+            ? sb.from('price_list_items')
+                .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, code, starts_at, ends_at)')
+                .in('variant_id', variantIds)
+                .eq('price_lists.is_active', true)
+                .eq('price_lists.store_id', product.store_id)
+                .eq('price_lists.code', ctx.price_list_code)
+            : sb.from('price_list_items')
+                .select('variant_id, price, compare_at_price, min_quantity, max_quantity, price_lists!inner(is_active, store_id, starts_at, ends_at)')
+                .in('variant_id', variantIds)
+                .eq('price_lists.is_active', true)
+                .eq('price_lists.store_id', product.store_id))
         : Promise.resolve({ data: [] }),
     ]);
 
