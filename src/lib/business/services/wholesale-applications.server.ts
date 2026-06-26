@@ -188,7 +188,7 @@ export async function createApplication(
       requested_group_id: input.requested_group_id ?? null,
       requested_price_list_id: input.requested_price_list_id ?? null,
       submitted_at: status === 'submitted' ? nowIso : null,
-      metadata: input.metadata ?? {},
+      metadata: (input.metadata ?? {}) as never,
       created_by: userId,
     })
     .select('*')
