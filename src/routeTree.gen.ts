@@ -26,6 +26,7 @@ import { Route as MinhaContaFavoritosRouteImport } from './routes/minha-conta.fa
 import { Route as MinhaContaEnderecosRouteImport } from './routes/minha-conta.enderecos'
 import { Route as MinhaContaDadosRouteImport } from './routes/minha-conta.dados'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
+import { Route as AtacadoHomeRouteImport } from './routes/atacado.home'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminWholesaleApplicationsRouteImport } from './routes/_authenticated/admin.wholesale-applications'
@@ -154,6 +155,11 @@ const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
   id: '/categoria/$slug',
   path: '/categoria/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AtacadoHomeRoute = AtacadoHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AtacadoRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
@@ -415,7 +421,7 @@ const AuthenticatedAdminProductsIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/atacado': typeof AtacadoRoute
+  '/atacado': typeof AtacadoRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -423,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
@@ -477,12 +484,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/atacado': typeof AtacadoRoute
+  '/atacado': typeof AtacadoRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/produtos': typeof ProdutosRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
+  '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
@@ -538,7 +546,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/atacado': typeof AtacadoRoute
+  '/atacado': typeof AtacadoRouteWithChildren
   '/auth': typeof AuthRoute
   '/checkout': typeof CheckoutRoute
   '/minha-conta': typeof MinhaContaRouteWithChildren
@@ -546,6 +554,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
   '/minha-conta/enderecos': typeof MinhaContaEnderecosRoute
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/admin'
+    | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
@@ -670,6 +680,7 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/reset-password'
     | '/sacola'
+    | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
@@ -732,6 +743,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/_authenticated/admin'
+    | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
     | '/minha-conta/enderecos'
@@ -788,7 +800,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AtacadoRoute: typeof AtacadoRoute
+  AtacadoRoute: typeof AtacadoRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutRoute: typeof CheckoutRoute
   MinhaContaRoute: typeof MinhaContaRouteWithChildren
@@ -925,6 +937,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/categoria/$slug'
       preLoaderRoute: typeof CategoriaSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/atacado/home': {
+      id: '/atacado/home'
+      path: '/home'
+      fullPath: '/atacado/home'
+      preLoaderRoute: typeof AtacadoHomeRouteImport
+      parentRoute: typeof AtacadoRoute
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -1415,6 +1434,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AtacadoRouteChildren {
+  AtacadoHomeRoute: typeof AtacadoHomeRoute
+}
+
+const AtacadoRouteChildren: AtacadoRouteChildren = {
+  AtacadoHomeRoute: AtacadoHomeRoute,
+}
+
+const AtacadoRouteWithChildren =
+  AtacadoRoute._addFileChildren(AtacadoRouteChildren)
+
 interface MinhaContaRouteChildren {
   MinhaContaDadosRoute: typeof MinhaContaDadosRoute
   MinhaContaEnderecosRoute: typeof MinhaContaEnderecosRoute
@@ -1438,7 +1468,7 @@ const MinhaContaRouteWithChildren = MinhaContaRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AtacadoRoute: AtacadoRoute,
+  AtacadoRoute: AtacadoRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutRoute: CheckoutRoute,
   MinhaContaRoute: MinhaContaRouteWithChildren,
