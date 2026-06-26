@@ -23,6 +23,7 @@ import {
   type SalesChannel,
 } from '@/lib/business/sales-channel';
 import { useStorefrontCustomer, openAccountSheet } from '@/hooks/use-storefront-customer';
+import { useAuth } from '@/hooks/use-auth';
 import { listWholesaleApplicationsByCustomer } from '@/lib/business/wholesale-applications.functions';
 
 export type { SalesChannel } from '@/lib/business/sales-channel';
@@ -89,14 +90,23 @@ export function useSalesChannel(): SalesChannelContextValue {
  */
 export function useEnterWholesale() {
   const { setChannel } = useSalesChannel();
+  const { ctx } = useAuth();
   const { data: customer } = useStorefrontCustomer();
   const navigate = useNavigate();
   const fetchApplications = useServerFn(listWholesaleApplicationsByCustomer);
 
   const enterWholesale = useCallback(async () => {
+    // Decisão de login baseada no estado de autenticação real (useAuth),
+    // não na presença do registro de customer (que pode ainda estar
+    // carregando ou inexistente para um usuário recém-criado).
+    if (!ctx?.authenticated) {
+      openAccountSheet();
+      return;
+    }
     const customerId = customer?.customer?.id;
     if (!customerId) {
-      openAccountSheet();
+      // Autenticado, mas ainda sem perfil de customer → segue para o portal.
+      await navigate({ to: '/atacado' });
       return;
     }
     try {
@@ -114,7 +124,8 @@ export function useEnterWholesale() {
     } catch {
       await navigate({ to: '/atacado' });
     }
-  }, [customer, fetchApplications, navigate, setChannel]);
+  }, [ctx?.authenticated, customer, fetchApplications, navigate, setChannel]);
+
 
   const goRetail = useCallback(async () => {
     setChannel('retail');
