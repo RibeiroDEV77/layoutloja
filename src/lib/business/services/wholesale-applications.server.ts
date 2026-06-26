@@ -267,6 +267,102 @@ export async function listApplicationsByCustomer(
   return (data ?? []) as ApplicationRow[];
 }
 
+// ---------------- Admin: listagem global ----------------
+
+export interface AdminListInput {
+  store_id: string;
+  /** Busca livre em nome / razão / fantasia / documento / email do cliente. */
+  search?: string;
+  status?: WholesaleStatus | WholesaleStatus[];
+  /** Filtro por tipo do cadastro (PF/PJ) — vem de `customers.type`. */
+  customer_type?: 'pf' | 'pj';
+  /** Filtro por janela de `created_at` (ISO). */
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminListRow extends ApplicationRow {
+  customer: {
+    id: string;
+    type: 'pf' | 'pj';
+    name: string;
+    trade_name: string | null;
+    legal_name: string | null;
+    doc_number: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+}
+
+/**
+ * Listagem administrativa (paginada) de TODAS as solicitações de uma loja.
+ * Somente leitura. Exige `customers.read` (ou super admin).
+ */
+export async function listApplications(
+  supabase: SbClient, userId: string, input: AdminListInput,
+): Promise<{ rows: AdminListRow[]; total: number }> {
+  if (!input.store_id) throw Errors.validation('store_id é obrigatório');
+  if (!(await canRead(supabase, userId, input.store_id))) {
+    throw Errors.forbidden('Sem permissão para listar solicitações');
+  }
+
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, input.pageSize ?? 50));
+  const fromIdx = (page - 1) * pageSize;
+  const toIdx = fromIdx + pageSize - 1;
+
+  let q = supabase
+    .from('wholesale_applications')
+    .select(
+      'id, store_id, customer_id, status, workflow_instance_id, requested_group_id, requested_price_list_id, submitted_at, decided_at, decided_by, decision_reason, metadata, created_by, created_at, updated_at, ' +
+      'customer:customers!wholesale_applications_customer_id_fkey(id, type, name, trade_name, legal_name, doc_number, email, phone)',
+      { count: 'exact' },
+    )
+    .eq('store_id', input.store_id);
+
+  if (input.status) {
+    q = Array.isArray(input.status) ? q.in('status', input.status) : q.eq('status', input.status);
+  }
+  if (input.from) q = q.gte('created_at', input.from);
+  if (input.to) q = q.lte('created_at', input.to);
+
+  q = q.order('created_at', { ascending: false }).range(fromIdx, toIdx);
+
+  const { data, error, count } = await q;
+  if (error) throw Errors.internal('Falha ao listar solicitações', { error: error.message });
+
+  let rows = ((data ?? []) as unknown as AdminListRow[]);
+
+  // Filtros aplicados em memória (dependem de customer/metadata e mantêm a
+  // página atual; aceitável para volumes administrativos).
+  if (input.customer_type) {
+    rows = rows.filter((r) => r.customer?.type === input.customer_type);
+  }
+  if (input.search?.trim()) {
+    const needle = input.search.trim().toLowerCase();
+    const onlyDigits = needle.replace(/\D/g, '');
+    rows = rows.filter((r) => {
+      const c = r.customer;
+      const meta = (r.metadata ?? {}) as Record<string, unknown>;
+      const haystack = [
+        c?.name, c?.trade_name, c?.legal_name, c?.email,
+        meta['name'], meta['legal_name'], meta['trade_name'], meta['responsavel'],
+      ].filter(Boolean).map((s) => String(s).toLowerCase()).join(' ');
+      if (haystack.includes(needle)) return true;
+      if (onlyDigits.length >= 3) {
+        const docs = [c?.doc_number, meta['cpf'], meta['cnpj']]
+          .filter(Boolean).map((s) => String(s).replace(/\D/g, ''));
+        if (docs.some((d) => d.includes(onlyDigits))) return true;
+      }
+      return false;
+    });
+  }
+
+  return { rows, total: count ?? rows.length };
+}
+
 /** Busca uma solicitação pelo id (com autorização). */
 export async function getApplication(supabase: SbClient, userId: string, id: string) {
   const app = await loadApplication(supabase, id);
