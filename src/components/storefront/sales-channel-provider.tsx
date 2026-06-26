@@ -90,22 +90,46 @@ export function useSalesChannel(): SalesChannelContextValue {
  */
 export function useEnterWholesale() {
   const { setChannel } = useSalesChannel();
-  const { ctx } = useAuth();
-  const { data: customer } = useStorefrontCustomer();
+  const { ctx, loading, session, user } = useAuth();
+  const customerQuery = useStorefrontCustomer();
+  const customer = customerQuery.data;
   const navigate = useNavigate();
   const fetchApplications = useServerFn(listWholesaleApplicationsByCustomer);
 
   const enterWholesale = useCallback(async () => {
+    const authenticated = !loading && (!!ctx?.authenticated || !!session?.user || !!user);
+    console.log('[WholesaleNavigation] enterWholesale()', {
+      loading,
+      authenticated,
+      ctxAuthenticated: ctx?.authenticated,
+      authUserId: ctx?.user_id ?? user?.id ?? session?.user?.id ?? null,
+      customer: customer?.customer ?? null,
+      customerStatus: customerQuery.status,
+    });
+
+    if (loading) {
+      console.log('[WholesaleNavigation] auth loading; navigation deferred');
+      return;
+    }
+
     // Decisão de login baseada no estado de autenticação real (useAuth),
     // não na presença do registro de customer (que pode ainda estar
     // carregando ou inexistente para um usuário recém-criado).
-    if (!ctx?.authenticated) {
+    if (!authenticated) {
+      console.log('[WholesaleNavigation] openAccountSheet()', {
+        reason: 'unauthenticated',
+        requestStatus: null,
+      });
       openAccountSheet();
       return;
     }
     const customerId = customer?.customer?.id;
     if (!customerId) {
       // Autenticado, mas ainda sem perfil de customer → segue para o portal.
+      console.log("[WholesaleNavigation] navigate('/atacado')", {
+        reason: 'authenticated_without_customer',
+        requestStatus: null,
+      });
       await navigate({ to: '/atacado' });
       return;
     }
@@ -115,16 +139,35 @@ export function useEnterWholesale() {
         ? (res as { ok: boolean; data?: Array<{ status: string }> }).data ?? []
         : (res as Array<{ status: string }>)) ?? [];
       const approved = Array.isArray(list) && list.some((a) => a.status === 'approved');
+      const requestStatus = Array.isArray(list) ? (list[0]?.status ?? null) : null;
+      console.log('[WholesaleNavigation] wholesale application status', {
+        customerId,
+        requestStatus,
+        statuses: Array.isArray(list) ? list.map((a) => a.status) : [],
+        approved,
+      });
       if (!approved) {
+        console.log("[WholesaleNavigation] navigate('/atacado')", {
+          reason: 'not_approved_or_no_request',
+          requestStatus,
+        });
         await navigate({ to: '/atacado' });
         return;
       }
       setChannel('wholesale');
+      console.log("[WholesaleNavigation] navigate('/atacado/home')", {
+        reason: 'approved',
+        requestStatus,
+      });
       await navigate({ to: '/atacado/home' });
-    } catch {
+    } catch (error) {
+      console.log("[WholesaleNavigation] navigate('/atacado')", {
+        reason: 'application_lookup_failed',
+        error,
+      });
       await navigate({ to: '/atacado' });
     }
-  }, [ctx?.authenticated, customer, fetchApplications, navigate, setChannel]);
+  }, [ctx?.authenticated, ctx?.user_id, customer, customerQuery.status, fetchApplications, loading, navigate, session?.user, setChannel, user]);
 
 
   const goRetail = useCallback(async () => {
