@@ -78,12 +78,22 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     store_id?: string;
     flag?: 'new' | 'sale' | 'featured';
     limit?: number;
+    /** Sprint 10.5: canal comercial. Quando omitido, resolvido por cookie. */
+    sales_channel?: 'retail' | 'wholesale';
   }) => input ?? {})
   .handler(async ({ data }): Promise<{ rows: StorefrontProduct[] }> => {
+    // Resolve o contexto comercial (cookie SSR-safe + mapeamento canônico).
+    const { resolveCommercialContext } = await import('./services/commercial-context.server');
+    const ctx = await resolveCommercialContext({
+      explicit_channel: data.sales_channel ?? null,
+      store_id: data.store_id ?? null,
+    });
+
     const sb = publicClient();
     let q = sb
       .from('products')
       .select('id,name,slug,short_description,category_id,brand_id,on_sale,new_product,featured,best_seller')
+      .in('sale_channel', ctx.product_sale_channels)
       .order('updated_at', { ascending: false })
       .limit(Math.min(data.limit ?? 8, 24));
     if (data.store_id) q = q.eq('store_id', data.store_id);
