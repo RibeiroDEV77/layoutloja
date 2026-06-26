@@ -17,11 +17,13 @@ import { useServerFn } from '@tanstack/react-start';
 import {
   DEFAULT_SALES_CHANNEL,
   SALES_CHANNEL_STORAGE_KEY,
+  clearSalesChannelCookieBrowser,
   normalizeSalesChannel,
   readSalesChannelCookieBrowser,
   writeSalesChannelCookieBrowser,
   type SalesChannel,
 } from '@/lib/business/sales-channel';
+
 import { useStorefrontCustomer, openAccountSheet } from '@/hooks/use-storefront-customer';
 import { useAuth } from '@/hooks/use-auth';
 import { listWholesaleApplicationsByCustomer } from '@/lib/business/wholesale-applications.functions';
