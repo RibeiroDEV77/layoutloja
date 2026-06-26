@@ -31,7 +31,7 @@ export function SalesChannelTopbarLink({
   onNavigate,
 }: { className?: string; onNavigate?: () => void } = {}) {
   const { channel } = useSalesChannel();
-  const { enterWholesale, goRetail } = useEnterWholesale();
+  const { goRetail } = useEnterWholesale();
   const { isApproved } = useWholesaleStatus();
   const isWholesale = channel === "wholesale";
 
@@ -48,19 +48,15 @@ export function SalesChannelTopbarLink({
     );
   }
   return (
-    <button
-      type="button"
-      onClick={() => {
-        console.log('[WholesaleNavigation] Top Bar click → enterWholesale()');
-        onNavigate?.();
-        void enterWholesale();
-      }}
+    <Link
+      to="/atacado"
+      onClick={() => onNavigate?.()}
       className={cn("inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity", className)}
       aria-label={isApproved ? "Entrar no Canal Atacado" : "Área do Lojista"}
     >
       <Building2 className="h-3.5 w-3.5" strokeWidth={1.5} />
       {isApproved ? "Canal Atacado" : "Área do Lojista"}
-    </button>
+    </Link>
   );
 }
 
