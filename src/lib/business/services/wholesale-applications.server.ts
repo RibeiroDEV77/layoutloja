@@ -52,7 +52,7 @@ export interface CreateApplicationInput {
   customer_id: string;
   requested_group_id?: string | null;
   requested_price_list_id?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: JsonObject;
   /** Se true, já marca como `submitted` e inicia o workflow. */
   submit?: boolean;
 }
@@ -62,6 +62,9 @@ export interface TransitionInput {
   to: WholesaleStatus;
   reason?: string;
 }
+
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
 
 interface ApplicationRow {
   id: string;
@@ -75,7 +78,7 @@ interface ApplicationRow {
   decided_at: string | null;
   decided_by: string | null;
   decision_reason: string | null;
-  metadata: Record<string, unknown>;
+  metadata: JsonObject;
   created_by: string | null;
   created_at: string;
   updated_at: string;
