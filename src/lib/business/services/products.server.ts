@@ -764,11 +764,17 @@ async function computeReadiness(supabase: SbClient, productId: string): Promise<
   pricesStep.complete = pricesStep.issues.length === 0;
   steps.push(pricesStep);
 
-  // 7. SEO
+  // 7. SEO — admite fallback automático (name / short_description / description / slugify(name))
   const seo: ReadinessStep = { key: 'seo', label: 'SEO', complete: false, issues: [] };
-  if (!p?.seo_title) seo.issues.push('Título SEO ausente');
-  if (!p?.seo_description) seo.issues.push('Descrição SEO ausente');
-  if (!p?.slug) seo.issues.push('Slug ausente');
+  const effectiveSeoTitle = p?.seo_title?.trim() || p?.name?.trim() || '';
+  const effectiveSeoDesc =
+    p?.seo_description?.trim() ||
+    p?.short_description?.trim() ||
+    (p?.description ? String(p.description).replace(/<[^>]+>/g, '').trim().slice(0, 200) : '');
+  const effectiveSlug = p?.slug?.trim() || (p?.name ? slugify(p.name) : '');
+  if (!effectiveSeoTitle) seo.issues.push('Título SEO ausente (preencha Nome ou SEO Title)');
+  if (!effectiveSeoDesc) seo.issues.push('Descrição SEO ausente (preencha Descrição curta ou SEO Description)');
+  if (!effectiveSlug) seo.issues.push('Slug ausente (preencha Nome ou Slug)');
   seo.complete = seo.issues.length === 0;
   steps.push(seo);
 
