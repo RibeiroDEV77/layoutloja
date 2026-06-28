@@ -544,6 +544,10 @@ export async function publishProduct(
   const storeId = await fetchProductStoreId(supabase, productId);
   await requirePermission(supabase, userId, 'products.publish', storeId);
 
+  // Backfill SEO defaults antes de validar — admin pode sobrescrever manualmente
+  // a qualquer momento; só preenchemos o que estiver vazio.
+  await backfillSeoDefaults(supabase, productId);
+
   // valida readiness
   const { canPublish, issues } = await computeReadiness(supabase, productId);
   if (!canPublish) {
@@ -568,6 +572,58 @@ export async function publishProduct(
     payload: { action: 'published' },
   });
   return data;
+}
+
+/**
+ * Preenche seo_title / seo_description / slug a partir de
+ * name / short_description / description quando estiverem vazios.
+ * Mantém valores manuais existentes — o admin sempre tem prioridade.
+ * Garante unicidade do slug por loja anexando sufixo incremental.
+ */
+async function backfillSeoDefaults(supabase: SbClient, productId: string): Promise<void> {
+  const { data: p } = await supabase
+    .from('products')
+    .select('id, store_id, name, short_description, description, seo_title, seo_description, slug')
+    .eq('id', productId)
+    .maybeSingle();
+  if (!p) return;
+
+  const patch: Record<string, string> = {};
+
+  if (!p.seo_title?.trim() && p.name) {
+    patch.seo_title = p.name.slice(0, 160);
+  }
+  if (!p.seo_description?.trim()) {
+    const fallback =
+      p.short_description?.trim() ||
+      (p.description ? String(p.description).replace(/<[^>]+>/g, '').trim().slice(0, 200) : '');
+    if (fallback) patch.seo_description = fallback;
+  }
+  if (!p.slug?.trim() && p.name) {
+    const base = slugify(p.name);
+    let candidate = base;
+    let suffix = 1;
+    // Garante unicidade por loja
+    // (slug é único globalmente no insert, mas aqui validamos por loja para evitar 23505)
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data: clash } = await supabase
+        .from('products')
+        .select('id')
+        .eq('store_id', p.store_id)
+        .eq('slug', candidate)
+        .neq('id', productId)
+        .maybeSingle();
+      if (!clash) break;
+      suffix += 1;
+      candidate = `${base}-${suffix}`;
+    }
+    patch.slug = candidate;
+  }
+
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await supabase.from('products').update(patch).eq('id', productId);
+  if (error) throw Errors.internal('Falha ao preencher SEO automaticamente', { error: error.message });
 }
 
 export async function unpublishProduct(
