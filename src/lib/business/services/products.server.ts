@@ -588,7 +588,7 @@ async function backfillSeoDefaults(supabase: SbClient, productId: string): Promi
     .maybeSingle();
   if (!p) return;
 
-  const patch: Record<string, string> = {};
+  const patch: { seo_title?: string; seo_description?: string; slug?: string } = {};
 
   if (!p.seo_title?.trim() && p.name) {
     patch.seo_title = p.name.slice(0, 160);
