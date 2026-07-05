@@ -1548,6 +1548,9 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
 // Aba 5 — Preços (todas as listas, por variante)
 // ============================================================================
 
+type PriceDraft = { rp: string; rs: string; wp: string; ws: string };
+const emptyDraft: PriceDraft = { rp: "", rs: "", wp: "", ws: "" };
+
 function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId: string | null; onSaved: () => void }) {
   const fnList = useServerFn(listProductPrices);
   const fnSet = useServerFn(setVariantPrice);
@@ -1580,7 +1583,6 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     },
   });
 
-  // Identifica Varejo (DEFAULT-* ou maior prioridade) e Atacado (WHOLESALE-* ou nome com "atacado")
   const { retailList, wholesaleList } = useMemo(() => {
     const rows = lists.data ?? [];
     const isWholesale = (l: { name: string; code?: string | null }) =>
@@ -1597,12 +1599,113 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
   const priceFor = (variantId: string, listId: string | undefined) =>
     listId ? prices.data?.find((p) => p.variant_id === variantId && p.price_list_id === listId) : undefined;
 
-  const save = async (variantId: string, listId: string, value: number, compare: number | null) => {
+  const [drafts, setDrafts] = useState<Record<string, PriceDraft>>({});
+  useEffect(() => {
+    if (!variants.data || !retailList) return;
+    const next: Record<string, PriceDraft> = {};
+    for (const v of variants.data) {
+      const r = priceFor(v.id, retailList.id);
+      const w = wholesaleList ? priceFor(v.id, wholesaleList.id) : undefined;
+      next[v.id] = {
+        rp: r?.price != null ? String(Number(r.price)) : "",
+        rs: r?.compare_at_price != null ? String(Number(r.compare_at_price)) : "",
+        wp: w?.price != null ? String(Number(w.price)) : "",
+        ws: w?.compare_at_price != null ? String(Number(w.compare_at_price)) : "",
+      };
+    }
+    setDrafts(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variants.data, prices.data, retailList?.id, wholesaleList?.id]);
+
+  const setDraft = (id: string, patch: Partial<PriceDraft>) =>
+    setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? emptyDraft), ...patch } }));
+
+  const parseNum = (s: string): number | null => {
+    if (!s.trim()) return null;
+    const n = Number(s.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const saveOne = async (variantId: string, listId: string, value: number, compare: number | null) => {
     const ok = await runAction(
       () => fnSet({ data: { variant_id: variantId, price_list_id: listId, price: value, compare_at_price: compare } }),
       { success: "Preço salvo" },
     );
     if (ok) { qc.invalidateQueries({ queryKey: ["product-prices", productId] }); onSaved(); }
+    return ok;
+  };
+
+  const [globalRetail, setGlobalRetail] = useState("");
+  const [globalWholesale, setGlobalWholesale] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const applyGlobal = () => {
+    setDrafts((d) => {
+      const next = { ...d };
+      for (const v of variants.data ?? []) {
+        const cur = next[v.id] ?? emptyDraft;
+        next[v.id] = {
+          ...cur,
+          rp: globalRetail.trim() ? globalRetail : cur.rp,
+          wp: wholesaleList && globalWholesale.trim() ? globalWholesale : cur.wp,
+        };
+      }
+      return next;
+    });
+  };
+
+  const copyRetailToWholesale = () => {
+    if (!wholesaleList) return;
+    setDrafts((d) => {
+      const next = { ...d };
+      for (const v of variants.data ?? []) {
+        const cur = next[v.id] ?? emptyDraft;
+        next[v.id] = { ...cur, wp: cur.rp, ws: cur.rs };
+      }
+      return next;
+    });
+  };
+
+  const saveAll = async () => {
+    if (!retailList || !variants.data) return;
+    setSaving(true);
+    try {
+      const tasks: Promise<unknown>[] = [];
+      for (const v of variants.data) {
+        const d = drafts[v.id];
+        if (!d) continue;
+        const rp = parseNum(d.rp);
+        const rs = parseNum(d.rs);
+        const wp = parseNum(d.wp);
+        const ws = parseNum(d.ws);
+        const cur = priceFor(v.id, retailList.id);
+        const curRp = cur?.price != null ? Number(cur.price) : null;
+        const curRs = cur?.compare_at_price != null ? Number(cur.compare_at_price) : null;
+        if (rp != null && (rp !== curRp || rs !== curRs)) {
+          tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: retailList.id, price: rp, compare_at_price: rs } }));
+        }
+        if (wholesaleList && wp != null) {
+          const curW = priceFor(v.id, wholesaleList.id);
+          const curWp = curW?.price != null ? Number(curW.price) : null;
+          const curWs = curW?.compare_at_price != null ? Number(curW.compare_at_price) : null;
+          if (wp !== curWp || ws !== curWs) {
+            tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: wholesaleList.id, price: wp, compare_at_price: ws } }));
+          }
+        }
+      }
+      if (!tasks.length) {
+        notify.info("Nenhuma alteração para salvar");
+      } else {
+        await Promise.all(tasks);
+        notify.success(`${tasks.length} preço(s) salvos`);
+        qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+        onSaved();
+      }
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Falha ao salvar preços");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!variants.data?.length) {
@@ -1613,13 +1716,37 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
   }
 
   return (
-    <TabShell title="Preços" description="Preencha Varejo e Atacado lado a lado. Cada campo grava em sua lista.">
+    <TabShell title="Preços" description="Preencha Varejo e Atacado lado a lado. Use a aplicação em massa para agilizar.">
       <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
         <span>Varejo: <strong>{retailList.name}</strong></span>
         {wholesaleList
           ? <span>Atacado: <strong>{wholesaleList.name}</strong></span>
           : <span className="text-amber-600">Tabela Atacado não encontrada — apenas Varejo será editado.</span>}
       </div>
+
+      <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-end">
+          <FormField label="Preço Varejo global">
+            <Input type="number" step="0.01" value={globalRetail} onChange={(e) => setGlobalRetail(e.target.value)} placeholder="Ex.: 199.90" />
+          </FormField>
+          <FormField label="Preço Atacado global">
+            <Input type="number" step="0.01" value={globalWholesale} onChange={(e) => setGlobalWholesale(e.target.value)} placeholder="Ex.: 129.90" disabled={!wholesaleList} />
+          </FormField>
+          <Button variant="outline" onClick={applyGlobal} disabled={!globalRetail.trim() && !globalWholesale.trim()}>
+            Aplicar em todas
+          </Button>
+          <Button variant="outline" onClick={copyRetailToWholesale} disabled={!wholesaleList}>
+            Copiar Varejo → Atacado
+          </Button>
+          <Button onClick={saveAll} disabled={saving}>
+            <Save className="h-3.5 w-3.5 mr-1" /> {saving ? "Salvando..." : "Salvar tudo"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Os botões preenchem os campos abaixo. Nada é gravado até você clicar em <strong>Salvar tudo</strong> (ou no botão individual da linha).
+        </p>
+      </div>
+
       <div className="rounded-md border divide-y">
         <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 bg-muted/40 text-xs font-medium text-muted-foreground">
           <span>Variante</span>
@@ -1628,19 +1755,24 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
           <span className="w-8" />
         </div>
         {variants.data.map((v) => {
-          const retail = priceFor(v.id, retailList.id);
-          const whole = wholesaleList ? priceFor(v.id, wholesaleList.id) : undefined;
+          const d = drafts[v.id] ?? emptyDraft;
           return (
             <DualPriceRowEditor
               key={v.id}
               sku={v.sku}
-              retailPrice={retail?.price != null ? Number(retail.price) : null}
-              retailSale={retail?.compare_at_price != null ? Number(retail.compare_at_price) : null}
-              wholesalePrice={whole?.price != null ? Number(whole.price) : null}
-              wholesaleSale={whole?.compare_at_price != null ? Number(whole.compare_at_price) : null}
+              draft={d}
               hasWholesale={!!wholesaleList}
-              onSaveRetail={(p, s) => save(v.id, retailList.id, p, s)}
-              onSaveWholesale={wholesaleList ? (p, s) => save(v.id, wholesaleList.id, p, s) : undefined}
+              onChange={(patch) => setDraft(v.id, patch)}
+              onSaveRow={async () => {
+                const rp = parseNum(d.rp);
+                const rs = parseNum(d.rs);
+                if (rp != null) await saveOne(v.id, retailList.id, rp, rs);
+                if (wholesaleList) {
+                  const wp = parseNum(d.wp);
+                  const ws = parseNum(d.ws);
+                  if (wp != null) await saveOne(v.id, wholesaleList.id, wp, ws);
+                }
+              }}
             />
           );
         })}
@@ -1650,55 +1782,30 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
 }
 
 function DualPriceRowEditor({
-  sku, retailPrice, retailSale, wholesalePrice, wholesaleSale, hasWholesale,
-  onSaveRetail, onSaveWholesale,
+  sku, draft, hasWholesale, onChange, onSaveRow,
 }: {
   sku: string;
-  retailPrice: number | null; retailSale: number | null;
-  wholesalePrice: number | null; wholesaleSale: number | null;
+  draft: PriceDraft;
   hasWholesale: boolean;
-  onSaveRetail: (p: number, s: number | null) => void;
-  onSaveWholesale?: (p: number, s: number | null) => void;
+  onChange: (patch: Partial<PriceDraft>) => void;
+  onSaveRow: () => void;
 }) {
-  const [rp, setRp] = useState(retailPrice?.toString() ?? "");
-  const [rs, setRs] = useState(retailSale?.toString() ?? "");
-  const [wp, setWp] = useState(wholesalePrice?.toString() ?? "");
-  const [ws, setWs] = useState(wholesaleSale?.toString() ?? "");
-
-  useEffect(() => { setRp(retailPrice?.toString() ?? ""); }, [retailPrice]);
-  useEffect(() => { setRs(retailSale?.toString() ?? ""); }, [retailSale]);
-  useEffect(() => { setWp(wholesalePrice?.toString() ?? ""); }, [wholesalePrice]);
-  useEffect(() => { setWs(wholesaleSale?.toString() ?? ""); }, [wholesaleSale]);
-
-  const saveAll = () => {
-    const rpN = Number(rp.replace(",", "."));
-    if (rp.trim() && !Number.isNaN(rpN) && (rpN !== retailPrice || (rs ? Number(rs.replace(",", ".")) : null) !== retailSale)) {
-      onSaveRetail(rpN, rs ? Number(rs.replace(",", ".")) : null);
-    }
-    if (hasWholesale && onSaveWholesale) {
-      const wpN = Number(wp.replace(",", "."));
-      if (wp.trim() && !Number.isNaN(wpN) && (wpN !== wholesalePrice || (ws ? Number(ws.replace(",", ".")) : null) !== wholesaleSale)) {
-        onSaveWholesale(wpN, ws ? Number(ws.replace(",", ".")) : null);
-      }
-    }
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 p-3 text-sm items-center">
       <code className="font-mono min-w-0 truncate">{sku}</code>
       <div className="flex gap-2 w-56">
-        <Input type="number" step="0.01" value={rp} onChange={(e) => setRp(e.target.value)} className="w-full" placeholder="Preço" />
-        <Input type="number" step="0.01" value={rs} onChange={(e) => setRs(e.target.value)} className="w-full" placeholder="Promo" />
+        <Input type="number" step="0.01" value={draft.rp} onChange={(e) => onChange({ rp: e.target.value })} className="w-full" placeholder="Preço" />
+        <Input type="number" step="0.01" value={draft.rs} onChange={(e) => onChange({ rs: e.target.value })} className="w-full" placeholder="Promo" />
       </div>
       <div className="flex gap-2 w-56">
         {hasWholesale ? (
           <>
-            <Input type="number" step="0.01" value={wp} onChange={(e) => setWp(e.target.value)} className="w-full" placeholder="Preço" />
-            <Input type="number" step="0.01" value={ws} onChange={(e) => setWs(e.target.value)} className="w-full" placeholder="Promo" />
+            <Input type="number" step="0.01" value={draft.wp} onChange={(e) => onChange({ wp: e.target.value })} className="w-full" placeholder="Preço" />
+            <Input type="number" step="0.01" value={draft.ws} onChange={(e) => onChange({ ws: e.target.value })} className="w-full" placeholder="Promo" />
           </>
         ) : <div className="w-full" />}
       </div>
-      <Button size="sm" variant="outline" onClick={saveAll} disabled={!rp.trim() && !wp.trim()}>
+      <Button size="sm" variant="outline" onClick={onSaveRow} disabled={!draft.rp.trim() && !draft.wp.trim()}>
         <Save className="h-3.5 w-3.5" />
       </Button>
     </div>
