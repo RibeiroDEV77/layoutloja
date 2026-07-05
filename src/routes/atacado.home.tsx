@@ -16,6 +16,7 @@ import {
 } from "@/components/storefront/storefront";
 import { useSalesChannel } from "@/components/storefront/sales-channel-provider";
 import { useWholesaleStatus } from "@/hooks/use-wholesale-status";
+import { WholesaleBadge, WholesaleMeta } from "@/components/storefront/wholesale-meta";
 import {
   getStorefrontStore,
   listStorefrontProducts,
