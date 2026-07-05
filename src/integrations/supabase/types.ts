@@ -13135,6 +13135,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_approved_wholesale_customer: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_cart_owner: { Args: { _cart_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       mark_outbox_failed: {
