@@ -111,7 +111,13 @@ function AtacadoHome() {
           ) : products && products.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 lg:grid-cols-4">
               {products.map((p) => (
-                <ProductCard key={p.id} p={p} />
+                <div key={p.id} className="relative">
+                  <div className="absolute left-3 top-3 z-20">
+                    <WholesaleBadge />
+                  </div>
+                  <ProductCard p={p} />
+                  <WholesaleMeta />
+                </div>
               ))}
             </div>
           ) : (
