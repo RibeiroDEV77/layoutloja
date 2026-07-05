@@ -1576,20 +1576,30 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     queryFn: async () => {
       const r = await fnLists({ data: { store_id: storeId!, pageSize: 100 } });
       if (!r.ok) throw new Error(r.error.message);
-      return r.data.rows as Array<{ id: string; name: string }>;
+      return r.data.rows as Array<{ id: string; name: string; code?: string | null; priority?: number | null }>;
     },
   });
 
-  const [activeListId, setActiveListId] = useState<string>("");
-  const effectiveListId = activeListId || lists.data?.[0]?.id || "";
+  // Identifica Varejo (DEFAULT-* ou maior prioridade) e Atacado (WHOLESALE-* ou nome com "atacado")
+  const { retailList, wholesaleList } = useMemo(() => {
+    const rows = lists.data ?? [];
+    const isWholesale = (l: { name: string; code?: string | null }) =>
+      /^WHOLESALE/i.test(l.code ?? "") || /atacado/i.test(l.name ?? "");
+    const wholesale = rows.find(isWholesale) ?? null;
+    const retailCandidates = rows.filter((l) => !isWholesale(l));
+    const retail =
+      retailCandidates.find((l) => /^DEFAULT/i.test(l.code ?? "")) ??
+      retailCandidates.slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0] ??
+      null;
+    return { retailList: retail, wholesaleList: wholesale };
+  }, [lists.data]);
 
-  const priceFor = (variantId: string) =>
-    prices.data?.find((p) => p.variant_id === variantId && p.price_list_id === effectiveListId);
+  const priceFor = (variantId: string, listId: string | undefined) =>
+    listId ? prices.data?.find((p) => p.variant_id === variantId && p.price_list_id === listId) : undefined;
 
-  const save = async (variantId: string, value: number, compare: number | null) => {
-    if (!effectiveListId) return;
+  const save = async (variantId: string, listId: string, value: number, compare: number | null) => {
     const ok = await runAction(
-      () => fnSet({ data: { variant_id: variantId, price_list_id: effectiveListId, price: value, compare_at_price: compare } }),
+      () => fnSet({ data: { variant_id: variantId, price_list_id: listId, price: value, compare_at_price: compare } }),
       { success: "Preço salvo" },
     );
     if (ok) { qc.invalidateQueries({ queryKey: ["product-prices", productId] }); onSaved(); }
@@ -1598,28 +1608,39 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
   if (!variants.data?.length) {
     return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Gere variantes antes de definir preços.</p></TabShell>;
   }
-  if (!lists.data?.length) {
+  if (!lists.data?.length || !retailList) {
     return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Cadastre uma lista de preços antes de continuar.</p></TabShell>;
   }
 
   return (
-    <TabShell title="Preços" description="Defina o preço (e o preço promocional) de cada variante por lista.">
-      <SelectField
-        label="Lista de preços"
-        value={effectiveListId}
-        onChange={setActiveListId}
-        options={lists.data.map((l) => ({ value: l.id, label: l.name }))}
-      />
+    <TabShell title="Preços" description="Preencha Varejo e Atacado lado a lado. Cada campo grava em sua lista.">
+      <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
+        <span>Varejo: <strong>{retailList.name}</strong></span>
+        {wholesaleList
+          ? <span>Atacado: <strong>{wholesaleList.name}</strong></span>
+          : <span className="text-amber-600">Tabela Atacado não encontrada — apenas Varejo será editado.</span>}
+      </div>
       <div className="rounded-md border divide-y">
+        <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 bg-muted/40 text-xs font-medium text-muted-foreground">
+          <span>Variante</span>
+          <span className="w-56 text-center">Varejo (Preço / Promo)</span>
+          <span className="w-56 text-center">{wholesaleList ? "Atacado (Preço / Promo)" : ""}</span>
+          <span className="w-8" />
+        </div>
         {variants.data.map((v) => {
-          const current = priceFor(v.id);
+          const retail = priceFor(v.id, retailList.id);
+          const whole = wholesaleList ? priceFor(v.id, wholesaleList.id) : undefined;
           return (
-            <PriceRowEditor
+            <DualPriceRowEditor
               key={v.id}
               sku={v.sku}
-              initialPrice={current?.price ? Number(current.price) : null}
-              initialSale={current?.compare_at_price ? Number(current.compare_at_price) : null}
-              onSave={(p, s) => save(v.id, p, s)}
+              retailPrice={retail?.price != null ? Number(retail.price) : null}
+              retailSale={retail?.compare_at_price != null ? Number(retail.compare_at_price) : null}
+              wholesalePrice={whole?.price != null ? Number(whole.price) : null}
+              wholesaleSale={whole?.compare_at_price != null ? Number(whole.compare_at_price) : null}
+              hasWholesale={!!wholesaleList}
+              onSaveRetail={(p, s) => save(v.id, retailList.id, p, s)}
+              onSaveWholesale={wholesaleList ? (p, s) => save(v.id, wholesaleList.id, p, s) : undefined}
             />
           );
         })}
@@ -1628,25 +1649,56 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
   );
 }
 
-function PriceRowEditor({
-  sku, initialPrice, initialSale, onSave,
-}: { sku: string; initialPrice: number | null; initialSale: number | null; onSave: (p: number, s: number | null) => void }) {
-  const [price, setPrice] = useState<string>(initialPrice?.toString() ?? "");
-  const [sale, setSale] = useState<string>(initialSale?.toString() ?? "");
+function DualPriceRowEditor({
+  sku, retailPrice, retailSale, wholesalePrice, wholesaleSale, hasWholesale,
+  onSaveRetail, onSaveWholesale,
+}: {
+  sku: string;
+  retailPrice: number | null; retailSale: number | null;
+  wholesalePrice: number | null; wholesaleSale: number | null;
+  hasWholesale: boolean;
+  onSaveRetail: (p: number, s: number | null) => void;
+  onSaveWholesale?: (p: number, s: number | null) => void;
+}) {
+  const [rp, setRp] = useState(retailPrice?.toString() ?? "");
+  const [rs, setRs] = useState(retailSale?.toString() ?? "");
+  const [wp, setWp] = useState(wholesalePrice?.toString() ?? "");
+  const [ws, setWs] = useState(wholesaleSale?.toString() ?? "");
+
+  useEffect(() => { setRp(retailPrice?.toString() ?? ""); }, [retailPrice]);
+  useEffect(() => { setRs(retailSale?.toString() ?? ""); }, [retailSale]);
+  useEffect(() => { setWp(wholesalePrice?.toString() ?? ""); }, [wholesalePrice]);
+  useEffect(() => { setWs(wholesaleSale?.toString() ?? ""); }, [wholesaleSale]);
+
+  const saveAll = () => {
+    const rpN = Number(rp.replace(",", "."));
+    if (rp.trim() && !Number.isNaN(rpN) && (rpN !== retailPrice || (rs ? Number(rs.replace(",", ".")) : null) !== retailSale)) {
+      onSaveRetail(rpN, rs ? Number(rs.replace(",", ".")) : null);
+    }
+    if (hasWholesale && onSaveWholesale) {
+      const wpN = Number(wp.replace(",", "."));
+      if (wp.trim() && !Number.isNaN(wpN) && (wpN !== wholesalePrice || (ws ? Number(ws.replace(",", ".")) : null) !== wholesaleSale)) {
+        onSaveWholesale(wpN, ws ? Number(ws.replace(",", ".")) : null);
+      }
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 p-3 text-sm">
-      <code className="font-mono flex-1 min-w-0 truncate">{sku}</code>
-      <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-28" placeholder="Preço" />
-      <Input type="number" step="0.01" value={sale} onChange={(e) => setSale(e.target.value)} className="w-28" placeholder="Promo" />
-      <Button
-        size="sm" variant="outline"
-        onClick={() => {
-          const p = Number(price); if (Number.isNaN(p)) return;
-          const s = sale ? Number(sale) : null;
-          onSave(p, s);
-        }}
-        disabled={!price.trim()}
-      >
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 p-3 text-sm items-center">
+      <code className="font-mono min-w-0 truncate">{sku}</code>
+      <div className="flex gap-2 w-56">
+        <Input type="number" step="0.01" value={rp} onChange={(e) => setRp(e.target.value)} className="w-full" placeholder="Preço" />
+        <Input type="number" step="0.01" value={rs} onChange={(e) => setRs(e.target.value)} className="w-full" placeholder="Promo" />
+      </div>
+      <div className="flex gap-2 w-56">
+        {hasWholesale ? (
+          <>
+            <Input type="number" step="0.01" value={wp} onChange={(e) => setWp(e.target.value)} className="w-full" placeholder="Preço" />
+            <Input type="number" step="0.01" value={ws} onChange={(e) => setWs(e.target.value)} className="w-full" placeholder="Promo" />
+          </>
+        ) : <div className="w-full" />}
+      </div>
+      <Button size="sm" variant="outline" onClick={saveAll} disabled={!rp.trim() && !wp.trim()}>
         <Save className="h-3.5 w-3.5" />
       </Button>
     </div>
