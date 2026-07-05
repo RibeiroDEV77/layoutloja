@@ -8,16 +8,11 @@
  * banco — apenas leitura.
  */
 import { createServerFn } from '@tanstack/react-start';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
+import { storefrontClient } from './services/storefront-client.server';
 
-function publicClient(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-}
+// Mantém o nome antigo para não tocar nos call sites; encaminha o bearer token
+// da requisição quando presente (Canal Atacado / cliente aprovado).
+const publicClient = storefrontClient;
 
 export type StorefrontStore = { id: string; name: string; slug: string };
 export type StorefrontCategory = {
