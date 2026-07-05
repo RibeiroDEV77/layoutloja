@@ -8,6 +8,7 @@ import { BackButton } from '@/components/storefront/back-button';
 import { useCart } from '@/components/storefront/cart-provider';
 import { useSalesChannel } from '@/components/storefront/sales-channel-provider';
 import { formatBRL } from '@/hooks/use-storefront-cart';
+import { WholesaleMeta } from '@/components/storefront/wholesale-meta';
 import { getStorefrontProduct, type StorefrontProductDetail } from '@/lib/business/storefront-product.functions';
 import { listStorefrontProducts, type StorefrontProduct } from '@/lib/business/storefront.functions';
 import {
