@@ -1,105 +1,59 @@
 ## Objetivo
 
-Implementar autenticação completa da loja (separada do admin), usando o ícone de usuário da navbar como ponto de entrada. Aproveitar o schema existente: `customers.auth_user_id`, `customer_addresses`, `wishlists/wishlist_items`, `orders`. Não criar tabelas duplicadas.
+Eliminar a percepção de duplicidade no canal atacado, mantendo o varejo intocado.
 
-## Antes de começar — confirme
+## Abordagem escolhida
 
-1. **CPF criptografado com pgcrypto**: você precisa fornecer (ou autorizo gerar) o secret `CUSTOMER_PII_KEY` (chave AES armazenada via `add_secret`). A criptografia/descriptografia ficará em SECURITY DEFINER functions que recebem a chave via `current_setting`/parâmetro do server — nunca exposta ao cliente. Confirma essa abordagem?
-2. **Verificação de e-mail**: deixo o Supabase Auth com confirmação por e-mail habilitada (padrão) ou login imediato sem confirmação para facilitar testes?
+**Opção B — "Catálogo Atacado" único**, renderizado em `/atacado/home`.
 
----
+Motivo: `/atacado/home` já existe como placeholder para clientes aprovados (`sales_channel = wholesale`). Transformá-lo no catálogo real é a mudança mínima e isolada. A home `/` permanece exatamente como está para o varejo.
 
-## 1. Banco de dados (uma migration)
+## Escopo (o que muda)
 
-### 1.1 RLS para o cliente final acessar **seus próprios** dados
-Hoje as policies de `customers`, `customer_addresses`, `wishlists`, `wishlist_items`, `orders` são todas escopadas para staff (admin). Adicionar policies adicionais para o **cliente logado** (role `authenticated`):
+1. **`src/routes/atacado.home.tsx`** — substituir o placeholder "Bem-vindo…" por um catálogo único:
+   - Faz **uma única chamada** a `listStorefrontProducts({ data: { store_id, limit: 48, sales_channel: 'wholesale' } })`.
+   - Renderiza uma grade única "Catálogo Atacado" reutilizando o `ProductCard` já existente (mesmo componente de card usado em `/produtos` — nenhum componente do varejo é modificado).
+   - Mantém o gate de autenticação/aprovação (`useWholesaleStatus`) que já existe no arquivo.
+   - Mantém `StorefrontShell` para header/footer.
 
-- `customers`: SELECT/UPDATE quando `auth_user_id = auth.uid()`.
-- `customer_addresses`: SELECT/INSERT/UPDATE/DELETE quando o `customer_id` pertence a um `customers` com `auth_user_id = auth.uid()` (via função `public.current_customer_id()` SECURITY DEFINER).
-- `wishlists` + `wishlist_items`: idem (`current_customer_id()`).
-- `orders` + `order_items`: somente SELECT do próprio cliente.
+2. **Redirecionamento suave do canal atacado ao entrar no site:**
+   - Em `src/components/storefront/sales-channel-provider.tsx` **ou** no handler de "Entrar no Canal Atacado" (`useEnterWholesale`) — **não alterado agora, apenas mencionado**: hoje o clique já leva para `/atacado/home`. Nenhuma mudança necessária.
+   - **Não** vamos interceptar `/` para redirecionar usuários wholesale — isso mexeria em rota compartilhada. O usuário atacado já é direcionado para `/atacado/home` no login/troca de canal.
 
-### 1.2 Função helper
-```sql
-CREATE OR REPLACE FUNCTION public.current_customer_id()
-RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT id FROM public.customers WHERE auth_user_id = auth.uid() LIMIT 1
-$$;
+## Escopo (o que NÃO muda)
+
+- `src/routes/index.tsx` (home varejo) — intacto.
+- `src/lib/business/storefront.functions.ts` — intacto.
+- `src/lib/business/services/commercial-context.server.ts` — intacto.
+- `src/lib/business/storefront-product.functions.ts` — intacto.
+- Banco, RLS, price lists, migrations — nenhuma alteração.
+- Componentes compartilhados (`ProductCard`, `StorefrontShell`, carrossel) — usados por leitura, não modificados.
+- Canal varejo, catálogo `/`, PDP `/produto/$slug`, categorias, carrinho, checkout — intactos.
+
+## Layout da nova `/atacado/home`
+
+```text
+┌──────────────────────────────────────────┐
+│ StorefrontShell (header + footer)        │
+├──────────────────────────────────────────┤
+│ Chip "Canal ativo: Atacado"              │
+│ H1 "Catálogo Atacado"                    │
+│ Subtítulo curto                          │
+├──────────────────────────────────────────┤
+│ Grade responsiva de ProductCards         │
+│ (uma única seção, sem carrosséis)        │
+│ [card] [card] [card] [card]              │
+│ [card] [card] [card] [card] ...          │
+├──────────────────────────────────────────┤
+│ Estado vazio: "Nenhum produto publicado" │
+└──────────────────────────────────────────┘
 ```
 
-### 1.3 Trigger pós-signup
-`handle_new_storefront_user()` cria a linha em `customers` (type=`pessoa_fisica`, status=`ativo`, store_id default da loja) ao inserir em `auth.users`, copiando email e `raw_user_meta_data.full_name`.
+## Verificação após implementação
 
-### 1.4 pgcrypto para CPF
-- `CREATE EXTENSION IF NOT EXISTS pgcrypto;`
-- Coluna nova `customers.doc_number_encrypted bytea` (mantém `doc_number` para o admin já existente — não quebra nada; storefront passa a usar a versão criptografada).
-- Funções `encrypt_doc(text)` / `decrypt_doc(bytea)` SECURITY DEFINER usando `pgp_sym_encrypt` com chave passada como parâmetro pelo server.
+1. `/` no canal varejo → segue com Novidades/Destaques/Mais Vendidos/Todos (inalterado).
+2. `/atacado/home` no canal atacado → uma única grade "Catálogo Atacado" com preços R$ 99,99 (WHOLESALE).
+3. Visitante sem aprovação em `/atacado/home` → redireciona para `/atacado` (comportamento atual preservado).
+4. Nenhum arquivo de varejo tocado (confirmado via diff).
 
-> Não armazenamos senhas (Supabase Auth cuida) nem dados de cartão.
-
----
-
-## 2. Server functions (TanStack Start)
-
-`src/lib/business/storefront-account.functions.ts` com `requireSupabaseAuth`:
-- `getMyAccount()` — devolve customer + endereços (descriptografando CPF).
-- `updateMyProfile({ name, phone, birth_date, doc_number? })` — criptografa CPF.
-- `listMyAddresses()`, `upsertMyAddress(...)`, `deleteMyAddress(id)`, `setDefaultAddress(id)`.
-- `listMyOrders()`, `getMyOrder(id)`.
-- `listMyWishlist()`, `addToWishlist(product_id)`, `removeFromWishlist(item_id)`.
-
----
-
-## 3. UI
-
-### 3.1 `AccountSheet` — modal (desktop) / drawer (mobile)
-Acionado pelo ícone `User` da `StorefrontNavbar` (já existe).
-- **Não autenticado**: tabs "Entrar / Cadastrar / Recuperar senha" (Supabase `signInWithPassword`, `signUp` com `emailRedirectTo`, `resetPasswordForEmail` apontando para `/reset-password` — já existe).
-- **Autenticado**: header com nome/email + lista "Meus Pedidos · Endereços · Dados Pessoais · Favoritos · Sair". Cada item leva para `/minha-conta/...`.
-
-Componentes: shadcn `Sheet` (mobile) e `Dialog` (desktop), alternados por `useIsMobile`.
-
-### 3.2 Rotas `/minha-conta/*`
-Como **rota pública não pode** chamar server fn com `requireSupabaseAuth` durante SSR, criar layout sob `_storefront-account/` com `ssr: false` + redirect para `/` (abrindo o `AccountSheet` em login) quando não há sessão. Estrutura:
-
-```
-src/routes/_storefront-account/route.tsx        ← gate ssr:false
-src/routes/_storefront-account/minha-conta.tsx  ← layout com sidebar
-src/routes/_storefront-account/minha-conta.index.tsx       (resumo)
-src/routes/_storefront-account/minha-conta.pedidos.tsx
-src/routes/_storefront-account/minha-conta.pedidos.$id.tsx
-src/routes/_storefront-account/minha-conta.enderecos.tsx
-src/routes/_storefront-account/minha-conta.dados.tsx
-src/routes/_storefront-account/minha-conta.favoritos.tsx
-```
-
-Sidebar fixa à esquerda no desktop, accordion/colapsada no mobile. Cabeçalho com avatar e botão Sair.
-
-### 3.3 Checkout-ready (preparo, sem alterar fluxo atual)
-- Expor `useStorefrontCustomer()` (hook) consumindo `getMyAccount` via TanStack Query.
-- No `checkout.tsx`, em PR futuro, basta preencher `defaultValues` dos campos a partir desse hook quando `ctx.authenticated`. Já deixo o ponto preparado com TODO.
-
----
-
-## 4. Arquivos a criar / editar
-
-**Criar**
-- migration única (`auth_storefront_setup`)
-- `src/lib/business/storefront-account.functions.ts`
-- `src/components/storefront/account-sheet.tsx`
-- `src/hooks/use-storefront-customer.ts`
-- 7 rotas em `_storefront-account/`
-
-**Editar**
-- `src/components/storefront/storefront.tsx` → `StorefrontNavbar` abre `AccountSheet` no clique do ícone User.
-- `.env`/secrets → `CUSTOMER_PII_KEY`.
-
----
-
-## 5. Riscos / observações
-
-- O `_authenticated/route.tsx` atual redireciona para `/auth` (página do admin). Não vou mexer nele — `_storefront-account` é gate separado para clientes e redireciona para `/` (com modal).
-- RLS adicional para `authenticated` em tabelas que hoje só liberam para staff é **aditiva** (não revoga policies admin existentes).
-- `customer.store_id` é NOT NULL: trigger usa a loja default (primeira `stores` ativa) — confirme se há regra para múltiplas lojas.
-
-Confirme os dois pontos no topo (CPF/secret e confirmação de e-mail) e a regra de `store_id`, e eu executo migration + código.
+Aguardando aprovação para executar.
