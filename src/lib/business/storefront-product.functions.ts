@@ -289,7 +289,9 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
         id: product.id,
         name: product.name,
         slug: product.slug,
+        store_id: product.store_id ?? null,
         short_description: product.short_description,
+
         description: product.description,
         brand: (brandRes.data as { id: string; name: string; slug: string } | null) ?? null,
         colors, sizes, variants, attributes,
