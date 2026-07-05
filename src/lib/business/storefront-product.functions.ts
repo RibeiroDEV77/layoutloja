@@ -51,6 +51,7 @@ export type StorefrontProductDetail = {
   id: string;
   name: string;
   slug: string;
+  store_id: string | null;
   short_description: string | null;
   description: string | null;
   brand: { id: string; name: string; slug: string } | null;
@@ -63,6 +64,7 @@ export type StorefrontProductDetail = {
   list_price_from: number | null;
   currency: string;
 };
+
 
 export const getStorefrontProduct = createServerFn({ method: 'POST' })
   .inputValidator((d: { slug: string; sales_channel?: 'retail' | 'wholesale' }) => d)
