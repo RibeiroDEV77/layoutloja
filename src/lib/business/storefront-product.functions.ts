@@ -5,16 +5,12 @@
  * - Resolve disponibilidade por variante usando supabaseAdmin (stock_levels é staff-only).
  */
 import { createServerFn } from '@tanstack/react-start';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
+import { storefrontClient } from './services/storefront-client.server';
 
-function publicClient(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-}
+// Encaminha o bearer token quando presente para habilitar RLS `authenticated`
+// (ex.: leitura da Tabela Atacado por cliente aprovado). Anônimos continuam
+// caindo nas políticas `TO anon`.
+const publicClient = storefrontClient;
 
 export type StorefrontProductMedia = {
   id: string;
