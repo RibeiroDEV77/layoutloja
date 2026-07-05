@@ -89,10 +89,12 @@ function ProductPage() {
 
   // produtos relacionados (featured fallback) — re-busca ao trocar de canal.
   useEffect(() => {
-    fnList({ data: { flag: 'featured', limit: 8, sales_channel: channel } })
+    if (!product?.store_id) return;
+    fnList({ data: { store_id: product.store_id, flag: 'featured', limit: 8, sales_channel: channel } })
       .then((r) => setRelated((r.rows ?? []).filter((p) => p.id !== product?.id)))
       .catch(() => {});
-  }, [fnList, product?.id, channel]);
+  }, [fnList, product?.id, product?.store_id, channel]);
+
 
   const color = useMemo(
     () => product?.colors.find((c) => c.id === colorId) ?? null,
