@@ -312,6 +312,8 @@ function ProductPage() {
                 </div>
               )}
 
+              {channel === 'wholesale' && <WholesaleMeta variant="pdp" />}
+
               {product.short_description && (
                 <p className="mt-4 text-[14px] text-[#444]">{product.short_description}</p>
               )}
