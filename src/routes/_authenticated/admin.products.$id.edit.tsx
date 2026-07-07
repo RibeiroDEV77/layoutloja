@@ -1878,7 +1878,7 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     if (!retailList || !variants.data) return;
     setSaving(true);
     try {
-      const tasks: Promise<unknown>[] = [];
+      const items: Array<{ variant_id: string; price_list_id: string; price: number; compare_at_price: number | null }> = [];
       for (const v of variants.data) {
         const d = drafts[v.id];
         if (!d) continue;
@@ -1890,23 +1890,32 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
         const curRp = cur?.price != null ? Number(cur.price) : null;
         const curRs = cur?.compare_at_price != null ? Number(cur.compare_at_price) : null;
         if (rp != null && (rp !== curRp || rs !== curRs)) {
-          tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: retailList.id, price: rp, compare_at_price: rs } }));
+          items.push({ variant_id: v.id, price_list_id: retailList.id, price: rp, compare_at_price: rs });
         }
         if (wholesaleList && wp != null) {
           const curW = priceFor(v.id, wholesaleList.id);
           const curWp = curW?.price != null ? Number(curW.price) : null;
           const curWs = curW?.compare_at_price != null ? Number(curW.compare_at_price) : null;
           if (wp !== curWp || ws !== curWs) {
-            tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: wholesaleList.id, price: wp, compare_at_price: ws } }));
+            items.push({ variant_id: v.id, price_list_id: wholesaleList.id, price: wp, compare_at_price: ws });
           }
         }
       }
-      if (!tasks.length) {
+      if (!items.length) {
         notify.info("Nenhuma alteração para salvar");
       } else {
-        await Promise.all(tasks);
-        notify.success(`${tasks.length} preço(s) salvos`);
+        const resp = await fnBulk({ data: { items } });
+        if (!resp.ok) throw new Error(resp.error.message);
+        const { ok_count, fail_count, results } = resp.data;
+        if (fail_count > 0) {
+          const failed = results.filter((r) => !r.ok).slice(0, 3)
+            .map((r) => `${r.variant_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+          notify.error(`Falha em ${fail_count} preço(s)`, failed);
+        } else {
+          notify.success(`${ok_count} preço(s) salvos`);
+        }
         qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+        qc.invalidateQueries({ queryKey: ["storefront"] });
         onSaved();
       }
     } catch (e) {
@@ -1915,6 +1924,8 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
       setSaving(false);
     }
   };
+
+
 
   if (!variants.data?.length) {
     return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Gere variantes antes de definir preços.</p></TabShell>;
