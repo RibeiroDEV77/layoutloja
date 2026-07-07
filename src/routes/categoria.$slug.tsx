@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   StorefrontShell, StorefrontNavbar, StorefrontFooter,
@@ -40,6 +40,12 @@ export const Route = createFileRoute("/categoria/$slug")({
     return out;
   },
   loader: async ({ params }) => {
+    // Redirecionamento permanente de slugs legados de "Botas" para o canônico.
+    const LEGACY_BOTAS_SLUGS = new Set(["b", "botas-legacy"]);
+    if (LEGACY_BOTAS_SLUGS.has(params.slug.toLowerCase())) {
+      throw redirect({ to: "/categoria/$slug", params: { slug: "botas" }, statusCode: 301 });
+    }
+
     const { store } = await getStorefrontStore();
     const store_id = store?.id;
     const [cats, brands] = await Promise.all([
