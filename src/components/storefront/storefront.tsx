@@ -194,11 +194,17 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         })
       : products;
     const productPool = categoryProducts.length ? categoryProducts : products;
-    const subcategoryItems: MegaListItem[] = item.kind === "brands"
+    const extraSubItems: MegaListItem[] = (item.extraLinks ?? []).map((link) => ({
+      id: `extra-${item.key}-${link.slug}`,
+      name: link.label,
+      href: `/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(item.slug)}`,
+    }));
+    const childSubItems: MegaListItem[] = item.kind === "brands"
       ? brands.slice(0, 8).map((brand) => ({ id: brand.id, name: brand.name }))
       : (item.categoryId ? (childrenOf.get(item.categoryId) ?? []) : [])
           .slice(0, 8)
           .map((category) => ({ id: category.id, name: category.name, slug: category.slug }));
+    const subcategoryItems: MegaListItem[] = [...extraSubItems, ...childSubItems].slice(0, 10);
     const productsFor = (kind: typeof MEGA_PRODUCT_COLUMNS[number]["key"]): MegaListItem[] => {
       const source = kind === "best"
         ? productPool.filter((product) => product.best_seller)
