@@ -233,7 +233,9 @@ export async function listVariants(supabase: SbClient, userId: string, productId
   const storeId = await productStoreId(supabase, productId);
   await ensureRead(supabase, userId, storeId);
   const { data, error } = await supabase
-    .from('product_variants').select('*').eq('product_id', productId).order('created_at');
+    .from('product_variants').select('*').eq('product_id', productId)
+    .not('sku', 'ilike', '[DEL-%')
+    .order('created_at');
   if (error) throw Errors.internal('Falha ao listar variantes', { error: error.message });
   return data ?? [];
 }
