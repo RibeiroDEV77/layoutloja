@@ -715,14 +715,49 @@ function VariantsTab({
     if (used.length) setSelectedSizes((prev) => prev.length ? prev : used);
   }, [variantsQ.data]);
 
+  const ensureSizeAttribute = async (): Promise<string | null> => {
+    const existing = sizeAttrQ.data?.attribute?.id;
+    if (existing) return existing;
+    if (!storeId || !product.category_id) {
+      notify.error("Produto sem categoria — defina a categoria antes de adicionar tamanhos");
+      return null;
+    }
+    // Procura atributo "Tamanho" existente na loja
+    const attrs = await fnAttrs({ data: { store_id: storeId, pageSize: 100 } });
+    let attrId: string | null = null;
+    if (attrs.ok) {
+      const list = attrs.data.rows as Array<{ id: string; name: string; is_size?: boolean }>;
+      const found = list.find((a) => a.is_size || /tamanho|size/i.test(a.name));
+      if (found) attrId = found.id;
+    }
+    if (!attrId) {
+      const created = await fnCreateAttr({ data: {
+        store_id: storeId, name: "Tamanho", code: "tamanho",
+        input_type: "select", is_size: true, is_variant_axis: true,
+      } });
+      if (!created.ok) { notify.error(created.error.message); return null; }
+      attrId = (created.data as { id: string }).id;
+    }
+    // Vincula à categoria (idempotente)
+    const link = await fnLinkCatAttr({ data: {
+      category_id: product.category_id, attribute_id: attrId,
+      is_variant_axis: true, is_required: false,
+    } });
+    if (!link.ok && link.error.code !== "CONFLICT") {
+      notify.error(link.error.message); return null;
+    }
+    await sizeAttrQ.refetch();
+    return attrId;
+  };
+
   const addCustomSizes = async (options: { generateAfter?: boolean } = {}) => {
-    const attributeId = sizeAttrQ.data?.attribute?.id;
     const labels = parseSizeTags(sizeTagInput);
-    if (!attributeId) { notify.error("A categoria precisa ter um atributo de tamanho"); return; }
     if (!labels.length) return;
     setCreatingSizes(true);
     const selected = new Set(selectedSizes);
     try {
+      const attributeId = await ensureSizeAttribute();
+      if (!attributeId) return;
       for (let i = 0; i < labels.length; i++) {
         const label = labels[i];
         const code = sizeCodeFromLabel(label);
@@ -750,6 +785,7 @@ function VariantsTab({
       setCreatingSizes(false);
     }
   };
+
 
   const generate = async (sizeIds = selectedSizes) => {
     const ok = await runAction(
