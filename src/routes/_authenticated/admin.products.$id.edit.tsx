@@ -608,6 +608,8 @@ function VariantsTab({
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
   const fnCreateSize = useServerFn(createAttributeValue);
+  const fnCreateAttr = useServerFn(createAttribute);
+  const fnLinkCatAttr = useServerFn(createCategoryAttribute);
   const fnStock = useServerFn(listAdminStock);
   const fnBulkStock = useServerFn(bulkAdjustStock);
   const fnPrices = useServerFn(listProductPrices);
