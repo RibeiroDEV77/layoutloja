@@ -733,7 +733,7 @@ function VariantsTab({
     if (!attrId) {
       const created = await fnCreateAttr({ data: {
         store_id: storeId, name: "Tamanho", code: "tamanho",
-        input_type: "select", is_size: true, is_variant_axis: true,
+        input_type: "select", is_size: true,
       } });
       if (!created.ok) { notify.error(created.error.message); return null; }
       attrId = (created.data as { id: string }).id;
