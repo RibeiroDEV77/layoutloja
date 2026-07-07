@@ -1743,6 +1743,7 @@ const emptyDraft: PriceDraft = { rp: "", rs: "", wp: "", ws: "" };
 function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId: string | null; onSaved: () => void }) {
   const fnList = useServerFn(listProductPrices);
   const fnSet = useServerFn(setVariantPrice);
+  const fnBulk = useServerFn(bulkSetVariantPrices);
   const fnLists = useServerFn(listPriceLists);
   const fnVar = useServerFn(listProductVariants);
   const qc = useQueryClient();
