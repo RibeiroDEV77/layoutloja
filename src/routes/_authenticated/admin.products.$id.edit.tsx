@@ -1232,6 +1232,24 @@ function VariantsTab({
           Campos salvam ao sair do input. Preço usa a lista padrão da loja; estoque usa o controle de inventário.
         </p>
       </section>
+      <ConfirmDialog
+        open={!!colorPendingDelete}
+        onOpenChange={(o) => !o && setColorPendingDelete(null)}
+        title={`Excluir cor "${colorPendingDelete?.name ?? ""}"?`}
+        description="Esta cor poderá ser desativada e suas variantes relacionadas poderão deixar de aparecer. Se houver histórico de estoque ou pedidos, a cor é preservada como inativa para não quebrar dados existentes."
+        confirmLabel="Excluir cor"
+        destructive
+        onConfirm={confirmRemoveColor}
+      />
+      <ConfirmDialog
+        open={!!variantPendingDelete}
+        onOpenChange={(o) => !o && setVariantPendingDelete(null)}
+        title={`Excluir variante ${variantPendingDelete?.label ?? ""}?`}
+        description="Esta variante será removida do catálogo ativo. Estoque e histórico permanecem preservados quando aplicável."
+        confirmLabel="Excluir variante"
+        destructive
+        onConfirm={confirmRemoveVariant}
+      />
     </TabShell>
   );
 }
