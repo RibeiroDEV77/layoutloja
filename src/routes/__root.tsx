@@ -107,6 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google", content: "notranslate" },
       { title: "Layout Builder — E-commerce para marcas de moda premium" },
       { name: "description", content: "Layout Builder é uma plataforma profissional de e-commerce para marcas de moda premium." },
       { property: "og:title", content: "Layout Builder — E-commerce para marcas de moda premium" },
