@@ -1772,17 +1772,35 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     },
   });
 
-  const { retailList, wholesaleList } = useMemo(() => {
+  // Identificação canônica das listas Varejo/Atacado.
+  // Prioridade: prefixo do CODE (convenção do sistema: DEFAULT-* / WHOLESALE-*).
+  //  → resiliente a renomeação de "name".
+  // Fallback: regex de nome apenas se o code não bater. Se nada casar,
+  // a UI abaixo exibe alerta explícito e nunca esconde silenciosamente.
+  const { retailList, wholesaleList, retailMatchedBy, wholesaleMatchedBy } = useMemo(() => {
     const rows = lists.data ?? [];
-    const isWholesale = (l: { name: string; code?: string | null }) =>
-      /^WHOLESALE/i.test(l.code ?? "") || /atacado/i.test(l.name ?? "");
-    const wholesale = rows.find(isWholesale) ?? null;
-    const retailCandidates = rows.filter((l) => !isWholesale(l));
-    const retail =
-      retailCandidates.find((l) => /^DEFAULT/i.test(l.code ?? "")) ??
-      retailCandidates.slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0] ??
-      null;
-    return { retailList: retail, wholesaleList: wholesale };
+    const codeStarts = (l: { code?: string | null }, prefix: string) =>
+      (l.code ?? "").toUpperCase().startsWith(prefix);
+
+    let wholesale = rows.find((l) => codeStarts(l, "WHOLESALE")) ?? null;
+    let wholesaleMatch: "code" | "name" | null = wholesale ? "code" : null;
+    if (!wholesale) {
+      wholesale = rows.find((l) => /atacado/i.test(l.name ?? "")) ?? null;
+      wholesaleMatch = wholesale ? "name" : null;
+    }
+
+    const retailPool = rows.filter((l) => l !== wholesale);
+    let retail = retailPool.find((l) => codeStarts(l, "DEFAULT")) ?? null;
+    let retailMatch: "code" | "priority" | null = retail ? "code" : null;
+    if (!retail) {
+      retail = retailPool.slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0] ?? null;
+      retailMatch = retail ? "priority" : null;
+    }
+
+    return {
+      retailList: retail, wholesaleList: wholesale,
+      retailMatchedBy: retailMatch, wholesaleMatchedBy: wholesaleMatch,
+    };
   }, [lists.data]);
 
   const priceFor = (variantId: string, listId: string | undefined) =>
