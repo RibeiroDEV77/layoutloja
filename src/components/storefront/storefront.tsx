@@ -71,11 +71,12 @@ function SalesChannelControls() {
 
 export function StorefrontShell({ children }: { children: ReactNode }) {
   return (
-    <div className="font-storefront-sans text-[#111] bg-white antialiased">
+    <div className="font-storefront-sans text-[#111] bg-white antialiased notranslate" translate="no">
       {children}
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Navbar — barra preta + navbar branca + mega menu data-driven
