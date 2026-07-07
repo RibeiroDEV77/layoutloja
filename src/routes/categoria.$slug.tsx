@@ -42,14 +42,16 @@ export const Route = createFileRoute("/categoria/$slug")({
   loader: async ({ params }) => {
     const { store } = await getStorefrontStore();
     const store_id = store?.id;
-    const [cats, brands, prods] = await Promise.all([
+    const [cats, brands] = await Promise.all([
       listStorefrontCategories({ data: { store_id } }),
       listStorefrontBrands({ data: { store_id } }),
-      listStorefrontProducts({ data: { store_id, limit: 24 } }),
     ]);
     const navItem = findStorefrontNavItem(params.slug);
     const matchedNavCategory = navItem ? resolveStorefrontCategory(navItem, cats.rows) : undefined;
-    const category = cats.rows.find((c) => c.slug === params.slug) ?? matchedNavCategory ?? {
+    // Match exato por slug primeiro; se houver homônimos, prioriza a categoria top-level (parent_id=null).
+    const slugMatches = cats.rows.filter((c) => c.slug === params.slug);
+    const preferredBySlug = slugMatches.find((c) => c.parent_id === null) ?? slugMatches[0];
+    const category = preferredBySlug ?? matchedNavCategory ?? {
       id: `placeholder-${params.slug}`,
       name: navItem?.label ?? storefrontCategoryLabel(params.slug),
       slug: navItem?.slug ?? params.slug,
@@ -76,23 +78,26 @@ export const Route = createFileRoute("/categoria/$slug")({
         }
       }
     }
+    const isPlaceholder = category.id.startsWith("placeholder-");
+    const realCategoryIds = Array.from(categoryIds).filter((id) => !id.startsWith("placeholder-"));
+    // Fetch products: quando temos categorias reais, filtramos no servidor
+    // (limit 200). Para placeholders (promoções/novidades) mantemos a lista
+    // recente global e filtramos por flag em client-side.
+    const prods = await listStorefrontProducts({
+      data: isPlaceholder
+        ? { store_id, limit: 24, flag: navItem?.key === 'promocoes' ? 'sale' : navItem?.key === 'novidades' ? 'new' : undefined }
+        : { store_id, limit: 200, category_ids: realCategoryIds },
+    });
     const { map: extraCategoryMap } = await listProductCategoryMap({
       data: { product_ids: prods.rows.map((p) => p.id) },
     });
-    // Multi-categoria é a fonte da verdade. Se o produto tem entradas na
-    // junção (painel admin → Organização → Seções), usamos APENAS elas e
-    // ignoramos o `products.category_id` legado — assim trocar/remover uma
-    // seção no painel não deixa o produto "preso" na categoria antiga.
-    // Quando não há junção (produto antigo ainda não migrado), caímos no
-    // campo legado para não sumir produtos pré-existentes.
+    // Multi-categoria é a fonte da verdade quando o produto tem entradas na junção.
     const productInCategory = (product: { id: string; category_id: string | null }) => {
       const extras = extraCategoryMap[product.id] ?? [];
-      if (extras.length > 0) {
-        return extras.some((cid) => categoryIds.has(cid));
-      }
+      if (extras.length > 0) return extras.some((cid) => categoryIds.has(cid));
       return !!product.category_id && categoryIds.has(product.category_id);
     };
-    const categoryProducts = category.id.startsWith("placeholder-")
+    const categoryProducts = isPlaceholder
       ? navItem?.key === "promocoes"
         ? prods.rows.filter((product) => product.on_sale)
         : navItem?.key === "novidades"

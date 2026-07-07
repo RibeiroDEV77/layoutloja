@@ -43,10 +43,8 @@ export const STOREFRONT_NAV_ITEMS: StorefrontNavItem[] = [
     match: ["feminino", "mulher"],
     extraLinks: CALCADO_EXTRA_LINKS,
   },
-  { key: "country", label: "Country", slug: "country", match: ["country"] },
-  { key: "sport-fino", label: "Sport Fino", slug: "sport-fino", match: ["sport-fino", "esporte-fino", "masc-esporte-fino"] },
-  { key: "social", label: "Social", slug: "social", match: ["social", "masc-social"] },
-  { key: "botas", label: "Botas", slug: "botas", match: ["botas", "calc-botas"] },
+  { key: "calcados", label: "Calçados", slug: "calcados", match: ["calcados", "calçados"], extraLinks: CALCADO_EXTRA_LINKS },
+  { key: "botas", label: "Botas", slug: "botas", match: ["botas"] },
   { key: "acessorios", label: "Acessórios", slug: "acessorios", match: ["acessorios", "acessórios"] },
   { key: "marcas", label: "Marcas", slug: "marcas", match: ["marcas"], kind: "brands" },
   { key: "promocoes", label: "Promoções", slug: "promocoes", match: ["promocoes", "promocao", "promo"], accent: true },
@@ -59,7 +57,13 @@ export function findStorefrontNavItem(slug: string) {
 }
 
 export function resolveStorefrontCategory(item: StorefrontNavItem, categories: StorefrontCategory[]) {
-  const bySlug = new Map(categories.map((category) => [normalizeNavText(category.slug), category]));
+  const bySlug = new Map<string, StorefrontCategory>();
+  // Prioriza categorias top-level (parent_id=null) quando houver homônimos por slug.
+  for (const c of categories) {
+    const key = normalizeNavText(c.slug);
+    const existing = bySlug.get(key);
+    if (!existing || (existing.parent_id !== null && c.parent_id === null)) bySlug.set(key, c);
+  }
   for (const slug of item.match) {
     const hit = bySlug.get(normalizeNavText(slug));
     if (hit) return hit;
@@ -68,20 +72,17 @@ export function resolveStorefrontCategory(item: StorefrontNavItem, categories: S
 }
 
 export function resolveStorefrontCategories(item: StorefrontNavItem, categories: StorefrontCategory[]) {
-  const aliases = [item.slug, ...item.match].map(normalizeNavText);
+  // Match EXATO por slug (evita colisão de nomes homônimos como "Botas" top-level x subcategoria).
+  const aliases = new Set([item.slug, ...item.match].map(normalizeNavText));
   const seen = new Set<string>();
   const matches: StorefrontCategory[] = [];
-
   for (const category of categories) {
     const slug = normalizeNavText(category.slug);
-    const name = normalizeNavText(category.name);
-    const found = aliases.some((alias) => slug === alias || slug.includes(alias) || name === alias || name.includes(alias));
-    if (found && !seen.has(category.id)) {
+    if (aliases.has(slug) && !seen.has(category.id)) {
       seen.add(category.id);
       matches.push(category);
     }
   }
-
   return matches;
 }
 
