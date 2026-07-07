@@ -1693,6 +1693,24 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!galleryPendingDelete}
+        onOpenChange={(o) => !o && setGalleryPendingDelete(null)}
+        title="Excluir mídia?"
+        description={
+          <>
+            Esta imagem será excluída permanentemente. Esta ação não pode ser desfeita.
+            {galleryPendingDelete?.isCover && (
+              <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2 text-amber-900 dark:text-amber-200 text-sm">
+                <strong>Atenção:</strong> esta é a capa desta cor. A cor ficará sem capa até você definir outra.
+              </div>
+            )}
+          </>
+        }
+        confirmLabel="Excluir mídia"
+        destructive
+        onConfirm={confirmGalleryRemove}
+      />
     </TabShell>
   );
 }
