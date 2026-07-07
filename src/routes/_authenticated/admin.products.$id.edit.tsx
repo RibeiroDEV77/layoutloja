@@ -1188,19 +1188,30 @@ function VariantsTab({
               <p className="text-sm font-medium mb-3">Ações rápidas</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex gap-2">
-                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas" />
-                  <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0">
+                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas (Varejo)" disabled={bulkSaving === "price"} />
+                  <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0 gap-2">
+                    {bulkSaving === "price" && <Loader2 className="h-3 w-3 animate-spin" />}
                     Aplicar preço
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" />
-                  <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0">
+                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" disabled={bulkSaving === "stock"} />
+                  <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0 gap-2">
+                    {bulkSaving === "stock" && <Loader2 className="h-3 w-3 animate-spin" />}
                     Aplicar estoque
                   </Button>
                 </div>
               </div>
+              {bulkProgress && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Salvando {bulkProgress.total} variante(s)... aguarde a confirmação final.
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-2">
+                A aplicação em massa altera apenas <strong>Varejo</strong> (lista padrão) e <strong>estoque</strong>. Preços de Atacado são gerenciados na aba Preços.
+              </p>
             </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               {variants.map((v) => {
                 const color = colorById.get(v.product_color_id);
