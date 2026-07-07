@@ -1292,9 +1292,20 @@ function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: 
     const ok = await runAction(() => fnUpd({ data: { id, patch: { is_cover: true } } }), { success: "Capa definida" });
     if (ok) { invalidate(); onSaved(); }
   };
-  const remove = async (id: string) => {
-    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Foto removida" });
-    if (ok) { invalidate(); onSaved(); }
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; isCover: boolean } | null>(null);
+  const askRemove = (id: string) => {
+    const m = (media.data ?? []).find((x) => x.id === id);
+    setPendingDelete({ id, isCover: !!m?.is_cover });
+  };
+  const confirmRemove = async () => {
+    if (!pendingDelete) return;
+    const ok = await runAction(() => fnDel({ data: { id: pendingDelete.id } }), { success: "Foto removida" });
+    if (ok) {
+      invalidate();
+      onSaved();
+      if (pendingDelete.isCover) notify.warning("Capa removida. Defina uma nova capa para esta cor.");
+    }
+    setPendingDelete(null);
   };
 
   return (
@@ -1319,13 +1330,31 @@ function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: 
                 {m.is_cover && <Badge className="absolute left-1 top-1 h-5 text-[10px]"><Star className="h-2.5 w-2.5 mr-0.5" />Capa</Badge>}
                 <div className="absolute inset-x-0 bottom-0 hidden group-hover:flex gap-1 p-1 bg-background/90">
                   {!m.is_cover && <Button size="sm" variant="secondary" className="h-6 text-[10px] flex-1" onClick={() => setCover(m.id)}>Capa</Button>}
-                  <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => remove(m.id)}><Trash2 className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => askRemove(m.id)}><Trash2 className="h-3 w-3" /></Button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Excluir imagem?"
+        description={
+          <>
+            Esta imagem será excluída permanentemente. Esta ação não pode ser desfeita.
+            {pendingDelete?.isCover && (
+              <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2 text-amber-900 dark:text-amber-200 text-sm">
+                <strong>Atenção:</strong> esta é a capa desta cor. A cor ficará sem capa até você definir outra.
+              </div>
+            )}
+          </>
+        }
+        confirmLabel="Excluir imagem"
+        destructive
+        onConfirm={confirmRemove}
+      />
     </div>
   );
 }
