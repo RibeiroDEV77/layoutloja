@@ -528,3 +528,84 @@ export async function setVariantPrice(
   if (error) throw Errors.internal('Falha ao criar preço', { error: error.message });
   return data;
 }
+
+/**
+ * Ação em lote — grava preços de várias variantes numa mesma lista (ou várias
+ * listas) em uma única chamada. Reutiliza a mesma regra de upsert por
+ * (price_list_id, variant_id). Retorna resultado por item para permitir que a
+ * UI reporte falhas individuais sem esconder o problema.
+ */
+export async function bulkSetVariantPrices(
+  supabase: SbClient, userId: string,
+  input: {
+    items: Array<{ variant_id: string; price_list_id: string; price: number; compare_at_price?: number | null }>;
+  },
+): Promise<{
+  results: Array<{ variant_id: string; price_list_id: string; ok: boolean; error?: string }>;
+  ok_count: number;
+  fail_count: number;
+}> {
+  if (!input.items?.length) throw Errors.validation('Nenhum preço para aplicar');
+  if (input.items.length > 500) throw Errors.validation('Máximo 500 preços por operação');
+
+  // Validação e permissão feitas 1x por variante (agrupadas)
+  const variantIds = Array.from(new Set(input.items.map((it) => it.variant_id)));
+  const { data: variants } = await supabase
+    .from('product_variants').select('id, product_id').in('id', variantIds);
+  const variantMap = new Map((variants ?? []).map((v) => [v.id, v.product_id as string]));
+
+  const productIds = Array.from(new Set([...variantMap.values()]));
+  const { data: prods } = await supabase
+    .from('products').select('id, store_id').in('id', productIds);
+  const productStore = new Map((prods ?? []).map((p) => [p.id as string, p.store_id as string]));
+  const storeIds = Array.from(new Set([...productStore.values()]));
+  for (const sid of storeIds) {
+    await requirePermission(supabase, userId, 'products.update', sid);
+  }
+
+  const results: Array<{ variant_id: string; price_list_id: string; ok: boolean; error?: string }> = [];
+  for (const it of input.items) {
+    if (it.price == null || it.price < 0) {
+      results.push({ variant_id: it.variant_id, price_list_id: it.price_list_id, ok: false, error: 'preço inválido' });
+      continue;
+    }
+    if (!variantMap.has(it.variant_id)) {
+      results.push({ variant_id: it.variant_id, price_list_id: it.price_list_id, ok: false, error: 'variante não encontrada' });
+      continue;
+    }
+    try {
+      const { data: existing } = await supabase.from('price_list_items')
+        .select('id').eq('price_list_id', it.price_list_id).eq('variant_id', it.variant_id).maybeSingle();
+      if (existing) {
+        const { error } = await supabase.from('price_list_items').update({
+          price: it.price, compare_at_price: it.compare_at_price ?? null,
+        }).eq('id', existing.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from('price_list_items').insert({
+          price_list_id: it.price_list_id,
+          variant_id: it.variant_id,
+          price: it.price,
+          compare_at_price: it.compare_at_price ?? null,
+          min_quantity: 1,
+        });
+        if (error) throw new Error(error.message);
+      }
+      results.push({ variant_id: it.variant_id, price_list_id: it.price_list_id, ok: true });
+    } catch (err) {
+      results.push({
+        variant_id: it.variant_id,
+        price_list_id: it.price_list_id,
+        ok: false,
+        error: err instanceof Error ? err.message : 'erro',
+      });
+    }
+  }
+
+  return {
+    results,
+    ok_count: results.filter((r) => r.ok).length,
+    fail_count: results.filter((r) => !r.ok).length,
+  };
+}
+
