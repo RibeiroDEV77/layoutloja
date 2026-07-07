@@ -18,7 +18,12 @@ import { RouterProgress } from "@/components/admin/router-progress";
 import { reportLovableError } from "@/lib/lovable-error-reporting";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin" }] }),
+  head: () => ({
+    meta: [
+      { title: "Admin" },
+      { name: "google", content: "notranslate" },
+    ],
+  }),
   component: AdminLayout,
   errorComponent: AdminErrorBoundary,
   notFoundComponent: AdminNotFound,
@@ -119,7 +124,7 @@ function AdminLayout() {
         <ActiveStoreProvider>
           <SidebarProvider>
             <RouterProgress />
-            <div className="min-h-screen flex w-full">
+            <div className="min-h-screen flex w-full notranslate" translate="no">
               <AppSidebar />
               <div className="flex-1 flex flex-col min-w-0">
                 <AdminHeader />
