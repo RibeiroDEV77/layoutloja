@@ -1024,12 +1024,14 @@ function VariantsTab({
                 <span className="normal-case ml-1 text-muted-foreground/70">({sizeAttrQ.data.attribute.name})</span>
               )}
             </p>
-            {!sizeAttrQ.data?.attribute ? (
-              <p className="text-xs text-muted-foreground">
-                Categoria sem atributo de tamanho — será gerada 1 variante por cor.
+            {!sizeAttrQ.data?.attribute && (
+              <p className="text-xs text-muted-foreground mb-2">
+                Categoria sem atributo de tamanho — adicione tamanhos abaixo que o atributo será criado e vinculado automaticamente.
               </p>
-            ) : (
+            )}
+            {(
               <div className="space-y-3">
+                {!!sizeAttrQ.data?.attribute && (
                 <p className="text-xs text-muted-foreground">
                   Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
                 </p>
