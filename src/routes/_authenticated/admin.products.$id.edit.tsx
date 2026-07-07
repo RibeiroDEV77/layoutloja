@@ -958,7 +958,7 @@ function VariantsTab({
           <Button
             size="sm"
             onClick={() => generate()}
-            disabled={!colors.length || (!sizeValues.length && !selectedSizes.length && !sizeAttrQ.data)}
+            disabled={!colors.length || (!!sizeAttrQ.data?.attribute && sizeValues.length > 0 && selectedSizes.length === 0)}
             className="gap-2"
           >
             <Sparkles className="h-4 w-4" /> Gerar variantes
