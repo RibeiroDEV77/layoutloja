@@ -43,6 +43,7 @@ import { ColorPicker } from "@/components/admin/color-picker";
 import { runAction, notify } from "@/components/admin/notify";
 import { usePageBreadcrumbs } from "@/components/admin/breadcrumb-context";
 import { ProductOperationsMenu } from "@/components/admin/products/product-operations-menu";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 
 import {
   getProduct, updateProduct, publishProduct, unpublishProduct, getProductReadiness, listProducts,
@@ -56,7 +57,7 @@ import {
   listColorMedia, addColorMedia, deleteColorMedia, updateColorMedia,
   listProductAttributes, setProductAttribute,
   listProductVariants, generateProductVariants, deleteProductVariant, updateProductVariant,
-  listProductPrices, setVariantPrice,
+  listProductPrices, setVariantPrice, bulkSetVariantPrices,
 } from "@/lib/business/product-children.functions";
 import { listCategories } from "@/lib/business/categories.functions";
 import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
@@ -615,6 +616,7 @@ function VariantsTab({
   const fnPrices = useServerFn(listProductPrices);
   const fnPriceLists = useServerFn(listPriceLists);
   const fnSetPrice = useServerFn(setVariantPrice);
+  const fnBulkPrices = useServerFn(bulkSetVariantPrices);
 
   const variantsQ = useQuery({
     queryKey: ["variants", productId],
@@ -691,9 +693,16 @@ function VariantsTab({
     );
     if (ok) { setNewColor({ name: "", hex: "#000000" }); onSaved(); }
   };
-  const removeColor = async (id: string) => {
-    const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
+  const [colorPendingDelete, setColorPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const removeColor = (id: string) => {
+    const c = colors.find((x) => x.id === id);
+    setColorPendingDelete({ id, name: c?.name ?? "esta cor" });
+  };
+  const confirmRemoveColor = async () => {
+    if (!colorPendingDelete) return;
+    const ok = await runAction(() => fnDelColor({ data: { id: colorPendingDelete.id } }), { success: "Cor removida" });
     if (ok) onSaved();
+    setColorPendingDelete(null);
   };
   const setColorDefault = async (id: string) => {
     const ok = await runAction(
@@ -804,13 +813,20 @@ function VariantsTab({
     }
   };
 
-  const removeVariant = async (id: string) => {
-    const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
+  const [variantPendingDelete, setVariantPendingDelete] = useState<{ id: string; label: string } | null>(null);
+  const removeVariant = (id: string) => {
+    const v = (variantsQ.data ?? []).find((x) => x.id === id);
+    setVariantPendingDelete({ id, label: v?.sku ?? "esta variante" });
+  };
+  const confirmRemoveVariant = async () => {
+    if (!variantPendingDelete) return;
+    const ok = await runAction(() => fnDelVar({ data: { id: variantPendingDelete.id } }), { success: "Variante removida" });
     if (ok) {
       qc.invalidateQueries({ queryKey: ["variants", productId] });
       qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
     }
+    setVariantPendingDelete(null);
   };
 
   // ---------- Edição inline ----------
@@ -856,33 +872,77 @@ function VariantsTab({
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
   const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const applyBulkPrice = async () => {
     const value = Number(bulkPrice.replace(",", "."));
     if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
+    if (!defaultPriceListId) { notify.error("Cadastre ao menos uma lista de preços"); return; }
+    const items = (variantsQ.data ?? []).map((v) => ({
+      variant_id: v.id, price_list_id: defaultPriceListId, price: value, compare_at_price: null,
+    }));
+    if (!items.length) { notify.info("Nenhuma variante para atualizar"); return; }
     setBulkSaving("price");
+    setBulkProgress({ done: 0, total: items.length });
+    const toastId = notify.loading(`Salvando ${items.length} preço(s)...`);
     try {
-      for (const v of variantsQ.data ?? []) await savePrice(v.id, value, null);
-      notify.success("Preço aplicado em todas as variantes");
+      const resp = await fnBulkPrices({ data: { items } });
+      notify.dismiss(toastId);
+      if (!resp.ok) { notify.error(resp.error.message); return; }
+      const { ok_count, fail_count, results } = resp.data;
+      if (fail_count > 0) {
+        const failed = results.filter((r) => !r.ok).slice(0, 3)
+          .map((r) => `${r.variant_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+        notify.error(`Falha em ${fail_count} variante(s)`, failed);
+      } else {
+        notify.success(`Preço aplicado em ${ok_count} variante(s)`);
+      }
+      qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
+      onSaved();
       setBulkPrice("");
+    } catch (e) {
+      notify.dismiss(toastId);
+      notify.error(e instanceof Error ? e.message : "Falha ao aplicar preço");
     } finally {
       setBulkSaving(null);
+      setBulkProgress(null);
     }
   };
 
   const applyBulkStock = async () => {
     const value = Number(bulkStock);
     if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
+    const items = (variantsQ.data ?? [])
+      .map((v) => stockByVariant.get(v.id))
+      .filter((s): s is { id: string; qty: number } => !!s?.id)
+      .map((s) => ({ stock_level_id: s.id, new_quantity: value, reason: "Ajuste em massa via cadastro" }));
+    if (!items.length) { notify.info("Nenhum nível de estoque para atualizar"); return; }
     setBulkSaving("stock");
+    setBulkProgress({ done: 0, total: items.length });
+    const toastId = notify.loading(`Salvando estoque de ${items.length} variante(s)...`);
     try {
-      for (const v of variantsQ.data ?? []) {
-        const stock = stockByVariant.get(v.id);
-        if (stock?.id) await saveStock(stock.id, value);
+      const resp = await fnBulkStock({ data: { items } });
+      notify.dismiss(toastId);
+      if (!resp.ok) { notify.error(resp.error.message); return; }
+      const { ok_count, fail_count, results } = resp.data;
+      if (fail_count > 0) {
+        const failed = results.filter((r) => !r.ok).slice(0, 3)
+          .map((r) => `${r.stock_level_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+        notify.error(`Falha em ${fail_count} nível(is)`, failed);
+      } else {
+        notify.success(`Estoque aplicado em ${ok_count} variante(s)`);
       }
-      notify.success("Estoque aplicado em todas as variantes");
+      qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
+      onSaved();
       setBulkStock("");
+    } catch (e) {
+      notify.dismiss(toastId);
+      notify.error(e instanceof Error ? e.message : "Falha ao aplicar estoque");
     } finally {
       setBulkSaving(null);
+      setBulkProgress(null);
     }
   };
 
@@ -1128,19 +1188,30 @@ function VariantsTab({
               <p className="text-sm font-medium mb-3">Ações rápidas</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex gap-2">
-                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas" />
-                  <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0">
+                  <Input value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} type="number" step="0.01" placeholder="Mesmo preço para todas (Varejo)" disabled={bulkSaving === "price"} />
+                  <Button variant="outline" disabled={bulkSaving === "price" || !bulkPrice.trim()} onClick={applyBulkPrice} className="shrink-0 gap-2">
+                    {bulkSaving === "price" && <Loader2 className="h-3 w-3 animate-spin" />}
                     Aplicar preço
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" />
-                  <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0">
+                  <Input value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} type="number" min={0} placeholder="Mesmo estoque para todas" disabled={bulkSaving === "stock"} />
+                  <Button variant="outline" disabled={bulkSaving === "stock" || !bulkStock.trim()} onClick={applyBulkStock} className="shrink-0 gap-2">
+                    {bulkSaving === "stock" && <Loader2 className="h-3 w-3 animate-spin" />}
                     Aplicar estoque
                   </Button>
                 </div>
               </div>
+              {bulkProgress && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Salvando {bulkProgress.total} variante(s)... aguarde a confirmação final.
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-2">
+                A aplicação em massa altera apenas <strong>Varejo</strong> (lista padrão) e <strong>estoque</strong>. Preços de Atacado são gerenciados na aba Preços.
+              </p>
             </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               {variants.map((v) => {
                 const color = colorById.get(v.product_color_id);
@@ -1172,6 +1243,24 @@ function VariantsTab({
           Campos salvam ao sair do input. Preço usa a lista padrão da loja; estoque usa o controle de inventário.
         </p>
       </section>
+      <ConfirmDialog
+        open={!!colorPendingDelete}
+        onOpenChange={(o) => !o && setColorPendingDelete(null)}
+        title={`Excluir cor "${colorPendingDelete?.name ?? ""}"?`}
+        description="Esta cor poderá ser desativada e suas variantes relacionadas poderão deixar de aparecer. Se houver histórico de estoque ou pedidos, a cor é preservada como inativa para não quebrar dados existentes."
+        confirmLabel="Excluir cor"
+        destructive
+        onConfirm={confirmRemoveColor}
+      />
+      <ConfirmDialog
+        open={!!variantPendingDelete}
+        onOpenChange={(o) => !o && setVariantPendingDelete(null)}
+        title={`Excluir variante ${variantPendingDelete?.label ?? ""}?`}
+        description="Esta variante será removida do catálogo ativo. Estoque e histórico permanecem preservados quando aplicável."
+        confirmLabel="Excluir variante"
+        destructive
+        onConfirm={confirmRemoveVariant}
+      />
     </TabShell>
   );
 }
@@ -1232,9 +1321,20 @@ function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: 
     const ok = await runAction(() => fnUpd({ data: { id, patch: { is_cover: true } } }), { success: "Capa definida" });
     if (ok) { invalidate(); onSaved(); }
   };
-  const remove = async (id: string) => {
-    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Foto removida" });
-    if (ok) { invalidate(); onSaved(); }
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; isCover: boolean } | null>(null);
+  const askRemove = (id: string) => {
+    const m = (media.data ?? []).find((x) => x.id === id);
+    setPendingDelete({ id, isCover: !!m?.is_cover });
+  };
+  const confirmRemove = async () => {
+    if (!pendingDelete) return;
+    const ok = await runAction(() => fnDel({ data: { id: pendingDelete.id } }), { success: "Foto removida" });
+    if (ok) {
+      invalidate();
+      onSaved();
+      if (pendingDelete.isCover) notify.warning("Capa removida. Defina uma nova capa para esta cor.");
+    }
+    setPendingDelete(null);
   };
 
   return (
@@ -1259,13 +1359,31 @@ function ColorMediaQuickManager({ color, onSaved }: { color: ColorRow; onSaved: 
                 {m.is_cover && <Badge className="absolute left-1 top-1 h-5 text-[10px]"><Star className="h-2.5 w-2.5 mr-0.5" />Capa</Badge>}
                 <div className="absolute inset-x-0 bottom-0 hidden group-hover:flex gap-1 p-1 bg-background/90">
                   {!m.is_cover && <Button size="sm" variant="secondary" className="h-6 text-[10px] flex-1" onClick={() => setCover(m.id)}>Capa</Button>}
-                  <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => remove(m.id)}><Trash2 className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => askRemove(m.id)}><Trash2 className="h-3 w-3" /></Button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title="Excluir imagem?"
+        description={
+          <>
+            Esta imagem será excluída permanentemente. Esta ação não pode ser desfeita.
+            {pendingDelete?.isCover && (
+              <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2 text-amber-900 dark:text-amber-200 text-sm">
+                <strong>Atenção:</strong> esta é a capa desta cor. A cor ficará sem capa até você definir outra.
+              </div>
+            )}
+          </>
+        }
+        confirmLabel="Excluir imagem"
+        destructive
+        onConfirm={confirmRemove}
+      />
     </div>
   );
 }
@@ -1469,9 +1587,20 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
     }
   };
 
-  const remove = async (id: string) => {
-    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Mídia removida" });
-    if (ok) { invalidate(); onSaved(); }
+  const [galleryPendingDelete, setGalleryPendingDelete] = useState<{ id: string; isCover: boolean } | null>(null);
+  const remove = (id: string) => {
+    const m = (media.data ?? []).find((x) => x.id === id);
+    setGalleryPendingDelete({ id, isCover: !!m?.is_cover });
+  };
+  const confirmGalleryRemove = async () => {
+    if (!galleryPendingDelete) return;
+    const ok = await runAction(() => fnDel({ data: { id: galleryPendingDelete.id } }), { success: "Mídia removida" });
+    if (ok) {
+      invalidate();
+      onSaved();
+      if (galleryPendingDelete.isCover) notify.warning("Capa removida. Defina uma nova capa para esta cor.");
+    }
+    setGalleryPendingDelete(null);
   };
   const setCover = async (id: string) => {
     const ok = await runAction(
@@ -1593,6 +1722,24 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!galleryPendingDelete}
+        onOpenChange={(o) => !o && setGalleryPendingDelete(null)}
+        title="Excluir mídia?"
+        description={
+          <>
+            Esta imagem será excluída permanentemente. Esta ação não pode ser desfeita.
+            {galleryPendingDelete?.isCover && (
+              <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-2 text-amber-900 dark:text-amber-200 text-sm">
+                <strong>Atenção:</strong> esta é a capa desta cor. A cor ficará sem capa até você definir outra.
+              </div>
+            )}
+          </>
+        }
+        confirmLabel="Excluir mídia"
+        destructive
+        onConfirm={confirmGalleryRemove}
+      />
     </TabShell>
   );
 }
@@ -1607,6 +1754,7 @@ const emptyDraft: PriceDraft = { rp: "", rs: "", wp: "", ws: "" };
 function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId: string | null; onSaved: () => void }) {
   const fnList = useServerFn(listProductPrices);
   const fnSet = useServerFn(setVariantPrice);
+  const fnBulk = useServerFn(bulkSetVariantPrices);
   const fnLists = useServerFn(listPriceLists);
   const fnVar = useServerFn(listProductVariants);
   const qc = useQueryClient();
@@ -1636,17 +1784,35 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     },
   });
 
-  const { retailList, wholesaleList } = useMemo(() => {
+  // Identificação canônica das listas Varejo/Atacado.
+  // Prioridade: prefixo do CODE (convenção do sistema: DEFAULT-* / WHOLESALE-*).
+  //  → resiliente a renomeação de "name".
+  // Fallback: regex de nome apenas se o code não bater. Se nada casar,
+  // a UI abaixo exibe alerta explícito e nunca esconde silenciosamente.
+  const { retailList, wholesaleList, retailMatchedBy, wholesaleMatchedBy } = useMemo(() => {
     const rows = lists.data ?? [];
-    const isWholesale = (l: { name: string; code?: string | null }) =>
-      /^WHOLESALE/i.test(l.code ?? "") || /atacado/i.test(l.name ?? "");
-    const wholesale = rows.find(isWholesale) ?? null;
-    const retailCandidates = rows.filter((l) => !isWholesale(l));
-    const retail =
-      retailCandidates.find((l) => /^DEFAULT/i.test(l.code ?? "")) ??
-      retailCandidates.slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0] ??
-      null;
-    return { retailList: retail, wholesaleList: wholesale };
+    const codeStarts = (l: { code?: string | null }, prefix: string) =>
+      (l.code ?? "").toUpperCase().startsWith(prefix);
+
+    let wholesale = rows.find((l) => codeStarts(l, "WHOLESALE")) ?? null;
+    let wholesaleMatch: "code" | "name" | null = wholesale ? "code" : null;
+    if (!wholesale) {
+      wholesale = rows.find((l) => /atacado/i.test(l.name ?? "")) ?? null;
+      wholesaleMatch = wholesale ? "name" : null;
+    }
+
+    const retailPool = rows.filter((l) => l !== wholesale);
+    let retail = retailPool.find((l) => codeStarts(l, "DEFAULT")) ?? null;
+    let retailMatch: "code" | "priority" | null = retail ? "code" : null;
+    if (!retail) {
+      retail = retailPool.slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0] ?? null;
+      retailMatch = retail ? "priority" : null;
+    }
+
+    return {
+      retailList: retail, wholesaleList: wholesale,
+      retailMatchedBy: retailMatch, wholesaleMatchedBy: wholesaleMatch,
+    };
   }, [lists.data]);
 
   const priceFor = (variantId: string, listId: string | undefined) =>
@@ -1723,7 +1889,7 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
     if (!retailList || !variants.data) return;
     setSaving(true);
     try {
-      const tasks: Promise<unknown>[] = [];
+      const items: Array<{ variant_id: string; price_list_id: string; price: number; compare_at_price: number | null }> = [];
       for (const v of variants.data) {
         const d = drafts[v.id];
         if (!d) continue;
@@ -1735,23 +1901,32 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
         const curRp = cur?.price != null ? Number(cur.price) : null;
         const curRs = cur?.compare_at_price != null ? Number(cur.compare_at_price) : null;
         if (rp != null && (rp !== curRp || rs !== curRs)) {
-          tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: retailList.id, price: rp, compare_at_price: rs } }));
+          items.push({ variant_id: v.id, price_list_id: retailList.id, price: rp, compare_at_price: rs });
         }
         if (wholesaleList && wp != null) {
           const curW = priceFor(v.id, wholesaleList.id);
           const curWp = curW?.price != null ? Number(curW.price) : null;
           const curWs = curW?.compare_at_price != null ? Number(curW.compare_at_price) : null;
           if (wp !== curWp || ws !== curWs) {
-            tasks.push(fnSet({ data: { variant_id: v.id, price_list_id: wholesaleList.id, price: wp, compare_at_price: ws } }));
+            items.push({ variant_id: v.id, price_list_id: wholesaleList.id, price: wp, compare_at_price: ws });
           }
         }
       }
-      if (!tasks.length) {
+      if (!items.length) {
         notify.info("Nenhuma alteração para salvar");
       } else {
-        await Promise.all(tasks);
-        notify.success(`${tasks.length} preço(s) salvos`);
+        const resp = await fnBulk({ data: { items } });
+        if (!resp.ok) throw new Error(resp.error.message);
+        const { ok_count, fail_count, results } = resp.data;
+        if (fail_count > 0) {
+          const failed = results.filter((r) => !r.ok).slice(0, 3)
+            .map((r) => `${r.variant_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+          notify.error(`Falha em ${fail_count} preço(s)`, failed);
+        } else {
+          notify.success(`${ok_count} preço(s) salvos`);
+        }
         qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+        qc.invalidateQueries({ queryKey: ["storefront"] });
         onSaved();
       }
     } catch (e) {
@@ -1760,6 +1935,8 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
       setSaving(false);
     }
   };
+
+
 
   if (!variants.data?.length) {
     return <TabShell title="Preços"><p className="text-sm text-muted-foreground">Gere variantes antes de definir preços.</p></TabShell>;
@@ -1770,12 +1947,29 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
 
   return (
     <TabShell title="Preços" description="Preencha Varejo e Atacado lado a lado. Use a aplicação em massa para agilizar.">
+      {(!wholesaleList || wholesaleMatchedBy === "name" || retailMatchedBy !== "code") && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 text-amber-900 dark:text-amber-100 p-3 text-sm space-y-1">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertCircle className="h-4 w-4" /> Configuração de tabelas de preço
+          </div>
+          {!wholesaleList && (
+            <p>• <strong>Tabela Atacado não encontrada.</strong> Crie uma lista com code iniciando em <code>WHOLESALE-</code> em Preços → Listas para habilitar a coluna Atacado.</p>
+          )}
+          {wholesaleMatchedBy === "name" && (
+            <p>• Tabela Atacado localizada por <strong>nome</strong>, não por code canônico. Padronize o code para <code>WHOLESALE-*</code> para evitar erros ao renomear.</p>
+          )}
+          {retailMatchedBy !== "code" && retailList && (
+            <p>• Tabela Varejo assumida como <strong>{retailList.name}</strong> por prioridade — o code canônico é <code>DEFAULT-*</code>.</p>
+          )}
+        </div>
+      )}
       <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
-        <span>Varejo: <strong>{retailList.name}</strong></span>
+        <span>Varejo: <strong>{retailList.name}</strong> <span className="opacity-60">({retailList.code})</span></span>
         {wholesaleList
-          ? <span>Atacado: <strong>{wholesaleList.name}</strong></span>
+          ? <span>Atacado: <strong>{wholesaleList.name}</strong> <span className="opacity-60">({wholesaleList.code})</span></span>
           : <span className="text-amber-600">Tabela Atacado não encontrada — apenas Varejo será editado.</span>}
       </div>
+
 
       <div className="rounded-md border bg-muted/30 p-3 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-end">
