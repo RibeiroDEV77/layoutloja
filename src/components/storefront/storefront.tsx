@@ -341,12 +341,12 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
                           {it.placeholder ? (
                             <div className="h-4 w-4/5 bg-[#F1F1F1] animate-pulse" />
                           ) : it.href ? (
-                            <Link
-                              to={it.href}
+                            <a
+                              href={it.href}
                               className="hover:text-[var(--brand-red)] transition-colors duration-200"
                             >
                               {it.name}
-                            </Link>
+                            </a>
                           ) : column.linkToCategory && it.slug ? (
                             <Link
                               to="/categoria/$slug"
