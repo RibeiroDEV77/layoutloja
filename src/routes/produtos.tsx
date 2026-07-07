@@ -140,9 +140,9 @@ function AllProductsPage() {
     // Cada filtro deve casar (AND). Para cada slug ativo, resolve a subtree
     // e verifica se o produto pertence a alguma categoria dessa subtree.
     const subtrees = Array.from(activeSlugs).map((slug) => resolveCategorySubtreeIds(slug, categories));
-    return products.filter((product) => {
-      const assigned = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
-      return subtrees.every((tree) => assigned.some((id) => tree.has(id)));
+    return products.filter((product: (typeof products)[number]) => {
+      const assigned: string[] = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
+      return subtrees.every((tree) => assigned.some((id: string) => tree.has(id)));
     });
   }, [products, categories, activeSlugs]);
 
