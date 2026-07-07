@@ -351,12 +351,23 @@ function sanitizeCode(s: string): string {
 
 export async function deleteVariant(supabase: SbClient, userId: string, variantId: string) {
   const { data: v } = await supabase
-    .from('product_variants').select('product_id').eq('id', variantId).maybeSingle();
+    .from('product_variants').select('product_id, sku').eq('id', variantId).maybeSingle();
   if (!v) throw Errors.notFound('product_variant', variantId);
   const storeId = await productStoreId(supabase, v.product_id);
   await requirePermission(supabase, userId, 'products.update', storeId);
   const { error } = await supabase.from('product_variants').delete().eq('id', variantId);
-  if (error) throw Errors.internal('Falha ao remover variante', { error: error.message });
+  if (error) {
+    // FK RESTRICT (ex: stock_movements, cart_items, order refs) → soft delete
+    const code = (error as { code?: string }).code;
+    if (code === '23503') {
+      const tombstone = `[DEL-${Date.now()}]${(v.sku ?? '').slice(0, 40)}`;
+      const { error: upErr } = await supabase.from('product_variants')
+        .update({ is_active: false, sku: tombstone }).eq('id', variantId);
+      if (upErr) throw Errors.internal('Falha ao remover variante', { error: upErr.message });
+      return { ok: true as const, id: variantId, soft: true as const };
+    }
+    throw Errors.internal('Falha ao remover variante', { error: error.message });
+  }
   return { ok: true as const, id: variantId };
 }
 
