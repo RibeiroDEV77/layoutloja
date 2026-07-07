@@ -616,6 +616,7 @@ function VariantsTab({
   const fnPrices = useServerFn(listProductPrices);
   const fnPriceLists = useServerFn(listPriceLists);
   const fnSetPrice = useServerFn(setVariantPrice);
+  const fnBulkPrices = useServerFn(bulkSetVariantPrices);
 
   const variantsQ = useQuery({
     queryKey: ["variants", productId],
