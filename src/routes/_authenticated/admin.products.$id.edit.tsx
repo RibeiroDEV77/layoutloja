@@ -932,7 +932,18 @@ function VariantsTab({
                 {(() => {
                   const sizes = sizesByColor.get(c.id) ?? [];
                   if (!sizes.length) return (
-                    <p className="text-[11px] text-muted-foreground border-t pt-2">Nenhum tamanho gerado para esta cor ainda.</p>
+                    <div className="border-t pt-2 flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-muted-foreground">Nenhum tamanho gerado para esta cor ainda.</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 h-8"
+                        onClick={() => generate()}
+                        disabled={!!sizeAttrQ.data?.attribute && sizeValues.length > 0 && selectedSizes.length === 0}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" /> Gerar variantes
+                      </Button>
+                    </div>
                   );
                   return (
                     <div className="border-t pt-2 space-y-1">
