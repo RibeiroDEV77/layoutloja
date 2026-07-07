@@ -148,6 +148,7 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     categoryId?: string;
     image?: string | null;
     categoryIds: string[];
+    extraLinks: { label: string; slug: string }[];
   };
 
   const navItems: NavItem[] = useMemo(() => {
@@ -163,9 +164,11 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         categoryId: resolved?.id,
         image: resolved?.image_url,
         categoryIds: resolvedList.map((category) => category.id),
+        extraLinks: entry.extraLinks ?? [],
       };
     });
   }, [categories]);
+
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
