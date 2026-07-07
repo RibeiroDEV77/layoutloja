@@ -18,7 +18,12 @@ import { RouterProgress } from "@/components/admin/router-progress";
 import { reportLovableError } from "@/lib/lovable-error-reporting";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin" }] }),
+  head: () => ({
+    meta: [
+      { title: "Admin" },
+      { name: "google", content: "notranslate" },
+    ],
+  }),
   component: AdminLayout,
   errorComponent: AdminErrorBoundary,
   notFoundComponent: AdminNotFound,
