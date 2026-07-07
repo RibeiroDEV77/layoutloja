@@ -61,9 +61,9 @@ import {
 import { listCategories } from "@/lib/business/categories.functions";
 import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
 import { listBrands } from "@/lib/business/brands.functions";
-import { listAttributes } from "@/lib/business/attributes.functions";
+import { listAttributes, createAttribute } from "@/lib/business/attributes.functions";
 import { createAttributeValue, listAttributeValues } from "@/lib/business/attribute-values.functions";
-import { listCategoryAttributes } from "@/lib/business/category-attributes.functions";
+import { listCategoryAttributes, createCategoryAttribute } from "@/lib/business/category-attributes.functions";
 import { listPriceLists } from "@/lib/business/price-lists.functions";
 import { listAdminStock, bulkAdjustStock } from "@/lib/business/inventory.functions";
 import { useActiveStore } from "@/hooks/use-active-store";
@@ -608,6 +608,8 @@ function VariantsTab({
   const fnAttrs = useServerFn(listAttributes);
   const fnVals = useServerFn(listAttributeValues);
   const fnCreateSize = useServerFn(createAttributeValue);
+  const fnCreateAttr = useServerFn(createAttribute);
+  const fnLinkCatAttr = useServerFn(createCategoryAttribute);
   const fnStock = useServerFn(listAdminStock);
   const fnBulkStock = useServerFn(bulkAdjustStock);
   const fnPrices = useServerFn(listProductPrices);
@@ -713,14 +715,49 @@ function VariantsTab({
     if (used.length) setSelectedSizes((prev) => prev.length ? prev : used);
   }, [variantsQ.data]);
 
+  const ensureSizeAttribute = async (): Promise<string | null> => {
+    const existing = sizeAttrQ.data?.attribute?.id;
+    if (existing) return existing;
+    if (!storeId || !product.category_id) {
+      notify.error("Produto sem categoria — defina a categoria antes de adicionar tamanhos");
+      return null;
+    }
+    // Procura atributo "Tamanho" existente na loja
+    const attrs = await fnAttrs({ data: { store_id: storeId, pageSize: 100 } });
+    let attrId: string | null = null;
+    if (attrs.ok) {
+      const list = attrs.data.rows as Array<{ id: string; name: string; is_size?: boolean }>;
+      const found = list.find((a) => a.is_size || /tamanho|size/i.test(a.name));
+      if (found) attrId = found.id;
+    }
+    if (!attrId) {
+      const created = await fnCreateAttr({ data: {
+        store_id: storeId, name: "Tamanho", code: "tamanho",
+        input_type: "select", is_size: true,
+      } });
+      if (!created.ok) { notify.error(created.error.message); return null; }
+      attrId = (created.data as { id: string }).id;
+    }
+    // Vincula à categoria (idempotente)
+    const link = await fnLinkCatAttr({ data: {
+      category_id: product.category_id, attribute_id: attrId,
+      is_variant_axis: true, is_required: false,
+    } });
+    if (!link.ok && link.error.code !== "CONFLICT") {
+      notify.error(link.error.message); return null;
+    }
+    await sizeAttrQ.refetch();
+    return attrId;
+  };
+
   const addCustomSizes = async (options: { generateAfter?: boolean } = {}) => {
-    const attributeId = sizeAttrQ.data?.attribute?.id;
     const labels = parseSizeTags(sizeTagInput);
-    if (!attributeId) { notify.error("A categoria precisa ter um atributo de tamanho"); return; }
     if (!labels.length) return;
     setCreatingSizes(true);
     const selected = new Set(selectedSizes);
     try {
+      const attributeId = await ensureSizeAttribute();
+      if (!attributeId) return;
       for (let i = 0; i < labels.length; i++) {
         const label = labels[i];
         const code = sizeCodeFromLabel(label);
@@ -748,6 +785,7 @@ function VariantsTab({
       setCreatingSizes(false);
     }
   };
+
 
   const generate = async (sizeIds = selectedSizes) => {
     const ok = await runAction(
@@ -986,51 +1024,55 @@ function VariantsTab({
                 <span className="normal-case ml-1 text-muted-foreground/70">({sizeAttrQ.data.attribute.name})</span>
               )}
             </p>
-            {!sizeAttrQ.data?.attribute ? (
-              <p className="text-xs text-muted-foreground">
-                Categoria sem atributo de tamanho — será gerada 1 variante por cor.
+            {!sizeAttrQ.data?.attribute && (
+              <p className="text-xs text-muted-foreground mb-2">
+                Categoria sem atributo de tamanho — adicione tamanhos abaixo que o atributo será criado e vinculado automaticamente.
               </p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
-                </div>
-                {(() => {
-                  const presets: Array<{ label: string; match: RegExp }> = [
-                    { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
-                    { label: "P–G", match: /^(P|M|G)$/i },
-                    { label: "Numéricos", match: /^\d{2}$/ },
-                  ];
-                  const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
-                  if (!applicable.length) return null;
-                  return (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
-                      {applicable.map((p) => (
-                        <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
-                          onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
-                          {p.label}
-                        </Button>
-                      ))}
-                    </div>
-                  );
-                })()}
-                <div className="flex flex-wrap gap-2">
-                  {sizeValues.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => toggleSize(v.id)}
-                      className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
+            )}
+            <div className="space-y-3">
+              {!!sizeAttrQ.data?.attribute && (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
+                  </div>
+                  {(() => {
+                    const presets: Array<{ label: string; match: RegExp }> = [
+                      { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
+                      { label: "P–G", match: /^(P|M|G)$/i },
+                      { label: "Numéricos", match: /^\d{2}$/ },
+                    ];
+                    const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
+                    if (!applicable.length) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
+                        {applicable.map((p) => (
+                          <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
+                            onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
+                            {p.label}
+                          </Button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-wrap gap-2">
+                    {sizeValues.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => toggleSize(v.id)}
+                        className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
                 <div className="grid gap-2 rounded-md border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="min-w-0">
                     <Label className="text-xs font-medium">Adicionar tamanhos por tag</Label>
@@ -1065,8 +1107,8 @@ function VariantsTab({
                     <strong>{selectedSizes.length * colors.length}</strong> variante(s).
                   </p>
                 )}
-              </div>
-            )}
+            </div>
+
           </div>
         </div>
       </section>
