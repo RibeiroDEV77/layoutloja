@@ -141,7 +141,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="notranslate" translate="no">
         {children}
         <Scripts />
       </body>
