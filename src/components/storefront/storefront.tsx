@@ -340,6 +340,13 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
                         <li key={it.id}>
                           {it.placeholder ? (
                             <div className="h-4 w-4/5 bg-[#F1F1F1] animate-pulse" />
+                          ) : it.href ? (
+                            <Link
+                              to={it.href}
+                              className="hover:text-[var(--brand-red)] transition-colors duration-200"
+                            >
+                              {it.name}
+                            </Link>
                           ) : column.linkToCategory && it.slug ? (
                             <Link
                               to="/categoria/$slug"
