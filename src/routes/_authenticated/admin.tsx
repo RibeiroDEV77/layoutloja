@@ -119,7 +119,7 @@ function AdminLayout() {
         <ActiveStoreProvider>
           <SidebarProvider>
             <RouterProgress />
-            <div className="min-h-screen flex w-full">
+            <div className="min-h-screen flex w-full notranslate" translate="no">
               <AppSidebar />
               <div className="flex-1 flex flex-col min-w-0">
                 <AdminHeader />
