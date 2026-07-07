@@ -692,9 +692,16 @@ function VariantsTab({
     );
     if (ok) { setNewColor({ name: "", hex: "#000000" }); onSaved(); }
   };
-  const removeColor = async (id: string) => {
-    const ok = await runAction(() => fnDelColor({ data: { id } }), { success: "Cor removida" });
+  const [colorPendingDelete, setColorPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const removeColor = (id: string) => {
+    const c = colors.find((x) => x.id === id);
+    setColorPendingDelete({ id, name: c?.name ?? "esta cor" });
+  };
+  const confirmRemoveColor = async () => {
+    if (!colorPendingDelete) return;
+    const ok = await runAction(() => fnDelColor({ data: { id: colorPendingDelete.id } }), { success: "Cor removida" });
     if (ok) onSaved();
+    setColorPendingDelete(null);
   };
   const setColorDefault = async (id: string) => {
     const ok = await runAction(
