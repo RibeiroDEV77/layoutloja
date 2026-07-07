@@ -43,6 +43,7 @@ import { ColorPicker } from "@/components/admin/color-picker";
 import { runAction, notify } from "@/components/admin/notify";
 import { usePageBreadcrumbs } from "@/components/admin/breadcrumb-context";
 import { ProductOperationsMenu } from "@/components/admin/products/product-operations-menu";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 
 import {
   getProduct, updateProduct, publishProduct, unpublishProduct, getProductReadiness, listProducts,
@@ -56,7 +57,7 @@ import {
   listColorMedia, addColorMedia, deleteColorMedia, updateColorMedia,
   listProductAttributes, setProductAttribute,
   listProductVariants, generateProductVariants, deleteProductVariant, updateProductVariant,
-  listProductPrices, setVariantPrice,
+  listProductPrices, setVariantPrice, bulkSetVariantPrices,
 } from "@/lib/business/product-children.functions";
 import { listCategories } from "@/lib/business/categories.functions";
 import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
