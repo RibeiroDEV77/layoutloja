@@ -95,7 +95,7 @@ const MEGA_PRODUCT_COLUMNS = [
   { key: "sale", title: "Promoções" },
 ] as const;
 
-type MegaListItem = { id: string; name: string; slug?: string; placeholder?: boolean };
+type MegaListItem = { id: string; name: string; slug?: string; href?: string; placeholder?: boolean };
 type MegaColumn = { title: string; items: MegaListItem[]; linkToCategory?: boolean };
 
 export function StorefrontNavbar({ categories = [], brands = [], products = [] }: NavbarProps) {
