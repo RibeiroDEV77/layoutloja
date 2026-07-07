@@ -61,9 +61,9 @@ import {
 import { listCategories } from "@/lib/business/categories.functions";
 import { listProductCategoryIds, setProductCategories } from "@/lib/business/product-categories.functions";
 import { listBrands } from "@/lib/business/brands.functions";
-import { listAttributes } from "@/lib/business/attributes.functions";
+import { listAttributes, createAttribute } from "@/lib/business/attributes.functions";
 import { createAttributeValue, listAttributeValues } from "@/lib/business/attribute-values.functions";
-import { listCategoryAttributes } from "@/lib/business/category-attributes.functions";
+import { listCategoryAttributes, createCategoryAttribute } from "@/lib/business/category-attributes.functions";
 import { listPriceLists } from "@/lib/business/price-lists.functions";
 import { listAdminStock, bulkAdjustStock } from "@/lib/business/inventory.functions";
 import { useActiveStore } from "@/hooks/use-active-store";
