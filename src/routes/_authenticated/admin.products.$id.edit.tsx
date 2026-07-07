@@ -1107,8 +1107,8 @@ function VariantsTab({
                     <strong>{selectedSizes.length * colors.length}</strong> variante(s).
                   </p>
                 )}
-              </div>
-            )}
+            </div>
+
           </div>
         </div>
       </section>
