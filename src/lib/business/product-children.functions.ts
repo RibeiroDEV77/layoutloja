@@ -123,3 +123,11 @@ export const setVariantPrice = createServerFn({ method: 'POST' })
   .handler(withBusiness(async ({ data, context }) =>
     C.setVariantPrice(context.supabase, context.userId, data),
   ));
+
+export const bulkSetVariantPrices = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { items: Array<{ variant_id: string; price_list_id: string; price: number; compare_at_price?: number|null }> }) => input)
+  .handler(withBusiness(async ({ data, context }) =>
+    C.bulkSetVariantPrices(context.supabase, context.userId, data),
+  ));
+
