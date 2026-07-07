@@ -1924,12 +1924,29 @@ function PricesTab({ productId, storeId, onSaved }: { productId: string; storeId
 
   return (
     <TabShell title="Preços" description="Preencha Varejo e Atacado lado a lado. Use a aplicação em massa para agilizar.">
+      {(!wholesaleList || wholesaleMatchedBy === "name" || retailMatchedBy !== "code") && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 text-amber-900 dark:text-amber-100 p-3 text-sm space-y-1">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertCircle className="h-4 w-4" /> Configuração de tabelas de preço
+          </div>
+          {!wholesaleList && (
+            <p>• <strong>Tabela Atacado não encontrada.</strong> Crie uma lista com code iniciando em <code>WHOLESALE-</code> em Preços → Listas para habilitar a coluna Atacado.</p>
+          )}
+          {wholesaleMatchedBy === "name" && (
+            <p>• Tabela Atacado localizada por <strong>nome</strong>, não por code canônico. Padronize o code para <code>WHOLESALE-*</code> para evitar erros ao renomear.</p>
+          )}
+          {retailMatchedBy !== "code" && retailList && (
+            <p>• Tabela Varejo assumida como <strong>{retailList.name}</strong> por prioridade — o code canônico é <code>DEFAULT-*</code>.</p>
+          )}
+        </div>
+      )}
       <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
-        <span>Varejo: <strong>{retailList.name}</strong></span>
+        <span>Varejo: <strong>{retailList.name}</strong> <span className="opacity-60">({retailList.code})</span></span>
         {wholesaleList
-          ? <span>Atacado: <strong>{wholesaleList.name}</strong></span>
+          ? <span>Atacado: <strong>{wholesaleList.name}</strong> <span className="opacity-60">({wholesaleList.code})</span></span>
           : <span className="text-amber-600">Tabela Atacado não encontrada — apenas Varejo será editado.</span>}
       </div>
+
 
       <div className="rounded-md border bg-muted/30 p-3 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-2 items-end">
