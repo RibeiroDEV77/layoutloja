@@ -75,6 +75,8 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     limit?: number;
     /** Sprint 10.5: canal comercial. Quando omitido, resolvido por cookie. */
     sales_channel?: 'retail' | 'wholesale';
+    /** Filtra produtos por categoria (inclui multi-categoria via product_categories). */
+    category_ids?: string[];
   }) => input ?? {})
   .handler(async ({ data }): Promise<{ rows: StorefrontProduct[] }> => {
     // Resolve o contexto comercial (cookie SSR-safe + mapeamento canônico).
@@ -85,16 +87,35 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     });
 
     const sb = publicClient();
+    const hasCategoryFilter = Array.isArray(data.category_ids) && data.category_ids.length > 0;
+    const catIds = hasCategoryFilter ? (data.category_ids as string[]) : [];
+
+    // Coleta product_ids vinculados via junção (multi-categoria) quando filtrando por categoria.
+    let productIdsFromJoin: string[] = [];
+    if (hasCategoryFilter) {
+      const { data: joinRows } = await sb
+        .from('product_categories')
+        .select('product_id')
+        .in('category_id', catIds);
+      productIdsFromJoin = Array.from(new Set((joinRows ?? []).map((r: { product_id: string }) => r.product_id)));
+    }
+
+    const effectiveLimit = hasCategoryFilter ? Math.min(data.limit ?? 200, 200) : Math.min(data.limit ?? 8, 24);
     let q = sb
       .from('products')
       .select('id,name,slug,short_description,category_id,brand_id,on_sale,new_product,featured,best_seller')
       .in('sale_channel', ctx.product_sale_channels)
       .order('updated_at', { ascending: false })
-      .limit(Math.min(data.limit ?? 8, 24));
+      .limit(effectiveLimit);
     if (data.store_id) q = q.eq('store_id', data.store_id);
     if (data.flag === 'new') q = q.eq('new_product', true);
     if (data.flag === 'sale') q = q.eq('on_sale', true);
     if (data.flag === 'featured') q = q.eq('featured', true);
+    if (hasCategoryFilter) {
+      const orParts: string[] = [`category_id.in.(${catIds.join(',')})`];
+      if (productIdsFromJoin.length) orParts.push(`id.in.(${productIdsFromJoin.join(',')})`);
+      q = q.or(orParts.join(','));
+    }
     const { data: rows } = await q;
     const products = (rows ?? []) as StorefrontProduct[];
     if (!products.length) return { rows: products };
