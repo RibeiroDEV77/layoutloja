@@ -140,7 +140,7 @@ export async function getProduct(supabase: SbClient, userId: string, productId: 
 
   const [{ data: product, error: pe }, { data: colors }, { data: variants }, { data: attrs }] = await Promise.all([
     supabase.from('products').select('*').eq('id', productId).maybeSingle(),
-    supabase.from('product_colors').select('*').eq('product_id', productId).order('sort_order'),
+    supabase.from('product_colors').select('*').eq('product_id', productId).eq('is_active', true).order('sort_order'),
     supabase.from('product_variants').select('*').eq('product_id', productId).order('created_at'),
     supabase.from('product_attribute_values').select('*').eq('product_id', productId),
   ]);

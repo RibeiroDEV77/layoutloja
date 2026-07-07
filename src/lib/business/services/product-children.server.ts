@@ -69,7 +69,7 @@ export async function listColors(supabase: SbClient, userId: string, productId: 
   const storeId = await productStoreId(supabase, productId);
   await ensureRead(supabase, userId, storeId);
   const { data, error } = await supabase
-    .from('product_colors').select('*').eq('product_id', productId).order('sort_order');
+    .from('product_colors').select('*').eq('product_id', productId).eq('is_active', true).order('sort_order');
   if (error) throw Errors.internal('Falha ao listar cores', { error: error.message });
   return data ?? [];
 }
@@ -106,10 +106,63 @@ export async function updateColor(
 }
 
 export async function deleteColor(supabase: SbClient, userId: string, colorId: string) {
-  const { storeId } = await colorStoreId(supabase, colorId);
+  const { storeId, productId } = await colorStoreId(supabase, colorId);
   await requirePermission(supabase, userId, 'products.update', storeId);
   const { error } = await supabase.from('product_colors').delete().eq('id', colorId);
-  if (error) throw Errors.internal('Falha ao remover cor', { error: error.message });
+  if (error) {
+    // Quando a cor possui variantes com histórico fiscal/estoque/pedido, o banco
+    // impede a exclusão física via FK RESTRICT. Nesse caso removemos da UX com
+    // soft delete e liberamos SKU/nome para permitir recriação futura da cor.
+    const code = (error as { code?: string }).code;
+    if (code === '23503') {
+      const { data: variants, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('id, sku')
+        .eq('product_color_id', colorId);
+      if (variantsError) throw Errors.internal('Falha ao remover cor', { error: variantsError.message });
+
+      const tombstoneBase = Date.now();
+      for (const [index, variant] of (variants ?? []).entries()) {
+        const tombstoneSku = `[DEL-${tombstoneBase}-${index}]${(variant.sku ?? '').slice(0, 40)}`;
+        const { error: variantUpdateError } = await supabase
+          .from('product_variants')
+          .update({ is_active: false, sku: tombstoneSku })
+          .eq('id', variant.id);
+        if (variantUpdateError) throw Errors.internal('Falha ao remover cor', { error: variantUpdateError.message });
+      }
+
+      const tombstoneName = `[DEL-${tombstoneBase}]${colorId.slice(0, 8)}`;
+      const { error: colorUpdateError } = await supabase
+        .from('product_colors')
+        .update({ is_active: false, is_default: false, name: tombstoneName })
+        .eq('id', colorId);
+      if (colorUpdateError) throw Errors.internal('Falha ao remover cor', { error: colorUpdateError.message });
+
+      const { data: remainingDefaults } = await supabase
+        .from('product_colors')
+        .select('id')
+        .eq('product_id', productId)
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .limit(1);
+      if (!remainingDefaults?.length) {
+        const { data: nextDefault } = await supabase
+          .from('product_colors')
+          .select('id')
+          .eq('product_id', productId)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (nextDefault?.id) {
+          await supabase.from('product_colors').update({ is_default: true }).eq('id', nextDefault.id);
+        }
+      }
+
+      return { ok: true as const, id: colorId, soft: true as const };
+    }
+    throw Errors.internal('Falha ao remover cor', { error: error.message });
+  }
   return { ok: true as const, id: colorId };
 }
 
