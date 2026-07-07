@@ -395,20 +395,35 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
               className="py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors"
               onNavigate={() => setOpen(false)}
             />
-            {navItems.map((i) =>
-              <Link
-                key={i.key}
-                to="/categoria/$slug"
-                params={{ slug: i.slug }}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
-                  i.accent && "text-[var(--brand-red)] font-medium",
+            {navItems.map((i) => (
+              <div key={i.key}>
+                <Link
+                  to="/categoria/$slug"
+                  params={{ slug: i.slug }}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "block py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
+                    i.accent && "text-[var(--brand-red)] font-medium",
+                  )}
+                >
+                  {i.label}
+                </Link>
+                {i.extraLinks.length > 0 && (
+                  <div className="pl-4 border-b border-[#F8F8F8]">
+                    {i.extraLinks.map((link) => (
+                      <a
+                        key={link.slug}
+                        href={`/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(i.slug)}`}
+                        onClick={() => setOpen(false)}
+                        className="block py-2 text-[14px] text-[#555] hover:text-[var(--brand-red)] transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
                 )}
-              >
-                {i.label}
-              </Link>,
-            )}
+              </div>
+            ))}
           </nav>
         </div>
       )}
