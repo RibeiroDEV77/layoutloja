@@ -95,7 +95,7 @@ const MEGA_PRODUCT_COLUMNS = [
   { key: "sale", title: "Promoções" },
 ] as const;
 
-type MegaListItem = { id: string; name: string; slug?: string; placeholder?: boolean };
+type MegaListItem = { id: string; name: string; slug?: string; href?: string; placeholder?: boolean };
 type MegaColumn = { title: string; items: MegaListItem[]; linkToCategory?: boolean };
 
 export function StorefrontNavbar({ categories = [], brands = [], products = [] }: NavbarProps) {
@@ -148,6 +148,7 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     categoryId?: string;
     image?: string | null;
     categoryIds: string[];
+    extraLinks: { label: string; slug: string }[];
   };
 
   const navItems: NavItem[] = useMemo(() => {
@@ -163,9 +164,11 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         categoryId: resolved?.id,
         image: resolved?.image_url,
         categoryIds: resolvedList.map((category) => category.id),
+        extraLinks: entry.extraLinks ?? [],
       };
     });
   }, [categories]);
+
 
   const activeMega = useMemo(() => {
     if (!hover) return null;
@@ -191,11 +194,17 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         })
       : products;
     const productPool = categoryProducts.length ? categoryProducts : products;
-    const subcategoryItems: MegaListItem[] = item.kind === "brands"
+    const extraSubItems: MegaListItem[] = (item.extraLinks ?? []).map((link) => ({
+      id: `extra-${item.key}-${link.slug}`,
+      name: link.label,
+      href: `/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(item.slug)}`,
+    }));
+    const childSubItems: MegaListItem[] = item.kind === "brands"
       ? brands.slice(0, 8).map((brand) => ({ id: brand.id, name: brand.name }))
       : (item.categoryId ? (childrenOf.get(item.categoryId) ?? []) : [])
           .slice(0, 8)
           .map((category) => ({ id: category.id, name: category.name, slug: category.slug }));
+    const subcategoryItems: MegaListItem[] = [...extraSubItems, ...childSubItems].slice(0, 10);
     const productsFor = (kind: typeof MEGA_PRODUCT_COLUMNS[number]["key"]): MegaListItem[] => {
       const source = kind === "best"
         ? productPool.filter((product) => product.best_seller)
@@ -331,6 +340,13 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
                         <li key={it.id}>
                           {it.placeholder ? (
                             <div className="h-4 w-4/5 bg-[#F1F1F1] animate-pulse" />
+                          ) : it.href ? (
+                            <a
+                              href={it.href}
+                              className="hover:text-[var(--brand-red)] transition-colors duration-200"
+                            >
+                              {it.name}
+                            </a>
                           ) : column.linkToCategory && it.slug ? (
                             <Link
                               to="/categoria/$slug"
@@ -379,20 +395,35 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
               className="py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors"
               onNavigate={() => setOpen(false)}
             />
-            {navItems.map((i) =>
-              <Link
-                key={i.key}
-                to="/categoria/$slug"
-                params={{ slug: i.slug }}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
-                  i.accent && "text-[var(--brand-red)] font-medium",
+            {navItems.map((i) => (
+              <div key={i.key}>
+                <Link
+                  to="/categoria/$slug"
+                  params={{ slug: i.slug }}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "block py-2.5 border-b border-[#F8F8F8] text-[#111] hover:text-[var(--brand-red)] transition-colors",
+                    i.accent && "text-[var(--brand-red)] font-medium",
+                  )}
+                >
+                  {i.label}
+                </Link>
+                {i.extraLinks.length > 0 && (
+                  <div className="pl-4 border-b border-[#F8F8F8]">
+                    {i.extraLinks.map((link) => (
+                      <a
+                        key={link.slug}
+                        href={`/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(i.slug)}`}
+                        onClick={() => setOpen(false)}
+                        className="block py-2 text-[14px] text-[#555] hover:text-[var(--brand-red)] transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
                 )}
-              >
-                {i.label}
-              </Link>,
-            )}
+              </div>
+            ))}
           </nav>
         </div>
       )}
