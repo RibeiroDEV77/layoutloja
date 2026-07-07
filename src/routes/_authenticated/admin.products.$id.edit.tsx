@@ -884,16 +884,16 @@ function VariantsTab({
     if (!items.length) { notify.info("Nenhuma variante para atualizar"); return; }
     setBulkSaving("price");
     setBulkProgress({ done: 0, total: items.length });
-    const ok = await runAction(
-      () => fnBulkPrices({ data: { items } }),
-      { loading: `Salvando ${items.length} preço(s)...`, success: null },
-    );
-    if (ok) {
-      const { ok_count, fail_count, results } = ok.data;
+    const toastId = notify.loading(`Salvando ${items.length} preço(s)...`);
+    try {
+      const resp = await fnBulkPrices({ data: { items } });
+      notify.dismiss(toastId);
+      if (!resp.ok) { notify.error(resp.error.message); return; }
+      const { ok_count, fail_count, results } = resp.data;
       if (fail_count > 0) {
-        const failed = results.filter((r: { ok: boolean }) => !r.ok).slice(0, 3)
-          .map((r: { variant_id: string; error?: string }) => `${r.variant_id.slice(0, 8)}: ${r.error}`).join(" • ");
-        notify.error(`Falha em ${fail_count} variante(s). ${failed}`);
+        const failed = results.filter((r) => !r.ok).slice(0, 3)
+          .map((r) => `${r.variant_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+        notify.error(`Falha em ${fail_count} variante(s)`, failed);
       } else {
         notify.success(`Preço aplicado em ${ok_count} variante(s)`);
       }
@@ -901,9 +901,13 @@ function VariantsTab({
       qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
       setBulkPrice("");
+    } catch (e) {
+      notify.dismiss(toastId);
+      notify.error(e instanceof Error ? e.message : "Falha ao aplicar preço");
+    } finally {
+      setBulkSaving(null);
+      setBulkProgress(null);
     }
-    setBulkSaving(null);
-    setBulkProgress(null);
   };
 
   const applyBulkStock = async () => {
@@ -916,16 +920,16 @@ function VariantsTab({
     if (!items.length) { notify.info("Nenhum nível de estoque para atualizar"); return; }
     setBulkSaving("stock");
     setBulkProgress({ done: 0, total: items.length });
-    const ok = await runAction(
-      () => fnBulkStock({ data: { items } }),
-      { loading: `Salvando estoque de ${items.length} variante(s)...`, success: null },
-    );
-    if (ok) {
-      const { ok_count, fail_count, results } = ok.data;
+    const toastId = notify.loading(`Salvando estoque de ${items.length} variante(s)...`);
+    try {
+      const resp = await fnBulkStock({ data: { items } });
+      notify.dismiss(toastId);
+      if (!resp.ok) { notify.error(resp.error.message); return; }
+      const { ok_count, fail_count, results } = resp.data;
       if (fail_count > 0) {
-        const failed = results.filter((r: { ok: boolean }) => !r.ok).slice(0, 3)
-          .map((r: { stock_level_id: string; error?: string }) => `${r.stock_level_id.slice(0, 8)}: ${r.error}`).join(" • ");
-        notify.error(`Falha em ${fail_count} nível(is). ${failed}`);
+        const failed = results.filter((r) => !r.ok).slice(0, 3)
+          .map((r) => `${r.stock_level_id.slice(0, 8)}: ${r.error ?? "erro"}`).join(" • ");
+        notify.error(`Falha em ${fail_count} nível(is)`, failed);
       } else {
         notify.success(`Estoque aplicado em ${ok_count} variante(s)`);
       }
@@ -933,9 +937,13 @@ function VariantsTab({
       qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
       setBulkStock("");
+    } catch (e) {
+      notify.dismiss(toastId);
+      notify.error(e instanceof Error ? e.message : "Falha ao aplicar estoque");
+    } finally {
+      setBulkSaving(null);
+      setBulkProgress(null);
     }
-    setBulkSaving(null);
-    setBulkProgress(null);
   };
 
   // ---------- Lookups ----------
