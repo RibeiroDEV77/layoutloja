@@ -1,46 +1,62 @@
-## Contexto atual (auditoria rápida)
 
-- O navbar é data-driven a partir de `src/lib/storefront-navigation.ts` (`STOREFRONT_NAV_ITEMS`) e das categorias reais do banco.
-- Já existe "Botas" como item raiz no navbar (slug `botas`) e como subcategoria filha de "Calçados" (slug `b`) — mas **não** aparece dentro do mega-menu de "Masculino".
-- O mega-menu de cada item hoje monta a coluna "Subcategorias" só a partir de `childrenOf(categoryId)` — não considera links curados extra.
-- `/produtos` (`src/routes/produtos.tsx`, 125 linhas) hoje **não tem barra lateral de filtros por categoria via checkbox** — a filtragem por categoria é feita em `/categoria/$slug`.
+## Causa raiz identificada (auditoria do banco + código)
 
-## Escopo proposto
+**Dados reais no banco (loja Layout, `store_id=4ea8…fe4a`)**:
 
-### 1. Sub-links curados no navbar (Masculino, Feminino, Infantil/Unissex)
+| Nível | Nome | Slug | parent_id | Produtos publicados |
+|---|---|---|---|---|
+| 1 | Masculino | `masculino` | — | 12 |
+| 1 | Feminino | `feminino` | — | 5 |
+| 1 | **Botas** | `botas` | — | **8** |
+| 1 | **Calçados** | `calcados` | — | 7 (direto) |
+| 1 | Acessórios | `acessorios` | — | 0 |
+| 1 | Promoções | `promocoes` | — | 0 |
+| 1 | Novidades | `novidades` | — | 0 |
+| 2 | Botas (duplicada) | **`b`** | Calçados | 4 |
+| 2 | Tênis / Sapatos / Sandálias | `calc-*` | Calçados | 0 |
+| 2 | Camisas Fem. | `fem-camisas` | Feminino | 1 |
+| 2 | Calças Masc. | `masc-cal…` | Masculino | 2 |
 
-- Estender `StorefrontNavItem` com um campo opcional `extraLinks: { label: string; slug: string }[]`.
-- Popular `masculino.extraLinks` com `Botas` (slug `botas`) + as demais categorias de calçado já cadastradas (Sapatos, Tênis, Sapatênis, Sandálias) apontando para os slugs reais do DB.
-- Popular `feminino.extraLinks` e (se existir) `infantil` de forma equivalente, listando o que já está cadastrado no DB e não aparece hoje no dropdown.
-- Renderizar `extraLinks` na coluna "Subcategorias" do mega-menu (concatenando/prevalecendo sobre `childrenOf`) e no drawer mobile como sub-itens recuados sob o pai.
+**Problemas encontrados**:
 
-Sem mudanças estéticas: mesmos estilos, hover `--brand-red`, transições e tipografia existentes.
+1. **Navbar hardcoded** (`src/lib/storefront-navigation.ts`) tem itens que não existem no banco (`Country`, `Sport Fino`, `Social`) e **não tem `Calçados`**. Não é dirigido pelo banco. Não bate com a auditoria.
+2. **`listStorefrontProducts` limita a 24 produtos globais** (`src/lib/business/storefront.functions.ts:93`), sem filtro por categoria — a página `/categoria/$slug` filtra tudo client-side. Se um produto de Botas não estiver entre os 24 mais recentes, some da listagem — este é o motivo direto de "Calçados/Botas sem produtos" e "filtro Botas não funciona".
+3. **Categoria duplicada "Botas"** (top-level `botas` e subcategoria `b` de Calçados) causa contagem/nav ambígua. `resolveStorefrontCategories` usa `name.includes(alias)` — combina as duas Botas.
+4. **Filtros lateral (cor/tamanho)** só filtram o subset já carregado — herdam o mesmo bug do limit 24.
 
-### 2. Filtro "Botas" e pré-seleção via URL
+## Plano de correção (somente storefront público — sem tocar produtos, preços, estoque, variantes, admin)
 
-- Em `/produtos`, adicionar uma barra lateral simples com checkboxes de categoria (Masculino, Feminino, Botas, Acessórios, Calçados…). Não mexer nas queries do canal — apenas filtrar client-side sobre `category_ids` como já é feito em `categoria.$slug`.
-- Ler `?cat=botas&dep=masculino` da URL para pré-selecionar os checkboxes.
-- Link do "Botas" dentro do dropdown "Masculino" navega para `/produtos?cat=botas&dep=masculino`.
-- Empty state limpo ("Nenhum produto encontrado nesta combinação") mantendo o layout.
+### Passo 1 — Consulta de categoria correta no servidor
+Adicionar parâmetro `category_ids?: string[]` em `listStorefrontProducts` e aplicar `.in('category_id', ids)` UNION com match via `product_categories`. Elevar limite quando `category_ids` está presente (ex.: 200). Loader de `/categoria/$slug` passa a expansão de subcategorias já calculada.
 
-### 3. UI/UX
+### Passo 2 — Navbar dirigido pelo banco
+Substituir `STOREFRONT_NAV_ITEMS` hardcoded por derivação a partir de `categories` (`is_active=true`, `level=1`, com produtos publicados). Preservar `Marcas`, `Promoções`, `Novidades` como itens curados. Manter aliases para retro-compat de URLs antigas (`country`, `sport-fino`, `social`) redirecionando para `/produtos`. Desktop e mobile consomem a mesma lista.
 
-- Preservar Tailwind, cores, hover e transições atuais.
-- Drawer mobile: sub-itens indentados com o mesmo divisor `#F8F8F8` e hover `--brand-red`.
+### Passo 3 — Deduplicar "Botas"
+Migração leve: mover subcategoria "Botas (slug=`b`)" para ficar sob a top-level `botas` OU tornar a top-level a única exibida (unir contagem). Optar por **tornar a top-level canônica** e desativar/mesclar a duplicada, mantendo os 4 produtos vinculados também à top-level via `product_categories` (sem alterar produto/preço/estoque). Requer migração — apresentar antes de rodar.
 
-## Arquivos afetados
+### Passo 4 — Filtros server-driven
+`getCategoryFilters` já existe. Garantir que os produtos passados ao filtro venham da nova consulta com `category_ids`, e que ao clicar em atributo (cor/numeração) a URL atualize (já faz) — o resultado deixará de ser vazio pois a lista base agora vem completa da categoria.
 
-- `src/lib/storefront-navigation.ts` — novo campo `extraLinks`.
-- `src/components/storefront/storefront.tsx` — render dos extraLinks no mega-menu desktop e no drawer mobile.
-- `src/routes/produtos.tsx` — sidebar de filtros + leitura de query params + empty state.
+### Passo 5 — Cache / query keys
+Loader do TanStack já usa route + params + search para o cache; após incluir `category_ids` na chamada server, o resultado passa a ser específico da categoria e o SSR/hydration ficam consistentes.
 
-## Fora do escopo
+### Passo 6 — Validação
+Playwright headless: `/categoria/calcados`, `/categoria/botas`, `/produtos`, filtro Botas, filtro cor, mobile viewport, sales channel varejo. Screenshots + contagens.
 
-- Não altero categorias no banco.
-- Não altero `categoria.$slug.tsx`, canal atacado, pricing, checkout, carrinho.
-- Não redesenho o navbar nem o mega-menu.
+## Arquivos a alterar
 
-## Pergunta de confirmação
+- `src/lib/business/storefront.functions.ts` — aceitar `category_ids` + subir limite.
+- `src/routes/categoria.$slug.tsx` — enviar `category_ids` já expandido.
+- `src/lib/storefront-navigation.ts` — derivar itens do banco (ou remover); manter aliases.
+- `src/components/storefront/storefront.tsx` — usar lista dinâmica.
+- Migração Supabase (Passo 3) — apenas se você aprovar a mescla das duas "Botas".
 
-1. Você quer os **mesmos sub-links** em Masculino/Feminino (Botas, Sapatos, Tênis, Sapatênis, Sandálias, Chinelos), ou uma lista específica?
-2. `/produtos` hoje não tem sidebar de filtros — posso criar uma nova ou você prefere que "Botas no navbar" leve para `/categoria/botas` (já existente) em vez de `/produtos?cat=botas`?
+## O que NÃO será alterado
+
+Produtos, preços, estoque, variantes, imagens, atacado, carrinho, checkout, RLS, RBAC.
+
+## Perguntas antes de executar
+
+1. **Mesclar as duas "Botas"?** Top-level `botas` (8 produtos) vs subcategoria `b` sob Calçados (4 produtos). Recomendo tornar a top-level canônica e vincular também os 4 produtos via `product_categories`. OK?
+2. **Navbar 100% dinâmico** (só categorias do banco + Marcas/Promoções/Novidades) OU **híbrido** (mantém alguns itens curados como Country/Sport Fino apontando para `/produtos?cat=`)?
