@@ -813,13 +813,20 @@ function VariantsTab({
     }
   };
 
-  const removeVariant = async (id: string) => {
-    const ok = await runAction(() => fnDelVar({ data: { id } }), { success: "Variante removida" });
+  const [variantPendingDelete, setVariantPendingDelete] = useState<{ id: string; label: string } | null>(null);
+  const removeVariant = (id: string) => {
+    const v = (variantsQ.data ?? []).find((x) => x.id === id);
+    setVariantPendingDelete({ id, label: v?.sku ?? "esta variante" });
+  };
+  const confirmRemoveVariant = async () => {
+    if (!variantPendingDelete) return;
+    const ok = await runAction(() => fnDelVar({ data: { id: variantPendingDelete.id } }), { success: "Variante removida" });
     if (ok) {
       qc.invalidateQueries({ queryKey: ["variants", productId] });
       qc.invalidateQueries({ queryKey: ["storefront"] });
       onSaved();
     }
+    setVariantPendingDelete(null);
   };
 
   // ---------- Edição inline ----------
@@ -865,34 +872,70 @@ function VariantsTab({
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
   const [bulkSaving, setBulkSaving] = useState<"price" | "stock" | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const applyBulkPrice = async () => {
     const value = Number(bulkPrice.replace(",", "."));
     if (Number.isNaN(value) || value < 0) { notify.error("Informe um preço válido"); return; }
+    if (!defaultPriceListId) { notify.error("Cadastre ao menos uma lista de preços"); return; }
+    const items = (variantsQ.data ?? []).map((v) => ({
+      variant_id: v.id, price_list_id: defaultPriceListId, price: value, compare_at_price: null,
+    }));
+    if (!items.length) { notify.info("Nenhuma variante para atualizar"); return; }
     setBulkSaving("price");
-    try {
-      for (const v of variantsQ.data ?? []) await savePrice(v.id, value, null);
-      notify.success("Preço aplicado em todas as variantes");
+    setBulkProgress({ done: 0, total: items.length });
+    const ok = await runAction(
+      () => fnBulkPrices({ data: { items } }),
+      { loading: `Salvando ${items.length} preço(s)...`, success: null },
+    );
+    if (ok) {
+      const { ok_count, fail_count, results } = ok.data;
+      if (fail_count > 0) {
+        const failed = results.filter((r: { ok: boolean }) => !r.ok).slice(0, 3)
+          .map((r: { variant_id: string; error?: string }) => `${r.variant_id.slice(0, 8)}: ${r.error}`).join(" • ");
+        notify.error(`Falha em ${fail_count} variante(s). ${failed}`);
+      } else {
+        notify.success(`Preço aplicado em ${ok_count} variante(s)`);
+      }
+      qc.invalidateQueries({ queryKey: ["product-prices", productId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
+      onSaved();
       setBulkPrice("");
-    } finally {
-      setBulkSaving(null);
     }
+    setBulkSaving(null);
+    setBulkProgress(null);
   };
 
   const applyBulkStock = async () => {
     const value = Number(bulkStock);
     if (Number.isNaN(value) || value < 0) { notify.error("Informe um estoque válido"); return; }
+    const items = (variantsQ.data ?? [])
+      .map((v) => stockByVariant.get(v.id))
+      .filter((s): s is { id: string; qty: number } => !!s?.id)
+      .map((s) => ({ stock_level_id: s.id, new_quantity: value, reason: "Ajuste em massa via cadastro" }));
+    if (!items.length) { notify.info("Nenhum nível de estoque para atualizar"); return; }
     setBulkSaving("stock");
-    try {
-      for (const v of variantsQ.data ?? []) {
-        const stock = stockByVariant.get(v.id);
-        if (stock?.id) await saveStock(stock.id, value);
+    setBulkProgress({ done: 0, total: items.length });
+    const ok = await runAction(
+      () => fnBulkStock({ data: { items } }),
+      { loading: `Salvando estoque de ${items.length} variante(s)...`, success: null },
+    );
+    if (ok) {
+      const { ok_count, fail_count, results } = ok.data;
+      if (fail_count > 0) {
+        const failed = results.filter((r: { ok: boolean }) => !r.ok).slice(0, 3)
+          .map((r: { stock_level_id: string; error?: string }) => `${r.stock_level_id.slice(0, 8)}: ${r.error}`).join(" • ");
+        notify.error(`Falha em ${fail_count} nível(is). ${failed}`);
+      } else {
+        notify.success(`Estoque aplicado em ${ok_count} variante(s)`);
       }
-      notify.success("Estoque aplicado em todas as variantes");
+      qc.invalidateQueries({ queryKey: ["product-stock", productId, storeId] });
+      qc.invalidateQueries({ queryKey: ["storefront"] });
+      onSaved();
       setBulkStock("");
-    } finally {
-      setBulkSaving(null);
     }
+    setBulkSaving(null);
+    setBulkProgress(null);
   };
 
   // ---------- Lookups ----------
