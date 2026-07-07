@@ -1558,9 +1558,20 @@ function GalleryTab({ productId, colors, onSaved }: { productId: string; colors:
     }
   };
 
-  const remove = async (id: string) => {
-    const ok = await runAction(() => fnDel({ data: { id } }), { success: "Mídia removida" });
-    if (ok) { invalidate(); onSaved(); }
+  const [galleryPendingDelete, setGalleryPendingDelete] = useState<{ id: string; isCover: boolean } | null>(null);
+  const remove = (id: string) => {
+    const m = (media.data ?? []).find((x) => x.id === id);
+    setGalleryPendingDelete({ id, isCover: !!m?.is_cover });
+  };
+  const confirmGalleryRemove = async () => {
+    if (!galleryPendingDelete) return;
+    const ok = await runAction(() => fnDel({ data: { id: galleryPendingDelete.id } }), { success: "Mídia removida" });
+    if (ok) {
+      invalidate();
+      onSaved();
+      if (galleryPendingDelete.isCover) notify.warning("Capa removida. Defina uma nova capa para esta cor.");
+    }
+    setGalleryPendingDelete(null);
   };
   const setCover = async (id: string) => {
     const ok = await runAction(
