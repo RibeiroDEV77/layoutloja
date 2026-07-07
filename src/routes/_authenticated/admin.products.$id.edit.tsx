@@ -1029,48 +1029,50 @@ function VariantsTab({
                 Categoria sem atributo de tamanho — adicione tamanhos abaixo que o atributo será criado e vinculado automaticamente.
               </p>
             )}
-            {(
-              <div className="space-y-3">
-                {!!sizeAttrQ.data?.attribute && (
-                <p className="text-xs text-muted-foreground">
-                  Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
-                </div>
-                {(() => {
-                  const presets: Array<{ label: string; match: RegExp }> = [
-                    { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
-                    { label: "P–G", match: /^(P|M|G)$/i },
-                    { label: "Numéricos", match: /^\d{2}$/ },
-                  ];
-                  const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
-                  if (!applicable.length) return null;
-                  return (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
-                      {applicable.map((p) => (
-                        <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
-                          onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
-                          {p.label}
-                        </Button>
-                      ))}
-                    </div>
-                  );
-                })()}
-                <div className="flex flex-wrap gap-2">
-                  {sizeValues.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => toggleSize(v.id)}
-                      className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-3">
+              {!!sizeAttrQ.data?.attribute && (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Os tamanhos marcados serão criados em <strong>todas</strong> as cores (mesmos tamanhos para todas).
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setSelectedSizes(sizeValues.map((v) => v.id))}>Selecionar todos</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedSizes([])}>Limpar</Button>
+                  </div>
+                  {(() => {
+                    const presets: Array<{ label: string; match: RegExp }> = [
+                      { label: "PP–GG", match: /^(PP|P|M|G|GG|XGG)$/i },
+                      { label: "P–G", match: /^(P|M|G)$/i },
+                      { label: "Numéricos", match: /^\d{2}$/ },
+                    ];
+                    const applicable = presets.filter((p) => sizeValues.some((v) => p.match.test(v.label.trim())));
+                    if (!applicable.length) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Presets:</span>
+                        {applicable.map((p) => (
+                          <Button key={p.label} size="sm" variant="secondary" className="h-7 text-xs"
+                            onClick={() => setSelectedSizes(sizeValues.filter((v) => p.match.test(v.label.trim())).map((v) => v.id))}>
+                            {p.label}
+                          </Button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-wrap gap-2">
+                    {sizeValues.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => toggleSize(v.id)}
+                        className={`px-3 py-1.5 rounded-full border text-sm ${selectedSizes.includes(v.id) ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
                 <div className="grid gap-2 rounded-md border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="min-w-0">
                     <Label className="text-xs font-medium">Adicionar tamanhos por tag</Label>
