@@ -270,7 +270,7 @@ export async function listApplicationsByCustomer(
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false });
   if (error) throw Errors.internal('Falha ao listar solicitações', { error: error.message });
-  return (data ?? []) as ApplicationRow[];
+  return ((data ?? []) as ApplicationRow[]).map(safeApp);
 }
 
 // ---------------- Admin: listagem global ----------------
