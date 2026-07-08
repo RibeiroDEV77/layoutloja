@@ -153,12 +153,19 @@ export const placeOrder = createServerFn({ method: 'POST' })
     // valida que o session_token confere com o carrinho
     const { data: cart, error: cartErr } = await sb
       .from('carts')
-      .select('id, session_token, status')
+      .select('id, session_token, status, store_id')
       .eq('id', data.cart_id)
       .maybeSingle();
     if (cartErr) throw Errors.internal('Falha ao validar carrinho', { error: cartErr.message });
     if (!cart) throw Errors.notFound('Carrinho');
     if (cart.session_token !== data.session_token) throw Errors.forbidden('Carrinho inválido');
+
+    // ---- P4: revalidação server-side obrigatória (produto/variante/canal/preço/estoque)
+    const { validateCartForCheckout } = await import('./services/checkout-guards.server');
+    const revalidated = await validateCartForCheckout(
+      sb as unknown as Parameters<typeof validateCartForCheckout>[0],
+      data.cart_id,
+    );
 
     const { data: orderId, error } = await sb.rpc('order_create_from_cart', {
       _cart_id: data.cart_id,
@@ -168,7 +175,45 @@ export const placeOrder = createServerFn({ method: 'POST' })
       _address: data.address as never,
     });
     if (error) throw Errors.internal(error.message || 'Falha ao finalizar pedido', { error: error.message });
-    return { order_id: orderId as unknown as string };
+    const newOrderId = orderId as unknown as string;
+
+    // ---- P4: snapshot auditável de preço (best-effort, não bloqueia pedido)
+    try {
+      const snapshotPayload = {
+        revalidated_at: new Date().toISOString(),
+        sales_channel: revalidated.sales_channel,
+        currency: revalidated.currency,
+        price_list_id: revalidated.price_list_id,
+        total: revalidated.total,
+        items: revalidated.items.map((i) => ({
+          item_id: i.item_id,
+          variant_id: i.variant_id,
+          product_id: i.product_id,
+          qty: i.qty,
+          unit_price: i.unit_price,
+          list_price: i.list_price,
+          price_source: i.price_source,
+          price_list_item_id: i.price_list_item_id,
+        })),
+      };
+      const hashInput = JSON.stringify(snapshotPayload);
+      // hash não-criptográfico só para dedup humano; integridade real vem
+      // do UNIQUE(order_id) e do audit trigger em order_addresses/orders.
+      let hash = 0;
+      for (let i = 0; i < hashInput.length; i++) hash = ((hash << 5) - hash + hashInput.charCodeAt(i)) | 0;
+      await sb.from('order_pricing_snapshots').insert({
+        order_id: newOrderId,
+        store_id: cart.store_id,
+        snapshot: snapshotPayload as never,
+        hash: `sha1:${(hash >>> 0).toString(16).padStart(8, '0')}`,
+      } as never);
+    } catch (snapErr) {
+      // Snapshot é auditoria complementar — order_items já tem unit_price;
+      // não desfazemos o pedido por falha aqui.
+      console.warn('[placeOrder] pricing snapshot insert falhou:', snapErr instanceof Error ? snapErr.message : snapErr);
+    }
+
+    return { order_id: newOrderId };
   });
 
 // ---------------------------------------------------------------------------
