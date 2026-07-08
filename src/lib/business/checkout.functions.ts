@@ -302,6 +302,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     name: string;
     phone: string;
     address: OrderAddress;
+    idempotency_key?: string | null;
   }) => d)
   .handler(async ({ data }) => {
     const sb = await publicClient();
@@ -318,6 +319,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     }
     return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
       email: data.email, name: data.name, phone: data.phone, address: data.address,
+      idempotency_key: data.idempotency_key ?? null,
     });
   });
 
