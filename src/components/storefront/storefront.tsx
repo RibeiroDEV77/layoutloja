@@ -152,10 +152,36 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     extraLinks: { label: string; slug: string }[];
   };
 
+  // Conjunto de category IDs que possuem produtos publicados (expandindo ancestrais)
+  // + slugs correspondentes. Usado para ocultar itens fixos do navbar
+  // (ex.: "Sapatos", "Sandálias", "Botas") quando não existe produto real cadastrado.
+  const { categoryIdsWithProducts, slugsWithProducts } = useMemo(() => {
+    const parentOf = new Map<string, string | null>();
+    for (const c of categories) parentOf.set(c.id, c.parent_id ?? null);
+    const ids = new Set<string>();
+    for (const p of products) {
+      const assigned = p.category_ids?.length ? p.category_ids : p.category_id ? [p.category_id] : [];
+      for (const cid of assigned) {
+        let cur: string | null | undefined = cid;
+        while (cur && !ids.has(cur)) {
+          ids.add(cur);
+          cur = parentOf.get(cur) ?? null;
+        }
+      }
+    }
+    const slugs = new Set<string>();
+    for (const c of categories) if (ids.has(c.id)) slugs.add(c.slug);
+    return { categoryIdsWithProducts: ids, slugsWithProducts: slugs };
+  }, [categories, products]);
+
+  const hasSaleProducts = useMemo(() => products.some((p) => p.on_sale), [products]);
+  const hasNewProducts = useMemo(() => products.some((p) => p.new_product), [products]);
+
   const navItems: NavItem[] = useMemo(() => {
     return STOREFRONT_NAV_ITEMS.map((entry) => {
       const resolved = resolveStorefrontCategory(entry, categories);
       const resolvedList = resolveStorefrontCategories(entry, categories);
+      const filteredExtras = (entry.extraLinks ?? []).filter((link) => slugsWithProducts.has(link.slug));
       return {
         key: entry.key,
         label: entry.label,
@@ -165,10 +191,19 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         categoryId: resolved?.id,
         image: resolved?.image_url,
         categoryIds: resolvedList.map((category) => category.id),
-        extraLinks: entry.extraLinks ?? [],
+        extraLinks: filteredExtras,
       };
+    }).filter((item) => {
+      if (item.kind === "brands") return brands.length > 0;
+      if (item.key === "promocoes") return hasSaleProducts;
+      if (item.key === "novidades") return hasNewProducts;
+      // Categoria só aparece se resolveu para uma categoria real do banco COM produtos
+      // (ou se tem sub-links curados apontando para categorias reais com produtos).
+      const hasOwnProducts = item.categoryIds.some((id) => categoryIdsWithProducts.has(id))
+        || (item.categoryId ? categoryIdsWithProducts.has(item.categoryId) : false);
+      return hasOwnProducts || item.extraLinks.length > 0;
     });
-  }, [categories]);
+  }, [categories, brands, slugsWithProducts, categoryIdsWithProducts, hasSaleProducts, hasNewProducts]);
 
 
   const activeMega = useMemo(() => {
