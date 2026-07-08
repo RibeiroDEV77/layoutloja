@@ -290,7 +290,7 @@ export interface AdminListRow extends ApplicationRow {
     name: string;
     trade_name: string | null;
     legal_name: string | null;
-    doc_number: string | null;
+    doc_number_masked: string | null;
     email: string | null;
     phone: string | null;
   } | null;
@@ -313,6 +313,8 @@ export async function listApplications(
   const fromIdx = (page - 1) * pageSize;
   const toIdx = fromIdx + pageSize - 1;
 
+  // Selecionamos doc_number/type do cliente apenas para computar máscara + busca
+  // por hash — o campo nunca chega ao payload retornado (é removido em memória).
   let q = supabase
     .from('wholesale_applications')
     .select(
@@ -333,17 +335,20 @@ export async function listApplications(
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar solicitações', { error: error.message });
 
-  let rows = ((data ?? []) as unknown as AdminListRow[]);
+  type RawRow = ApplicationRow & {
+    customer: (Omit<NonNullable<AdminListRow['customer']>, 'doc_number_masked'> & { doc_number: string | null }) | null;
+  };
+  let rawRows = ((data ?? []) as unknown as RawRow[]);
 
   // Filtros aplicados em memória (dependem de customer/metadata e mantêm a
   // página atual; aceitável para volumes administrativos).
   if (input.customer_type) {
-    rows = rows.filter((r) => r.customer?.type === input.customer_type);
+    rawRows = rawRows.filter((r) => r.customer?.type === input.customer_type);
   }
   if (input.search?.trim()) {
     const needle = input.search.trim().toLowerCase();
     const onlyDigits = needle.replace(/\D/g, '');
-    rows = rows.filter((r) => {
+    rawRows = rawRows.filter((r) => {
       const c = r.customer;
       const meta = (r.metadata ?? {}) as Record<string, unknown>;
       const haystack = [
@@ -360,8 +365,20 @@ export async function listApplications(
     });
   }
 
+  // Mask before returning — nenhum plaintext sai daqui.
+  const { maskDoc } = await import('./pii.server');
+  const rows: AdminListRow[] = rawRows.map((r) => {
+    if (!r.customer) return { ...r, customer: null } as AdminListRow;
+    const { doc_number, ...rest } = r.customer;
+    return {
+      ...r,
+      customer: { ...rest, doc_number_masked: maskDoc(doc_number, rest.type) },
+    } as AdminListRow;
+  });
+
   return { rows, total: count ?? rows.length };
 }
+
 
 /** Busca uma solicitação pelo id (com autorização). */
 export async function getApplication(supabase: SbClient, userId: string, id: string) {

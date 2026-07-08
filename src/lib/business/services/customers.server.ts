@@ -15,6 +15,7 @@ import * as Repo from '../repositories/customers.server';
 import { enqueueOutbox } from '@/lib/foundations/outbox.functions';
 import { recordMetric } from '@/lib/foundations/observability.functions';
 import { CommerceEventTypes, AggregateTypes } from '@/lib/foundations/events';
+import { stripCustomerDoc, stripCustomerDocList, maskDoc } from './pii.server';
 
 // ---------------- list ----------------
 export interface ListCustomersInput {
@@ -67,7 +68,7 @@ export async function listCustomers(supabase: SbClient, userId: string, input: L
 
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar clientes', { error: error.message });
-  return { rows: data ?? [], total: count ?? 0, page, pageSize: size };
+  return { rows: stripCustomerDocList(data as never), total: count ?? 0, page, pageSize: size };
 }
 
 export async function getCustomer(supabase: SbClient, userId: string, id: string) {
@@ -85,8 +86,39 @@ export async function getCustomer(supabase: SbClient, userId: string, id: string
     Repo.listGroups(supabase, id),
     Repo.getCreditBalance(supabase, id),
   ]);
-  return { customer: c, addresses, contacts, tax_profile: tax, group_ids: groups, credit_balance: balance };
+  return {
+    customer: stripCustomerDoc(c as never),
+    addresses, contacts, tax_profile: tax, group_ids: groups, credit_balance: balance,
+  };
 }
+
+/**
+ * Reveal controlado de documento — retorna o CPF/CNPJ completo.
+ * Exige customers.read.pii na store do cliente. Registra em audit_log.
+ * Não é chamada por listagens/detalhes normais.
+ */
+export async function revealCustomerDocument(
+  supabase: SbClient, userId: string, customerId: string, reason?: string,
+): Promise<{ doc_number: string | null; doc_number_masked: string | null }> {
+  const c = await Repo.findById(supabase, customerId);
+  if (!c) throw Errors.notFound('Cliente', customerId);
+  await requirePermission(supabase, userId, 'customers.read.pii', c.store_id);
+
+  await supabase.from('audit_log').insert({
+    store_id: c.store_id,
+    actor_user_id: userId,
+    entity_type: 'customer',
+    entity_id: customerId,
+    action: 'customer.document.reveal',
+    diff: { reason: reason ?? null },
+  });
+
+  return {
+    doc_number: c.doc_number ?? null,
+    doc_number_masked: maskDoc(c.doc_number ?? null, c.type),
+  };
+}
+
 
 // ---------------- create / update / delete ----------------
 function normalizeDoc(doc?: string | null): string | null {

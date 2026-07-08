@@ -58,7 +58,7 @@ type AdminRow = {
     name: string;
     trade_name: string | null;
     legal_name: string | null;
-    doc_number: string | null;
+    doc_number_masked: string | null;
     email: string | null;
     phone: string | null;
   } | null;
@@ -78,11 +78,18 @@ function statusBadge(s: AdminRow["status"]) {
   return <StatusBadge label={opt?.label ?? s} tone={opt?.tone ?? "muted"} dot />;
 }
 
-function fmtDoc(type: "pf" | "pj" | undefined, doc: string | null | undefined) {
-  if (!doc) return "—";
-  if (type === "pf" && doc.length === 11) return `${doc.slice(0,3)}.${doc.slice(3,6)}.${doc.slice(6,9)}-${doc.slice(9)}`;
-  if (type === "pj" && doc.length === 14) return `${doc.slice(0,2)}.${doc.slice(2,5)}.${doc.slice(5,8)}/${doc.slice(8,12)}-${doc.slice(12)}`;
-  return doc;
+function maskDocClient(digits: string, type: "pf" | "pj" | undefined) {
+  if (!digits) return "—";
+  if (type === "pj" || digits.length === 14) return `**.***.***/****-${digits.slice(-2)}`;
+  return `***.***.***-${digits.slice(-2)}`;
+}
+
+function fmtDocMasked(r: AdminRow): string {
+  if (r.customer?.doc_number_masked) return r.customer.doc_number_masked;
+  const rawMeta = metaStr(r.metadata, "cpf") || metaStr(r.metadata, "cnpj");
+  if (!rawMeta) return "—";
+  const digits = rawMeta.replace(/\D/g, "");
+  return maskDocClient(digits, r.customer?.type);
 }
 
 function fmtDateTime(iso: string | null) {
@@ -204,7 +211,7 @@ function WholesaleApplicationsPage() {
                   <div className="min-w-0">
                     <div className="font-medium truncate">{r.customer?.name ?? metaStr(r.metadata, "name") ?? "—"}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {fmtDoc(r.customer?.type, r.customer?.doc_number ?? metaStr(r.metadata, "cpf") ?? metaStr(r.metadata, "cnpj"))}
+                      {fmtDocMasked(r)}
                     </div>
                   </div>
                 ),
@@ -376,7 +383,7 @@ function DetailsView({ row, onChanged }: { row: AdminRow; onChanged: () => void 
           <h3 className="text-sm font-semibold mb-2">Cliente</h3>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Nome" value={row.customer?.name ?? metaStr(meta, "name")} />
-            <Field label="Documento" value={fmtDoc(row.customer?.type, row.customer?.doc_number ?? metaStr(meta, "cpf") ?? metaStr(meta, "cnpj"))} />
+            <Field label="Documento" value={fmtDocMasked(row)} />
             <Field label="E-mail" value={row.customer?.email} />
             <Field label="Telefone" value={row.customer?.phone ?? metaStr(meta, "whatsapp")} />
             {isPj && <Field label="Razão Social" value={row.customer?.legal_name ?? metaStr(meta, "legal_name")} />}

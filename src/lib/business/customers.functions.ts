@@ -31,6 +31,11 @@ export const deleteCustomer = createServerFn({ method: 'POST' })
   .inputValidator((d: { id: string }) => d)
   .handler(withBusiness(async ({ data, context }) => Svc.deleteCustomer(context.supabase, context.userId, data.id)));
 
+export const revealCustomerDocument = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; reason?: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => Svc.revealCustomerDocument(context.supabase, context.userId, data.id, data.reason)));
+
 // addresses
 export const addCustomerAddress = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
