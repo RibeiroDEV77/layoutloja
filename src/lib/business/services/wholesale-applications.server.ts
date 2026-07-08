@@ -233,7 +233,7 @@ export async function createApplication(
     action: 'wholesale.application.created', diff: { status },
   });
 
-  return row;
+  return safeApp(row);
 }
 
 /** Retorna a solicitação ativa (draft/submitted/in_review) do cliente, se houver. */
