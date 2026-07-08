@@ -175,16 +175,40 @@ export const placeOrder = createServerFn({ method: 'POST' })
 // Detalhe público do pedido (página de confirmação)
 // ---------------------------------------------------------------------------
 
+/**
+ * Detalhe público do pedido (página de confirmação).
+ *
+ * Segurança:
+ * - Exige `session_token` que corresponda ao `carts.session_token` do carrinho
+ *   de origem (`orders.source_cart_id`). Sem prova de posse, retorna 404.
+ * - Nunca retorna e-mail do cliente por esta rota pública. E-mail privado só é
+ *   exposto via rotas autenticadas em `storefront-account.functions.ts`.
+ */
 export const getPublicOrder = createServerFn({ method: 'POST' })
-  .inputValidator((d: { order_id: string }) => d)
+  .inputValidator((d: { order_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
+    if (!data.order_id || !data.session_token) {
+      throw Errors.notFound('Pedido');
+    }
     const sb = await publicClient();
     const { data: order } = await sb
       .from('orders')
-      .select('id, order_number, status, total, subtotal, shipping_total, currency, customer_email, placed_at')
+      .select('id, order_number, status, total, subtotal, shipping_total, currency, placed_at, source_cart_id')
       .eq('id', data.order_id)
       .maybeSingle();
     if (!order) throw Errors.notFound('Pedido');
+
+    // Prova de posse: session_token deve conferir com o carrinho de origem.
+    if (!order.source_cart_id) throw Errors.notFound('Pedido');
+    const { data: cart } = await sb
+      .from('carts')
+      .select('id, session_token')
+      .eq('id', order.source_cart_id)
+      .maybeSingle();
+    if (!cart || cart.session_token !== data.session_token) {
+      throw Errors.notFound('Pedido');
+    }
+
     const { data: items } = await sb.from('order_items')
       .select('name, qty, unit_price, line_total')
       .eq('order_id', data.order_id);
@@ -194,7 +218,11 @@ export const getPublicOrder = createServerFn({ method: 'POST' })
     const { data: address } = await sb.from('order_addresses')
       .select('recipient, postal_code, street, number, complement, district, city, state')
       .eq('order_id', data.order_id).eq('kind', 'shipping').maybeSingle();
-    return { order, items: items ?? [], shipping, address };
+
+    // Não expor source_cart_id nem customer_email no retorno público.
+    const { source_cart_id: _srcCart, ...orderSafe } = order;
+    void _srcCart;
+    return { order: orderSafe, items: items ?? [], shipping, address };
   });
 
 // ---------------------------------------------------------------------------
