@@ -176,8 +176,8 @@ export async function validateCartForCheckout(
     const product = it.product_id ? productById.get(it.product_id) : null;
     if (!product) { push('product_missing'); continue; }
     if (product.store_id !== cart.store_id) { push('product_store_mismatch'); continue; }
-    if (product.status !== 'active' || product.visibility !== 'published') {
-      push('product_not_published', 'active/published', `${product.status}/${product.visibility}`);
+    if (product.status !== 'published' || product.visibility !== 'published') {
+      push('product_not_published', 'published/published', `${product.status}/${product.visibility}`);
       continue;
     }
     // Canal comercial: mapping enum PT-BR
