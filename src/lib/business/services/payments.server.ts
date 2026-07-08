@@ -355,6 +355,18 @@ export async function testGatewayConnection(supabase: SbClient, gateway_id: stri
 }
 
 // ----------------------------- Webhook ingest -----------------------------
+/**
+ * Erro específico para assinatura de webhook inválida.
+ * Rota HTTP deve mapear para 401 (sem retry) — o MP reenviaria a mesma
+ * requisição inválida indefinidamente se retornássemos 5xx.
+ */
+export class WebhookSignatureError extends Error {
+  readonly code = 'webhook_signature_invalid';
+  constructor(provider: string) {
+    super(`Assinatura de webhook inválida para provider ${provider}`);
+  }
+}
+
 export interface IngestWebhookInput {
   provider_code: string;
   rawBody: string;
