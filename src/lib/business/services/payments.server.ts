@@ -35,6 +35,17 @@ import type {
 } from './payments/adapter';
 
 // ----------------------------- Idempotency --------------------------------
+/**
+ * Reserva uma chave de idempotência de forma race-safe.
+ *
+ * Estratégia: INSERT primeiro; em violação de UNIQUE (duplicate key) OU
+ * quando um SELECT posterior retorna uma linha, considera que outro caller
+ * já reivindicou a chave e devolve `first:false` com o response_body
+ * previamente registrado (pode ser null se ainda pendente).
+ *
+ * NUNCA retorna `first:true` em caso de duplicate-key — regressão que
+ * causaria dupla aplicação de efeitos.
+ */
 async function claimIdempotency(
   supabase: SbClient,
   scope: string,
@@ -42,17 +53,22 @@ async function claimIdempotency(
   storeId: string,
 ): Promise<{ first: boolean; previous?: unknown }> {
   const fullKey = `${scope}:${key}`;
-  const { data: existing } = await supabase
-    .from('idempotency_keys')
-    .select('id, response_body')
-    .eq('key', fullKey)
-    .maybeSingle();
-  if (existing) return { first: false, previous: existing.response_body };
-  const { error } = await supabase.from('idempotency_keys').insert({
+  const { error: insertErr } = await supabase.from('idempotency_keys').insert({
     key: fullKey, scope, store_id: storeId, status: 'pending',
   } as never);
-  if (error && !/duplicate key/i.test(error.message)) throw error;
-  return { first: true };
+  if (!insertErr) {
+    return { first: true };
+  }
+  // Duplicate key → alguém já reivindicou; busca o registro existente.
+  if (/duplicate key|unique/i.test(insertErr.message)) {
+    const { data: existing } = await supabase
+      .from('idempotency_keys')
+      .select('id, response_body')
+      .eq('key', fullKey)
+      .maybeSingle();
+    return { first: false, previous: existing?.response_body ?? null };
+  }
+  throw insertErr;
 }
 
 async function completeIdempotency(
@@ -339,6 +355,18 @@ export async function testGatewayConnection(supabase: SbClient, gateway_id: stri
 }
 
 // ----------------------------- Webhook ingest -----------------------------
+/**
+ * Erro específico para assinatura de webhook inválida.
+ * Rota HTTP deve mapear para 401 (sem retry) — o MP reenviaria a mesma
+ * requisição inválida indefinidamente se retornássemos 5xx.
+ */
+export class WebhookSignatureError extends Error {
+  readonly code = 'webhook_signature_invalid';
+  constructor(provider: string) {
+    super(`Assinatura de webhook inválida para provider ${provider}`);
+  }
+}
+
 export interface IngestWebhookInput {
   provider_code: string;
   rawBody: string;
@@ -377,9 +405,16 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
     }),
   );
 
+  // -------- Bloqueio total de efeitos se assinatura for inválida ----------
+  // `signature_valid === null` significa que o provider não usa assinatura;
+  // nesse caso o adapter é a autoridade e permitimos o fluxo normal.
+  // `false` explícito = tentativa maliciosa/corrompida; registrar e recusar.
+  const signatureRejected = parsed.signature_valid === false;
+
   const out: Array<{ webhook_id: string; action: string }> = [];
   for (const ev of parsed.events) {
     // 1) Inbox/idempotência via RPC SECURITY DEFINER (única escrita permitida).
+    //    Sempre registrado — inclusive tentativas inválidas — para auditoria.
     const { data: ingest } = await (supabase as any).rpc('payment_webhook_ingest', {
       _provider: input.provider_code,
       _external_event_id: ev.external_event_id,
@@ -399,7 +434,30 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
     if (!ingestObj.id) continue;
     out.push({ webhook_id: ingestObj.id, action: ingestObj.action ?? 'new' });
 
-    if (ingestObj.action === 'duplicate') continue;
+    // Duplicado: nunca aplicar efeito de novo, mesmo se assinatura válida.
+    if (ingestObj.action === 'duplicate') {
+      console.log('[payments.webhook] duplicate ignored', {
+        provider: input.provider_code, external_event_id: ev.external_event_id,
+      });
+      continue;
+    }
+
+    // Assinatura inválida: registrado, nenhum efeito aplicado.
+    if (signatureRejected) {
+      await (supabase as any).rpc('payment_webhook_mark_failed', {
+        _webhook_id: ingestObj.id,
+        _error: 'signature_invalid',
+        _duration_ms: null,
+      });
+      await recordMetric(supabase, {
+        scope: 'payments', name: 'payment.webhook.signature_invalid', value: 1,
+        storeId: gateway.store_id, tags: { provider: input.provider_code },
+      });
+      console.warn('[payments.webhook] signature invalid — no effects applied', {
+        provider: input.provider_code, external_event_id: ev.external_event_id,
+      });
+      continue;
+    }
 
     // 2) Aplica efeito do evento via RPCs do Payment Engine.
     try {
@@ -411,6 +469,9 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
         scope: 'payments', name: 'payment.webhook.processed', value: 1,
         storeId: gateway.store_id, tags: { provider: input.provider_code, kind: ev.kind },
       });
+      console.log('[payments.webhook] processed', {
+        provider: input.provider_code, external_event_id: ev.external_event_id, kind: ev.kind,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await (supabase as any).rpc('payment_webhook_mark_failed', {
@@ -420,7 +481,16 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
         scope: 'payments', name: 'payment.webhook.error', value: 1,
         storeId: gateway.store_id, tags: { provider: input.provider_code, kind: ev.kind },
       });
+      // Rethrow para que a rota HTTP retorne 500 e o MP faça retry.
+      // Efeito não foi aplicado (RPC do Payment Engine é atômica); o próximo
+      // retry passa pelo inbox e será tratado como 'duplicate' se o efeito
+      // já tiver sido concluído em uma tentativa anterior.
+      throw err;
     }
+  }
+
+  if (signatureRejected) {
+    throw new WebhookSignatureError(input.provider_code);
   }
   return { signature_valid: parsed.signature_valid, processed: out };
 }
