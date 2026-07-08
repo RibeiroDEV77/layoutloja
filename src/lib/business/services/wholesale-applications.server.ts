@@ -372,18 +372,19 @@ export async function listApplications(
   }
 
   // Mask before returning — nenhum plaintext sai daqui.
-  const { maskDoc } = await import('./pii.server');
   const rows: AdminListRow[] = rawRows.map((r) => {
-    if (!r.customer) return { ...r, customer: null } as AdminListRow;
+    const safe = safeApp(r);
+    if (!r.customer) return { ...safe, customer: null } as AdminListRow;
     const { doc_number, ...rest } = r.customer;
     return {
-      ...r,
+      ...safe,
       customer: { ...rest, doc_number_masked: maskDoc(doc_number, rest.type) },
     } as AdminListRow;
   });
 
   return { rows, total: count ?? rows.length };
 }
+
 
 
 /** Busca uma solicitação pelo id (com autorização). */
