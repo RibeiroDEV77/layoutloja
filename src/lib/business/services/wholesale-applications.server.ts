@@ -319,13 +319,14 @@ export async function listApplications(
   const fromIdx = (page - 1) * pageSize;
   const toIdx = fromIdx + pageSize - 1;
 
-  // Selecionamos doc_number/type do cliente apenas para computar máscara + busca
-  // por hash — o campo nunca chega ao payload retornado (é removido em memória).
+  // Documento NUNCA é selecionado em texto simples. Selecionamos apenas
+  // `doc_number_hash` (indicador de "documento cadastrado") para exibir uma
+  // máscara genérica; busca por CPF/CNPJ completo usa hash no filtro.
   let q = supabase
     .from('wholesale_applications')
     .select(
       'id, store_id, customer_id, status, workflow_instance_id, requested_group_id, requested_price_list_id, submitted_at, decided_at, decided_by, decision_reason, metadata, created_by, created_at, updated_at, ' +
-      'customer:customers!wholesale_applications_customer_id_fkey(id, type, name, trade_name, legal_name, doc_number, email, phone)',
+      'customer:customers!wholesale_applications_customer_id_fkey(id, type, name, trade_name, legal_name, doc_number_hash, email, phone)',
       { count: 'exact' },
     )
     .eq('store_id', input.store_id);
@@ -342,18 +343,25 @@ export async function listApplications(
   if (error) throw Errors.internal('Falha ao listar solicitações', { error: error.message });
 
   type RawRow = ApplicationRow & {
-    customer: (Omit<NonNullable<AdminListRow['customer']>, 'doc_number_masked'> & { doc_number: string | null }) | null;
+    customer: (Omit<NonNullable<AdminListRow['customer']>, 'doc_number_masked'> & { doc_number_hash: string | null }) | null;
   };
   let rawRows = ((data ?? []) as unknown as RawRow[]);
 
-  // Filtros aplicados em memória (dependem de customer/metadata e mantêm a
-  // página atual; aceitável para volumes administrativos).
+  // Filtros aplicados em memória (dependem de customer e mantêm a página
+  // atual; aceitável para volumes administrativos). Metadata é sanitizado
+  // e não carrega mais cpf/cnpj — busca por documento não usa metadata.
   if (input.customer_type) {
     rawRows = rawRows.filter((r) => r.customer?.type === input.customer_type);
   }
   if (input.search?.trim()) {
     const needle = input.search.trim().toLowerCase();
     const onlyDigits = needle.replace(/\D/g, '');
+    let docHash: string | null = null;
+    if (onlyDigits.length === 11 || onlyDigits.length === 14) {
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { data: h } = await supabaseAdmin.rpc('hash_doc_number', { _doc: onlyDigits });
+      docHash = (h as string | null) ?? null;
+    }
     rawRows = rawRows.filter((r) => {
       const c = r.customer;
       const meta = (r.metadata ?? {}) as Record<string, unknown>;
@@ -362,23 +370,21 @@ export async function listApplications(
         meta['name'], meta['legal_name'], meta['trade_name'], meta['responsavel'],
       ].filter(Boolean).map((s) => String(s).toLowerCase()).join(' ');
       if (haystack.includes(needle)) return true;
-      if (onlyDigits.length >= 3) {
-        const docs = [c?.doc_number, meta['cpf'], meta['cnpj']]
-          .filter(Boolean).map((s) => String(s).replace(/\D/g, ''));
-        if (docs.some((d) => d.includes(onlyDigits))) return true;
-      }
+      if (docHash && c?.doc_number_hash && c.doc_number_hash === docHash) return true;
       return false;
     });
   }
 
-  // Mask before returning — nenhum plaintext sai daqui.
+  // Mask before returning — sem plaintext. Mask é genérica ('***.***.***-**')
+  // baseada em type; se documento não existe (hash nulo), retorna null.
   const rows: AdminListRow[] = rawRows.map((r) => {
     const safe = safeApp(r);
     if (!r.customer) return { ...safe, customer: null } as AdminListRow;
-    const { doc_number, ...rest } = r.customer;
+    const { doc_number_hash, ...rest } = r.customer;
+    const masked = doc_number_hash ? maskDoc('', rest.type) : null;
     return {
       ...safe,
-      customer: { ...rest, doc_number_masked: maskDoc(doc_number, rest.type) },
+      customer: { ...rest, doc_number_masked: masked },
     } as AdminListRow;
   });
 
