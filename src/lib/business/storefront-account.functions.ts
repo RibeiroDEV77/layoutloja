@@ -52,8 +52,9 @@ export const getMyAccount = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const customer = await ensureCustomer(context);
 
-    // Descriptografa CPF, se houver
-    let doc_number: string | null = customer.doc_number ?? null;
+    // Descriptografa CPF/CNPJ (apenas para o próprio dono).
+    // Não retornar hash/encrypted no payload. Fallback a plaintext removido.
+    let doc_number: string | null = null;
     const key = pii();
     if (customer.doc_number_encrypted && key) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
