@@ -42,7 +42,7 @@ function ProfilePage() {
     mutationFn: () => update({ data: form }),
     onSuccess: () => {
       toast.success("Dados atualizados");
-      qc.invalidateQueries({ queryKey: ["storefront", "my-account"] });
+      qc.invalidateQueries({ queryKey: ["account", userId ?? "anon", "profile"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
