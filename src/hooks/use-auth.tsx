@@ -55,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const lastUserIdRef = useRef<string | null>(null);
 
   const loadContext = async (sess: Session | null) => {
     if (!sess) {
