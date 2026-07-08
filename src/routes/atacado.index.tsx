@@ -373,6 +373,7 @@ function ApplicationForm({
 }: { customerId: string; defaultName: string; onClose: () => void }) {
   const qc = useQueryClient();
   const createFn = useServerFn(createWholesaleApplication);
+  const updateProfileFn = useServerFn(updateMyProfile);
 
   const [personType, setPersonType] = useState<PersonType>("pf");
   const [name, setName] = useState(defaultName);
@@ -398,11 +399,24 @@ function ApplicationForm({
 
   const submit = useMutation({
     mutationFn: async () => {
+      // Fase A: documento é gravado no customer (encrypted + hash) via
+      // updateMyProfile. metadata do wholesale_application NÃO recebe cpf/cnpj.
+      const rawDoc = (personType === "pf" ? cpf : cnpj).replace(/\D/g, "");
+      if (rawDoc) {
+        await updateProfileFn({
+          data: {
+            name: (personType === "pf" ? name : responsavel).trim() || defaultName || "Cliente",
+            phone: whatsapp.trim() || null,
+            doc_number: rawDoc,
+          },
+        });
+      }
+
       const metadata =
         personType === "pf"
           ? {
               person_type: "pf" as const,
-              name: name.trim(), cpf: cpf.trim(),
+              name: name.trim(),
               whatsapp: whatsapp.trim(), city: cidade.trim(), state: estado.trim().toUpperCase(),
               instagram: instagram.trim() || null, website: site.trim() || null,
               message: mensagem.trim() || null,
@@ -410,7 +424,7 @@ function ApplicationForm({
           : {
               person_type: "pj" as const,
               legal_name: razao.trim(), trade_name: fantasia.trim() || null,
-              cnpj: cnpj.trim(), state_registration: ie.trim() || null,
+              state_registration: ie.trim() || null,
               contact_name: responsavel.trim(),
               whatsapp: whatsapp.trim(), city: cidade.trim(), state: estado.trim().toUpperCase(),
               instagram: instagram.trim() || null, website: site.trim() || null,
