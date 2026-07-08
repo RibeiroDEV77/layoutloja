@@ -50,8 +50,18 @@ export async function listCustomers(supabase: SbClient, userId: string, input: L
   if (input.type) q = q.eq('type', input.type);
   if (input.segment) q = q.eq('segment', input.segment as never);
   if (input.q?.trim()) {
-    const safe = input.q.replace(/[%,]/g, '');
-    q = q.or(`name.ilike.%${safe}%,legal_name.ilike.%${safe}%,trade_name.ilike.%${safe}%,email.ilike.%${safe}%,doc_number.ilike.%${safe}%,code.ilike.%${safe}%`);
+    const raw = input.q.trim();
+    const digits = raw.replace(/\D/g, '');
+    // CPF (11) ou CNPJ (14): buscar por hash exato — nunca ILIKE em plaintext.
+    if (digits.length === 11 || digits.length === 14) {
+      const { data: hashRow, error: hashErr } = await supabase.rpc('hash_doc_number', { _doc: digits });
+      if (hashErr) throw Errors.internal('Falha ao computar hash de busca', { error: hashErr.message });
+      const hash = (hashRow as string | null) ?? '';
+      q = q.eq('doc_number_hash', hash);
+    } else {
+      const safe = raw.replace(/[%,]/g, '');
+      q = q.or(`name.ilike.%${safe}%,legal_name.ilike.%${safe}%,trade_name.ilike.%${safe}%,email.ilike.%${safe}%,code.ilike.%${safe}%`);
+    }
   }
   q = q.order('name', { ascending: true }).range(from, to);
 
