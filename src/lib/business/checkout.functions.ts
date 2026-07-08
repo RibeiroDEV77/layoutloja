@@ -41,13 +41,21 @@ export const anonGetOrCreateCart = createServerFn({ method: 'POST' })
     if (!data.store_id || !data.session_token) {
       throw Errors.validation('store_id e session_token obrigatórios');
     }
+    // P5 (Atacado seguro): visitante anônimo NUNCA cria carrinho wholesale.
+    // Cookie/localStorage podem indicar preferência visual, mas o servidor
+    // decide o canal. Rejeitamos explicitamente para não gerar carrinho
+    // wholesale órfão que depois seja tratado como "aprovado".
+    if (data.sales_channel === 'wholesale') {
+      throw Errors.forbidden('Canal atacado exige cliente autenticado e aprovado');
+    }
     const sb = await publicClient() as unknown as Parameters<typeof Cart.getOrCreateCart>[0];
     return Cart.getOrCreateCart(sb, null, {
       store_id: data.store_id,
       session_token: data.session_token,
-      sales_channel: data.sales_channel ?? 'retail',
+      sales_channel: 'retail',
     });
   });
+
 
 export const anonGetCart = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; session_token: string }) => d)
