@@ -237,7 +237,7 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
     }>).map((s) => ({
       attribute_value_id: s.id, label: s.label,
       sort_order: Number(s.sort_order ?? 0),
-    })).sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
+    })).sort((a, b) => compareSizes(a.label, b.label));
 
     // preço por variante (qty=1 -> pega o item aplicável de menor preço)
     const priceByVariant = new Map<string, { price: number; list: number }>();
