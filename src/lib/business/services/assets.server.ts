@@ -307,7 +307,9 @@ export async function completeUploadJob(
     size_bytes: p.size_bytes ?? job.size_bytes ?? null,
   });
   const path = buildStoragePath(job.store_id, job.id, job.filename);
-  const verified = await assertUploadedContentSafe(supabase.storage, DAM_BUCKET, path, declared);
+  // Verificação via admin: garante leitura mesmo se dam.read do usuário for restrito.
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const verified = await assertUploadedContentSafe(supabaseAdmin.storage, DAM_BUCKET, path, declared);
 
   const kind: AssetKind =
     verified.verified_mime.startsWith('image/') ? 'image'
