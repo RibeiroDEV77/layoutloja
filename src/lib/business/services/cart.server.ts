@@ -32,6 +32,7 @@ export type CartRow = {
   tax_total: number;
   total: number;
   items_count: number;
+  sales_channel: SalesChannel;
 };
 
 async function loadCart(supabase: SbClient, cartId: string): Promise<CartRow> {
@@ -127,7 +128,7 @@ export async function getOrCreateCart(supabase: SbClient, userId: string | null,
   if (existing) return existing as CartRow;
 
   const customerGroupId = await resolveCustomerGroupId(supabase, input.customer_id ?? null);
-  const priceListId = await resolveCartPriceListId(supabase, input.store_id, customerGroupId);
+  const priceListId = await resolveCartPriceListId(supabase, input.store_id, customerGroupId, salesChannel);
 
   const { data: created, error } = await supabase.from('carts').insert({
     store_id: input.store_id,
@@ -299,6 +300,7 @@ export async function addItem(supabase: SbClient, userId: string | null, input: 
     customer_group_id: cart.customer_group_id,
     currency: cart.currency,
     price_list_id: cart.price_list_id,
+    sales_channel: cart.sales_channel as 'retail' | 'wholesale',
   });
 
   // upsert por (cart_id, variant_id)
@@ -311,6 +313,7 @@ export async function addItem(supabase: SbClient, userId: string | null, input: 
     const repriced = await computeVariantPrice(supabase, input.variant_id, newQty, {
       store_id: cart.store_id, customer_group_id: cart.customer_group_id,
       currency: cart.currency, price_list_id: cart.price_list_id,
+      sales_channel: cart.sales_channel as 'retail' | 'wholesale',
     });
     const { error } = await supabase.from('cart_items').update({
       qty: newQty, list_price: repriced.list_price, unit_price: repriced.unit_price,
@@ -352,6 +355,7 @@ export async function updateItemQty(supabase: SbClient, userId: string | null, i
   const price = await computeVariantPrice(supabase, item.variant_id, input.qty, {
     store_id: cart.store_id, customer_group_id: cart.customer_group_id,
     currency: cart.currency, price_list_id: cart.price_list_id,
+    sales_channel: cart.sales_channel as 'retail' | 'wholesale',
   });
   const { error } = await supabase.from('cart_items').update({
     qty: input.qty, list_price: price.list_price, unit_price: price.unit_price,
