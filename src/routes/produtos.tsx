@@ -196,26 +196,39 @@ function AllProductsPage() {
               </div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-[#999] font-medium mb-2">Categoria</p>
               <ul className="space-y-2">
-                {FILTER_CATEGORIES.map((f) => {
-                  const checked = activeSlugs.has(f.slug);
-                  return (
-                    <li key={f.slug}>
-                      <label className={cn(
-                        "flex items-center gap-2 text-[14px] cursor-pointer transition-colors",
-                        checked ? "text-[#111] font-medium" : "text-[#555] hover:text-[#111]",
-                      )}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleFilter(f.slug)}
-                          className="h-4 w-4 accent-[var(--brand-red)]"
-                        />
-                        {f.label}
-                      </label>
-                    </li>
-                  );
-                })}
+                {(() => {
+                  // Só mostra filtros de categorias que realmente têm produto publicado.
+                  const slugsWithProducts = new Set<string>();
+                  for (const f of FILTER_CATEGORIES) {
+                    const tree = resolveCategorySubtreeIds(f.slug, categories);
+                    const has = products.some((p: (typeof products)[number]) => {
+                      const assigned = p.category_ids?.length ? p.category_ids : (p.category_id ? [p.category_id] : []);
+                      return assigned.some((id: string) => tree.has(id));
+                    });
+                    if (has) slugsWithProducts.add(f.slug);
+                  }
+                  return FILTER_CATEGORIES.filter((f) => slugsWithProducts.has(f.slug)).map((f) => {
+                    const checked = activeSlugs.has(f.slug);
+                    return (
+                      <li key={f.slug}>
+                        <label translate="no" className={cn(
+                          "flex items-center gap-2 text-[14px] cursor-pointer transition-colors",
+                          checked ? "text-[#111] font-medium" : "text-[#555] hover:text-[#111]",
+                        )}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleFilter(f.slug)}
+                            className="h-4 w-4 accent-[var(--brand-red)]"
+                          />
+                          {f.label}
+                        </label>
+                      </li>
+                    );
+                  });
+                })()}
               </ul>
+
             </aside>
 
             {/* Grid + toolbar */}
