@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProdutosRouteImport } from './routes/produtos'
@@ -28,6 +29,7 @@ import { Route as MinhaContaEnderecosRouteImport } from './routes/minha-conta.en
 import { Route as MinhaContaDadosRouteImport } from './routes/minha-conta.dados'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AtacadoHomeRouteImport } from './routes/atacado.home'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminWholesalePriceGapsRouteImport } from './routes/_authenticated/admin.wholesale-price-gaps'
@@ -74,6 +76,11 @@ import { Route as AuthenticatedAdminInventoryStockLevelIdRouteImport } from './r
 import { Route as AuthenticatedAdminCustomersCustomerIdRouteImport } from './routes/_authenticated/admin.customers.$customerId'
 import { Route as AuthenticatedAdminProductsIdEditRouteImport } from './routes/_authenticated/admin.products.$id.edit'
 
+const SuporteRoute = SuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SacolaRoute = SacolaRouteImport.update({
   id: '/sacola',
   path: '/sacola',
@@ -167,6 +174,11 @@ const AtacadoHomeRoute = AtacadoHomeRouteImport.update({
   id: '/home',
   path: '/home',
   getParentRoute: () => AtacadoRoute,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
@@ -441,7 +453,9 @@ export interface FileRoutesByFullPath {
   '/produtos': typeof ProdutosRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
+  '/suporte': typeof SuporteRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
@@ -504,6 +518,8 @@ export interface FileRoutesByTo {
   '/produtos': typeof ProdutosRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
+  '/suporte': typeof SuporteRoute
+  '/api/chat': typeof ApiChatRoute
   '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
@@ -569,7 +585,9 @@ export interface FileRoutesById {
   '/produtos': typeof ProdutosRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
+  '/suporte': typeof SuporteRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/atacado/home': typeof AtacadoHomeRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
   '/minha-conta/dados': typeof MinhaContaDadosRoute
@@ -636,7 +654,9 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/reset-password'
     | '/sacola'
+    | '/suporte'
     | '/admin'
+    | '/api/chat'
     | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
@@ -699,6 +719,8 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/reset-password'
     | '/sacola'
+    | '/suporte'
+    | '/api/chat'
     | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
@@ -763,7 +785,9 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/reset-password'
     | '/sacola'
+    | '/suporte'
     | '/_authenticated/admin'
+    | '/api/chat'
     | '/atacado/home'
     | '/categoria/$slug'
     | '/minha-conta/dados'
@@ -830,6 +854,8 @@ export interface RootRouteChildren {
   ProdutosRoute: typeof ProdutosRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SacolaRoute: typeof SacolaRoute
+  SuporteRoute: typeof SuporteRoute
+  ApiChatRoute: typeof ApiChatRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
   PedidoIdRoute: typeof PedidoIdRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
@@ -842,6 +868,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/suporte': {
+      id: '/suporte'
+      path: '/suporte'
+      fullPath: '/suporte'
+      preLoaderRoute: typeof SuporteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sacola': {
       id: '/sacola'
       path: '/sacola'
@@ -974,6 +1007,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/atacado/home'
       preLoaderRoute: typeof AtacadoHomeRouteImport
       parentRoute: typeof AtacadoRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -1517,6 +1557,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProdutosRoute: ProdutosRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SacolaRoute: SacolaRoute,
+  SuporteRoute: SuporteRoute,
+  ApiChatRoute: ApiChatRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
   PedidoIdRoute: PedidoIdRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
