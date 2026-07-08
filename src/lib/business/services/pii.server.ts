@@ -25,12 +25,10 @@ export function maskDoc(doc: string | null | undefined, type?: string | null): s
   return '***';
 }
 
-type SanitizedCustomer = Record<string, unknown> & { doc_number_masked: string | null };
+// Uses `any` in the index signature so TanStack's serializable-return check
+// allows the sanitized row through (unknown is rejected as non-serializable).
+type SanitizedCustomer = { doc_number_masked: string | null } & { [k: string]: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-/**
- * Remove campos sensíveis de documento e adiciona doc_number_masked.
- * Mantém demais campos do row.
- */
 export function stripCustomerDoc(row: Record<string, unknown> | null | undefined): SanitizedCustomer | null {
   if (!row) return null;
   const { doc_number, doc_number_hash, doc_number_encrypted, ...rest } = row as {
@@ -41,12 +39,13 @@ export function stripCustomerDoc(row: Record<string, unknown> | null | undefined
   void doc_number_hash; void doc_number_encrypted;
   const type = (rest.type as string | null | undefined) ?? null;
   return {
-    ...rest,
+    ...(rest as Record<string, unknown>),
     doc_number_masked: maskDoc(doc_number ?? null, type),
-  };
+  } as SanitizedCustomer;
 }
 
 export function stripCustomerDocList(rows: Record<string, unknown>[] | null | undefined): SanitizedCustomer[] {
   return (rows ?? []).map((r) => stripCustomerDoc(r) as SanitizedCustomer);
 }
+
 
