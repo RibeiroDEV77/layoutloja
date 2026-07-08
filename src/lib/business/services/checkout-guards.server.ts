@@ -202,6 +202,7 @@ export async function validateCartForCheckout(
         customer_group_id: cart.customer_group_id ?? null,
         currency: cart.currency,
         price_list_id: priceListId,
+        sales_channel: cart.sales_channel as 'retail' | 'wholesale',
       });
     } catch {
       push('price_unavailable');
