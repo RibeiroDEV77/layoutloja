@@ -229,11 +229,15 @@ export const getCategoryFilters = createServerFn({ method: 'POST' })
         const ui = (['checkbox', 'color', 'size', 'range'] as const).includes(a.filter_ui as 'checkbox')
           ? (a.filter_ui as StorefrontFilterGroup['filter_ui'])
           : a.is_color ? 'color' : a.is_size ? 'size' : 'checkbox';
+        // Tamanhos: ordena por convenção comercial (PP…G4, depois numéricos crescentes).
+        const orderedValues = (ui === 'size' || a.is_size)
+          ? [...vs].sort((x, y) => compareSizes(x.label, y.label))
+          : vs;
         return {
           attribute_id: a.id, code: a.code, name: a.name,
           filter_ui: ui, is_color: a.is_color, is_size: a.is_size,
           sort_order: linkOrder.get(a.id) ?? a.filter_order ?? 0,
-          values: vs,
+          values: orderedValues,
         };
       })
       .filter((g) => g.values.length > 0)
