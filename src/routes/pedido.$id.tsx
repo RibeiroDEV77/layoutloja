@@ -22,7 +22,14 @@ function PedidoPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fn({ data: { order_id: id } });
+        const sessionToken = typeof window !== 'undefined'
+          ? window.localStorage.getItem('storefront.cart.session') ?? ''
+          : '';
+        if (!sessionToken) {
+          if (!cancelled) setState({ loading: false, data: null, error: 'Pedido não encontrado' });
+          return;
+        }
+        const res = await fn({ data: { order_id: id, session_token: sessionToken } });
         if (!cancelled) setState({ loading: false, data: res, error: null });
       } catch (err) {
         if (!cancelled) setState({ loading: false, data: null, error: err instanceof Error ? err.message : 'Erro' });
