@@ -57,7 +57,8 @@ export const Route = createFileRoute("/api/chat")({
           console.error("[/api/chat] error:", error);
           const message = error instanceof Error ? error.message : "AI request failed";
           const status = /429/.test(message) ? 429 : /402/.test(message) ? 402 : 500;
-          return new Response(message, { status });
+          const safeMessage = status === 429 ? "AI rate limit exceeded" : status === 402 ? "AI billing limit reached" : "AI request failed";
+          return new Response(safeMessage, { status });
         }
       },
     },
