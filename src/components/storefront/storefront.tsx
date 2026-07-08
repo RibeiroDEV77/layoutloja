@@ -413,15 +413,17 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
                 {i.extraLinks.length > 0 && (
                   <div className="pl-4 border-b border-[#F8F8F8]">
                     {i.extraLinks.map((link) => (
-                      <a
+                      <Link
                         key={link.slug}
-                        href={`/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(i.slug)}`}
+                        to="/categoria/$slug"
+                        params={{ slug: link.slug }}
                         onClick={() => setOpen(false)}
                         className="block py-2 text-[14px] text-[#555] hover:text-[var(--brand-red)] transition-colors"
                       >
                         {link.label}
-                      </a>
+                      </Link>
                     ))}
+
                   </div>
                 )}
               </div>
