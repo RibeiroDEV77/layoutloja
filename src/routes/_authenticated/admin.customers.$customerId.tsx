@@ -104,10 +104,17 @@ function CustomerDetailPage() {
 
 function OverviewTab({ data, onRefresh }: { data: Any; onRefresh: () => void }) {
   const recompute = useServerFn(recomputeCustomerScore);
+  const reveal = useServerFn(revealCustomerDocument);
+  const [revealed, setRevealed] = useState<string | null>(null);
   const m = useMutation({
     mutationFn: async (id: string) => unwrap(await recompute({ data: { customer_id: id } })),
     onSuccess: () => { toast.success('Score recalculado'); onRefresh(); },
     onError: (e: Error) => toast.error(e.message),
+  });
+  const revealMut = useMutation({
+    mutationFn: async (id: string) => unwrap(await reveal({ data: { id } })),
+    onSuccess: (r: Any) => { setRevealed(String(r?.doc_number ?? '—')); },
+    onError: (e: Error) => toast.error(e.message ?? 'Sem permissão para revelar documento'),
   });
   const c = data.customer;
   return (
@@ -117,7 +124,15 @@ function OverviewTab({ data, onRefresh }: { data: Any; onRefresh: () => void }) 
         <CardContent className="space-y-1 text-sm">
           <div><b>Email:</b> {String(c.email ?? '—')}</div>
           <div><b>Telefone:</b> {String(c.phone ?? '—')}</div>
-          <div><b>Documento:</b> {String(c.doc_number ?? '—')}</div>
+          <div className="flex items-center gap-2">
+            <b>Documento:</b>
+            <span>{revealed ?? String(c.doc_number_masked ?? '—')}</span>
+            {!revealed && (
+              <Button size="sm" variant="ghost" onClick={() => revealMut.mutate(String(c.id))} disabled={revealMut.isPending}>
+                {revealMut.isPending ? 'Revelando…' : 'Revelar'}
+              </Button>
+            )}
+          </div>
           <div><b>Código:</b> {String(c.code ?? '—')}</div>
         </CardContent>
       </Card>
