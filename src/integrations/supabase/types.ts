@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _doc_hash_config: {
+        Row: {
+          created_at: string
+          id: boolean
+          pepper: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          pepper: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          pepper?: string
+        }
+        Relationships: []
+      }
       asset_folders: {
         Row: {
           context: Database["public"]["Enums"]["asset_context"]
@@ -2133,6 +2151,7 @@ export type Database = {
           deleted_at: string | null
           doc_number: string | null
           doc_number_encrypted: string | null
+          doc_number_hash: string | null
           email: string | null
           gender: string | null
           id: string
@@ -2171,6 +2190,7 @@ export type Database = {
           deleted_at?: string | null
           doc_number?: string | null
           doc_number_encrypted?: string | null
+          doc_number_hash?: string | null
           email?: string | null
           gender?: string | null
           id?: string
@@ -2209,6 +2229,7 @@ export type Database = {
           deleted_at?: string | null
           doc_number?: string | null
           doc_number_encrypted?: string | null
+          doc_number_hash?: string | null
           email?: string | null
           gender?: string | null
           id?: string
@@ -13121,6 +13142,7 @@ export type Database = {
         Args: { _role_code: string; _store_id?: string; _user_id: string }
         Returns: boolean
       }
+      hash_doc_number: { Args: { _doc: string }; Returns: string }
       ic_store_id: { Args: { _ic_id: string }; Returns: string }
       idempotency_begin: {
         Args: {
