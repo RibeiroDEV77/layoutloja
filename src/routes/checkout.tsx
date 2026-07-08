@@ -197,9 +197,10 @@ function CheckoutPage() {
         email: email.trim(), name: name.trim(), phone: digits(phone),
         address: addressPayload,
       };
-      const res = isWholesale
+      const raw = isWholesale
         ? await fnPlaceWs({ data: commonData })
         : await fnPlaceRetail({ data: { ...commonData, session_token: cart.sessionToken } });
+      const res = unwrapBusinessResponse<{ order_id: string }>(raw);
       clearStoredCart(isWholesale ? 'wholesale' : 'retail');
       navigate({ to: '/pedido/$id', params: { id: res.order_id } });
     } catch (err) {
