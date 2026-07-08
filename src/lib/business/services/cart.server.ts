@@ -127,7 +127,7 @@ export async function getOrCreateCart(supabase: SbClient, userId: string | null,
   if (existing) return existing as CartRow;
 
   const customerGroupId = await resolveCustomerGroupId(supabase, input.customer_id ?? null);
-  const priceListId = await resolveCartPriceListId(supabase, input.store_id, customerGroupId);
+  const priceListId = await resolveCartPriceListId(supabase, input.store_id, customerGroupId, salesChannel);
 
   const { data: created, error } = await supabase.from('carts').insert({
     store_id: input.store_id,
