@@ -78,11 +78,13 @@ function unwrapBusinessResponse<T>(value: unknown): T {
 
 function CheckoutPage() {
   const { categories, brands, products } = Route.useLoaderData();
-  const cart = useStorefrontCart();
+  const cart = useCart();
+  const isWholesale = cart.salesChannel === 'wholesale';
   const navigate = useNavigate();
-  const fnQuote = useServerFn(anonQuoteShipping);
-  const fnSelect = useServerFn(anonSelectShipping);
-  const fnPlace = useServerFn(placeOrder);
+  const fnQuote = useServerFn(isWholesale ? wholesaleQuoteShipping : anonQuoteShipping);
+  const fnSelect = useServerFn(isWholesale ? wholesaleSelectShipping : anonSelectShipping);
+  const fnPlaceRetail = useServerFn(placeOrder);
+  const fnPlaceWs = useServerFn(wholesalePlaceOrder);
   const fnLookup = useServerFn(lookupPostalCode);
 
   const [name, setName] = useState('');
