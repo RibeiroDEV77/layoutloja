@@ -11,6 +11,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { compareSizes } from '@/lib/size-order';
 
 function publicClient(): SupabaseClient<Database> {
   return createClient<Database>(
