@@ -18,6 +18,7 @@ import {
   addCustomerNote, updateCustomerNote, deleteCustomerNote,
   listCustomerTags, upsertCustomerTag, assignCustomerTags,
   updateCustomerConsents, recomputeCustomerScore,
+  revealCustomerDocument,
 } from '@/lib/business/customers.functions';
 
 export const Route = createFileRoute('/_authenticated/admin/customers/$customerId')({
