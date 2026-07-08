@@ -20,6 +20,14 @@ async function getReservationTtl(supabase: SbClient): Promise<number> {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_TTL;
 }
 
+/**
+ * Fase 2B.3 — fonte canônica de disponibilidade:
+ *   SUM(stock_levels.quantity_on_hand - stock_levels.quantity_reserved)
+ *
+ * `stock_reservations` é apenas trilha detalhada e NÃO deve ser subtraído
+ * de novo aqui (double-count). O agregado `quantity_reserved` já reflete
+ * todas as reservas ativas via RPCs atômicas com lock.
+ */
 export async function availableStock(supabase: SbClient, variantId: string): Promise<number> {
   const { data: levels } = await supabase
     .from('stock_levels')
@@ -29,13 +37,7 @@ export async function availableStock(supabase: SbClient, variantId: string): Pro
     (acc, l) => acc + (Number(l.quantity_on_hand ?? 0) - Number(l.quantity_reserved ?? 0)),
     0,
   );
-  const { data: active } = await supabase
-    .from('stock_reservations')
-    .select('qty')
-    .eq('variant_id', variantId)
-    .eq('status', 'active');
-  const reserved = (active ?? []).reduce((acc, r) => acc + Number(r.qty ?? 0), 0);
-  return Math.max(0, total - reserved);
+  return Math.max(0, total);
 }
 
 export async function reserveForCartItem(supabase: SbClient, cartItemId: string): Promise<string> {

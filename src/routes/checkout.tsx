@@ -183,8 +183,24 @@ function CheckoutPage() {
     return null;
   }
 
+  // Idempotency key estável por tentativa de finalização.
+  // Duplo clique / retry mantém a mesma chave; nova chave só é gerada após
+  // sucesso (clearStoredCart / navigate) ou erro definitivo confirmado pelo
+  // usuário. `crypto.randomUUID` está disponível em todos os navegadores modernos.
+  const idempotencyKeyRef = useRef<string | null>(null);
+  function ensureIdempotencyKey(): string {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? crypto.randomUUID()
+          : `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    return idempotencyKeyRef.current;
+  }
+
   async function handlePlaceOrder() {
     if (!cart.cartId) return;
+    if (placing) return; // guard client-side (proteção real é no servidor)
     setError(null);
     const v = validateAll();
     if (v) { setError(v); return; }
@@ -193,18 +209,23 @@ function CheckoutPage() {
     setPlacing(true);
     try {
       const addressPayload = { ...address, country: 'BR', postal_code: digits(address.postal_code) };
+      const idempotency_key = ensureIdempotencyKey();
       const commonData = {
         cart_id: cart.cartId,
         email: email.trim(), name: name.trim(), phone: digits(phone),
         address: addressPayload,
+        idempotency_key,
       };
       const raw = isWholesale
         ? await fnPlaceWs({ data: commonData })
         : await fnPlaceRetail({ data: { ...commonData, session_token: cart.sessionToken } });
       const res = unwrapBusinessResponse<{ order_id: string }>(raw);
+      idempotencyKeyRef.current = null; // sucesso → nova tentativa futura terá key nova
       clearStoredCart(isWholesale ? 'wholesale' : 'retail');
       navigate({ to: '/pedido/$id', params: { id: res.order_id } });
     } catch (err) {
+      // Mantém a idempotency_key: retry manual do usuário usa a mesma chave e
+      // devolve o mesmo order_id se o servidor tiver conseguido criar o pedido.
       setError(err instanceof Error ? err.message : 'Falha ao finalizar pedido');
     } finally {
       setPlacing(false);

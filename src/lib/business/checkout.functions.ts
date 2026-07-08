@@ -237,7 +237,7 @@ type OrderAddress = {
 async function finalizeOrderForCart(
   sb: SupabaseClient<Database>,
   cart: { id: string; store_id: string },
-  input: { email: string; name: string; phone: string; address: OrderAddress },
+  input: { email: string; name: string; phone: string; address: OrderAddress; idempotency_key?: string | null },
 ): Promise<{ order_id: string }> {
   const { validateCartForCheckout } = await import('./services/checkout-guards.server');
   const revalidated = await validateCartForCheckout(
@@ -251,7 +251,8 @@ async function finalizeOrderForCart(
     _name: input.name,
     _phone: input.phone,
     _address: input.address as never,
-  });
+    _idempotency_key: (input.idempotency_key ?? null) as never,
+  } as never);
   if (error) throw Errors.internal(error.message || 'Falha ao finalizar pedido', { error: error.message });
   const newOrderId = orderId as unknown as string;
 
@@ -301,6 +302,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     name: string;
     phone: string;
     address: OrderAddress;
+    idempotency_key?: string | null;
   }) => d)
   .handler(async ({ data }) => {
     const sb = await publicClient();
@@ -317,6 +319,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
     }
     return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
       email: data.email, name: data.name, phone: data.phone, address: data.address,
+      idempotency_key: data.idempotency_key ?? null,
     });
   });
 
@@ -389,6 +392,7 @@ export const wholesalePlaceOrder = createServerFn({ method: 'POST' })
     name: string;
     phone: string;
     address: OrderAddress;
+    idempotency_key?: string | null;
   }) => d)
   .handler(withBusiness(async ({ data, context }) => {
     const cart = await assertWholesaleCartOwnership(context.supabase, context.userId, data.cart_id);
@@ -396,6 +400,7 @@ export const wholesalePlaceOrder = createServerFn({ method: 'POST' })
     const sb = supabaseAdmin as unknown as SupabaseClient<Database>;
     return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
       email: data.email, name: data.name, phone: data.phone, address: data.address,
+      idempotency_key: data.idempotency_key ?? null,
     });
   }));
 
