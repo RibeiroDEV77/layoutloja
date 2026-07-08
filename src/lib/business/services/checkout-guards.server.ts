@@ -154,7 +154,7 @@ export async function validateCartForCheckout(
 
   // Price list a aplicar (mesma regra do Price Engine)
   const priceListId = cart.price_list_id
-    ?? (await resolveCartPriceListId(supabase, cart.store_id, cart.customer_group_id ?? null));
+    ?? (await resolveCartPriceListId(supabase, cart.store_id, cart.customer_group_id ?? null, cart.sales_channel as 'retail' | 'wholesale'));
 
   const invalid: InvalidItem[] = [];
   const revalidated: RevalidatedItem[] = [];
