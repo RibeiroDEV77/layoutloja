@@ -28,41 +28,56 @@ interface ResolveContext {
 }
 
 /**
- * Resolve qual price_list aplicar:
- * 1) Lista vinculada ao customer_group (maior prioridade)
- * 2) Lista pública ativa de maior prioridade da loja
+ * Resolve qual price_list aplicar.
+ *
+ * Regras P6 (preços atacado faltantes):
+ * - `sales_channel = 'wholesale'`: **estritamente** listas com
+ *   `code LIKE 'WHOLESALE-%'` da loja. Se não houver, retorna `null` —
+ *   NUNCA cai em tabela varejo. O engine então lança `price_unavailable`.
+ * - `sales_channel = 'retail'` (padrão): mesma lógica anterior, mas
+ *   exclui explicitamente listas `WHOLESALE-%` (elas nunca podem vazar
+ *   como preço varejo, mesmo que priority seja maior).
  */
 export async function resolveCartPriceListId(
   supabase: SbClient,
   storeId: string,
   customerGroupId: string | null,
+  salesChannel: 'retail' | 'wholesale' = 'retail',
 ): Promise<string | null> {
+  const now = Date.now();
+  const active = (pl: { starts_at: string | null; ends_at: string | null }) =>
+    (!pl.starts_at || new Date(pl.starts_at).getTime() <= now) &&
+    (!pl.ends_at || new Date(pl.ends_at).getTime() >= now);
+
+  if (salesChannel === 'wholesale') {
+    const { data: lists } = await supabase
+      .from('price_lists')
+      .select('id, priority, starts_at, ends_at, code')
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .like('code', 'WHOLESALE-%')
+      .order('priority', { ascending: false });
+    return (lists ?? []).find(active)?.id ?? null;
+  }
+
   if (customerGroupId) {
     const { data } = await supabase
       .from('price_list_customer_groups')
-      .select('price_list_id, price_lists!inner(id, is_active, priority, starts_at, ends_at, store_id)')
+      .select('price_list_id, price_lists!inner(id, is_active, priority, starts_at, ends_at, store_id, code)')
       .eq('customer_group_id', customerGroupId);
-    const now = Date.now();
     const eligible = (data ?? [])
-      .map((r) => r.price_lists as { id: string; is_active: boolean; priority: number; starts_at: string | null; ends_at: string | null; store_id: string })
-      .filter((pl) => pl && pl.store_id === storeId && pl.is_active &&
-        (!pl.starts_at || new Date(pl.starts_at).getTime() <= now) &&
-        (!pl.ends_at || new Date(pl.ends_at).getTime() >= now))
+      .map((r) => r.price_lists as { id: string; is_active: boolean; priority: number; starts_at: string | null; ends_at: string | null; store_id: string; code: string | null })
+      .filter((pl) => pl && pl.store_id === storeId && pl.is_active && !(pl.code ?? '').startsWith('WHOLESALE-') && active(pl))
       .sort((a, b) => b.priority - a.priority);
     if (eligible[0]) return eligible[0].id;
   }
   const { data: lists } = await supabase
     .from('price_lists')
-    .select('id, priority, starts_at, ends_at, is_active')
+    .select('id, priority, starts_at, ends_at, is_active, code')
     .eq('store_id', storeId)
     .eq('is_active', true)
     .order('priority', { ascending: false });
-  const now = Date.now();
-  const fallback = (lists ?? []).find((pl) =>
-    (!pl.starts_at || new Date(pl.starts_at).getTime() <= now) &&
-    (!pl.ends_at || new Date(pl.ends_at).getTime() >= now),
-  );
-  return fallback?.id ?? null;
+  return (lists ?? []).find((pl) => !(pl.code ?? '').startsWith('WHOLESALE-') && active(pl))?.id ?? null;
 }
 
 /** Resolve customer_group_id principal do cliente. */
@@ -82,13 +97,19 @@ export async function resolveCustomerGroupId(
   return rows[0]?.id ?? null;
 }
 
-/** Calcula unit_price para uma variante+qty no contexto do carrinho. */
+/**
+ * Calcula unit_price para uma variante+qty no contexto do carrinho.
+ *
+ * P6: quando `sales_channel === 'wholesale'`, ausência de `price_list_item`
+ * na tabela atacado lança `price_unavailable` — NUNCA cai em varejo.
+ */
 export async function computeVariantPrice(
   supabase: SbClient,
   variantId: string,
   qty: number,
-  ctx: ResolveContext & { price_list_id: string | null },
+  ctx: ResolveContext & { price_list_id: string | null; sales_channel?: 'retail' | 'wholesale' },
 ): Promise<PriceResolution> {
+  const salesChannel = ctx.sales_channel ?? 'retail';
   let listPrice = 0;
   let unitPrice = 0;
   let source: PriceResolution['price_source'] = 'catalog';
@@ -112,9 +133,17 @@ export async function computeVariantPrice(
     }
   }
 
+  // Wholesale: SEM fallback. Ausência de preço atacado bloqueia com erro claro.
+  if (unitPrice === 0 && salesChannel === 'wholesale') {
+    throw Errors.rule('Preço atacado indisponível para esta variante', {
+      variant_id: variantId,
+      reason: 'wholesale_price_missing',
+    });
+  }
+
+  // Retail: fallback existente para outra lista varejo ativa da loja.
   if (unitPrice === 0) {
-    // Fallback: tenta qualquer price_list ativa da loja sem grupo
-    const fallbackId = await resolveCartPriceListId(supabase, ctx.store_id, null);
+    const fallbackId = await resolveCartPriceListId(supabase, ctx.store_id, null, 'retail');
     if (fallbackId && fallbackId !== ctx.price_list_id) {
       const { data: items } = await supabase
         .from('price_list_items')
