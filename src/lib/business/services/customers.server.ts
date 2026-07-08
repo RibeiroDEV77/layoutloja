@@ -243,7 +243,13 @@ export async function updateCustomer(supabase: SbClient, userId: string, id: str
     const doc = normalizeDoc(patch.doc_number);
     if (current.type === 'pf' && doc && doc.length !== 11) throw Errors.validation('CPF deve ter 11 dígitos');
     if (current.type === 'pj' && doc && doc.length !== 14) throw Errors.validation('CNPJ deve ter 14 dígitos');
-    patch.doc_number = doc as never;
+    const docFields = await computeDocFields(doc);
+    // Remove doc_number do patch e injeta hash/encrypted (sem plaintext).
+    delete (patch as Record<string, unknown>).doc_number;
+    (patch as Record<string, unknown>).doc_number_hash = docFields.doc_number_hash;
+    (patch as Record<string, unknown>).doc_number_encrypted = docFields.doc_number_encrypted;
+    // Também zera plaintext legado se existir.
+    (patch as Record<string, unknown>).doc_number = null;
   }
   if (patch.email !== undefined) patch.email = patch.email?.trim().toLowerCase() || undefined;
 
@@ -260,7 +266,7 @@ export async function updateCustomer(supabase: SbClient, userId: string, id: str
     payload: { changed: Object.keys(colPatch) },
   });
   await recordMetric(supabase, { scope: 'customers', name: 'updated', value: 1, storeId: row.store_id });
-  return row;
+  return stripCustomerDoc(row as never);
 }
 
 export async function deleteCustomer(supabase: SbClient, userId: string, id: string) {
