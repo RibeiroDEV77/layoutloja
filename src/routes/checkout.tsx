@@ -8,11 +8,15 @@ import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
 } from '@/lib/business/storefront.functions';
-import { useStorefrontCart, formatBRL, clearStoredCart } from '@/hooks/use-storefront-cart';
+import { formatBRL, clearStoredCart } from '@/hooks/use-storefront-cart';
+import { useCart } from '@/components/storefront/cart-provider';
 import {
   anonQuoteShipping,
   anonSelectShipping,
   placeOrder,
+  wholesaleQuoteShipping,
+  wholesaleSelectShipping,
+  wholesalePlaceOrder,
 } from '@/lib/business/checkout.functions';
 import { lookupPostalCode } from '@/lib/business/shipping.functions';
 import { Loader2, Truck, Check } from 'lucide-react';
@@ -74,11 +78,13 @@ function unwrapBusinessResponse<T>(value: unknown): T {
 
 function CheckoutPage() {
   const { categories, brands, products } = Route.useLoaderData();
-  const cart = useStorefrontCart();
+  const cart = useCart();
+  const isWholesale = cart.salesChannel === 'wholesale';
   const navigate = useNavigate();
-  const fnQuote = useServerFn(anonQuoteShipping);
-  const fnSelect = useServerFn(anonSelectShipping);
-  const fnPlace = useServerFn(placeOrder);
+  const fnQuote = useServerFn(isWholesale ? wholesaleQuoteShipping : anonQuoteShipping);
+  const fnSelect = useServerFn(isWholesale ? wholesaleSelectShipping : anonSelectShipping);
+  const fnPlaceRetail = useServerFn(placeOrder);
+  const fnPlaceWs = useServerFn(wholesalePlaceOrder);
   const fnLookup = useServerFn(lookupPostalCode);
 
   const [name, setName] = useState('');
@@ -130,7 +136,8 @@ function CheckoutPage() {
         }
       }
       try {
-        const res = (await fnQuote({ data: { cart_id: cart.cartId!, postal_code: cep } })) as { quotes: unknown[] };
+        const rawQ = await fnQuote({ data: { cart_id: cart.cartId!, postal_code: cep } });
+        const res = unwrapBusinessResponse<{ quotes: unknown[] }>(rawQ);
         if (cancelled) return;
         await cart.refresh();
         if (!res.quotes || res.quotes.length === 0) {
@@ -185,15 +192,17 @@ function CheckoutPage() {
 
     setPlacing(true);
     try {
-      const res = await fnPlace({
-        data: {
-          cart_id: cart.cartId,
-          session_token: cart.sessionToken,
-          email: email.trim(), name: name.trim(), phone: digits(phone),
-          address: { ...address, country: 'BR', postal_code: digits(address.postal_code) },
-        },
-      });
-      clearStoredCart();
+      const addressPayload = { ...address, country: 'BR', postal_code: digits(address.postal_code) };
+      const commonData = {
+        cart_id: cart.cartId,
+        email: email.trim(), name: name.trim(), phone: digits(phone),
+        address: addressPayload,
+      };
+      const raw = isWholesale
+        ? await fnPlaceWs({ data: commonData })
+        : await fnPlaceRetail({ data: { ...commonData, session_token: cart.sessionToken } });
+      const res = unwrapBusinessResponse<{ order_id: string }>(raw);
+      clearStoredCart(isWholesale ? 'wholesale' : 'retail');
       navigate({ to: '/pedido/$id', params: { id: res.order_id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao finalizar pedido');

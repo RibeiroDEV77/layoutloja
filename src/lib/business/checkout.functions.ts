@@ -191,7 +191,7 @@ export const anonRemoveCartItem = createServerFn({ method: 'POST' })
   });
 
 // ---------------------------------------------------------------------------
-// Cotação automática + seleção
+// Cotação automática + seleção (retail anônimo)
 // ---------------------------------------------------------------------------
 
 export const anonQuoteShipping = createServerFn({ method: 'POST' })
@@ -215,7 +215,82 @@ export const anonSelectShipping = createServerFn({ method: 'POST' })
   });
 
 // ---------------------------------------------------------------------------
-// Finalização do pedido (chama RPC SECURITY DEFINER)
+// Helpers compartilhados de finalização de pedido (P5.2)
+// ---------------------------------------------------------------------------
+
+type OrderAddress = {
+  postal_code: string;
+  street: string;
+  number: string;
+  complement?: string | null;
+  district: string;
+  city: string;
+  state: string;
+  country?: string;
+};
+
+/**
+ * Executa validações P4 + RPC `order_create_from_cart` + snapshot de preço.
+ * Assume que a **prova de posse** do carrinho já foi verificada pelo caller
+ * (session_token para retail; customer_id + auth para wholesale).
+ */
+async function finalizeOrderForCart(
+  sb: SupabaseClient<Database>,
+  cart: { id: string; store_id: string },
+  input: { email: string; name: string; phone: string; address: OrderAddress },
+): Promise<{ order_id: string }> {
+  const { validateCartForCheckout } = await import('./services/checkout-guards.server');
+  const revalidated = await validateCartForCheckout(
+    sb as unknown as Parameters<typeof validateCartForCheckout>[0],
+    cart.id,
+  );
+
+  const { data: orderId, error } = await sb.rpc('order_create_from_cart', {
+    _cart_id: cart.id,
+    _email: input.email,
+    _name: input.name,
+    _phone: input.phone,
+    _address: input.address as never,
+  });
+  if (error) throw Errors.internal(error.message || 'Falha ao finalizar pedido', { error: error.message });
+  const newOrderId = orderId as unknown as string;
+
+  try {
+    const snapshotPayload = {
+      revalidated_at: new Date().toISOString(),
+      sales_channel: revalidated.sales_channel,
+      currency: revalidated.currency,
+      price_list_id: revalidated.price_list_id,
+      total: revalidated.total,
+      items: revalidated.items.map((i) => ({
+        item_id: i.item_id,
+        variant_id: i.variant_id,
+        product_id: i.product_id,
+        qty: i.qty,
+        unit_price: i.unit_price,
+        list_price: i.list_price,
+        price_source: i.price_source,
+        price_list_item_id: i.price_list_item_id,
+      })),
+    };
+    const hashInput = JSON.stringify(snapshotPayload);
+    let hash = 0;
+    for (let i = 0; i < hashInput.length; i++) hash = ((hash << 5) - hash + hashInput.charCodeAt(i)) | 0;
+    await sb.from('order_pricing_snapshots').insert({
+      order_id: newOrderId,
+      store_id: cart.store_id,
+      snapshot: snapshotPayload as never,
+      hash: `sha1:${(hash >>> 0).toString(16).padStart(8, '0')}`,
+    } as never);
+  } catch (snapErr) {
+    console.warn('[placeOrder] pricing snapshot insert falhou:', snapErr instanceof Error ? snapErr.message : snapErr);
+  }
+
+  return { order_id: newOrderId };
+}
+
+// ---------------------------------------------------------------------------
+// Finalização — retail anônimo (session_token)
 // ---------------------------------------------------------------------------
 
 export const placeOrder = createServerFn({ method: 'POST' })
@@ -225,84 +300,104 @@ export const placeOrder = createServerFn({ method: 'POST' })
     email: string;
     name: string;
     phone: string;
-    address: {
-      postal_code: string;
-      street: string;
-      number: string;
-      complement?: string | null;
-      district: string;
-      city: string;
-      state: string;
-      country?: string;
-    };
+    address: OrderAddress;
   }) => d)
   .handler(async ({ data }) => {
     const sb = await publicClient();
-    // valida que o session_token confere com o carrinho
     const { data: cart, error: cartErr } = await sb
       .from('carts')
-      .select('id, session_token, status, store_id')
+      .select('id, session_token, status, store_id, customer_id, sales_channel')
       .eq('id', data.cart_id)
       .maybeSingle();
     if (cartErr) throw Errors.internal('Falha ao validar carrinho', { error: cartErr.message });
     if (!cart) throw Errors.notFound('Carrinho');
     if (cart.session_token !== data.session_token) throw Errors.forbidden('Carrinho inválido');
-
-    // ---- P4: revalidação server-side obrigatória (produto/variante/canal/preço/estoque)
-    const { validateCartForCheckout } = await import('./services/checkout-guards.server');
-    const revalidated = await validateCartForCheckout(
-      sb as unknown as Parameters<typeof validateCartForCheckout>[0],
-      data.cart_id,
-    );
-
-    const { data: orderId, error } = await sb.rpc('order_create_from_cart', {
-      _cart_id: data.cart_id,
-      _email: data.email,
-      _name: data.name,
-      _phone: data.phone,
-      _address: data.address as never,
-    });
-    if (error) throw Errors.internal(error.message || 'Falha ao finalizar pedido', { error: error.message });
-    const newOrderId = orderId as unknown as string;
-
-    // ---- P4: snapshot auditável de preço (best-effort, não bloqueia pedido)
-    try {
-      const snapshotPayload = {
-        revalidated_at: new Date().toISOString(),
-        sales_channel: revalidated.sales_channel,
-        currency: revalidated.currency,
-        price_list_id: revalidated.price_list_id,
-        total: revalidated.total,
-        items: revalidated.items.map((i) => ({
-          item_id: i.item_id,
-          variant_id: i.variant_id,
-          product_id: i.product_id,
-          qty: i.qty,
-          unit_price: i.unit_price,
-          list_price: i.list_price,
-          price_source: i.price_source,
-          price_list_item_id: i.price_list_item_id,
-        })),
-      };
-      const hashInput = JSON.stringify(snapshotPayload);
-      // hash não-criptográfico só para dedup humano; integridade real vem
-      // do UNIQUE(order_id) e do audit trigger em order_addresses/orders.
-      let hash = 0;
-      for (let i = 0; i < hashInput.length; i++) hash = ((hash << 5) - hash + hashInput.charCodeAt(i)) | 0;
-      await sb.from('order_pricing_snapshots').insert({
-        order_id: newOrderId,
-        store_id: cart.store_id,
-        snapshot: snapshotPayload as never,
-        hash: `sha1:${(hash >>> 0).toString(16).padStart(8, '0')}`,
-      } as never);
-    } catch (snapErr) {
-      // Snapshot é auditoria complementar — order_items já tem unit_price;
-      // não desfazemos o pedido por falha aqui.
-      console.warn('[placeOrder] pricing snapshot insert falhou:', snapErr instanceof Error ? snapErr.message : snapErr);
+    if (cart.sales_channel === 'wholesale') {
+      throw Errors.forbidden('Carrinho atacado exige checkout autenticado');
     }
-
-    return { order_id: newOrderId };
+    return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
+      email: data.email, name: data.name, phone: data.phone, address: data.address,
+    });
   });
+
+// ---------------------------------------------------------------------------
+// Wholesale autenticado (P5.2) — quote / select / place order
+// ---------------------------------------------------------------------------
+
+/**
+ * Prova de posse do carrinho wholesale: cliente autenticado + carrinho
+ * pertence a customer aprovado + canal correto. Retorna cart com store_id.
+ */
+async function assertWholesaleCartOwnership(
+  authSb: SupabaseClient<Database>,
+  userId: string,
+  cartId: string,
+): Promise<{ id: string; store_id: string; customer_id: string }> {
+  const customerId = await resolveOwnCustomerId(authSb, userId);
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const sb = supabaseAdmin as unknown as SupabaseClient<Database>;
+  const { data: cart } = await sb
+    .from('carts')
+    .select('id, store_id, customer_id, sales_channel, status')
+    .eq('id', cartId)
+    .maybeSingle();
+  if (!cart) throw Errors.notFound('Carrinho');
+  if (cart.sales_channel !== 'wholesale') throw Errors.forbidden('Carrinho não é do canal atacado');
+  if (cart.customer_id !== customerId) throw Errors.forbidden('Sem acesso a este carrinho');
+  const { data: approved } = await sb
+    .from('wholesale_applications')
+    .select('id')
+    .eq('customer_id', customerId)
+    .eq('status', 'approved')
+    .limit(1)
+    .maybeSingle();
+  if (!approved?.id) throw Errors.forbidden('Cliente sem aprovação para o canal atacado');
+  return { id: cart.id, store_id: cart.store_id, customer_id: customerId };
+}
+
+export const wholesaleQuoteShipping = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; postal_code: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => {
+    const cep = data.postal_code.replace(/\D/g, '');
+    if (cep.length !== 8) throw Errors.validation('CEP inválido');
+    await assertWholesaleCartOwnership(context.supabase, context.userId, data.cart_id);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const sb = supabaseAdmin as unknown as Parameters<typeof Shipping.quoteShippingForCart>[0];
+    const rows = await Shipping.quoteShippingForCart(sb, null, {
+      cart_id: data.cart_id,
+      postal_code: cep,
+    });
+    return { quotes: rows };
+  }));
+
+export const wholesaleSelectShipping = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; quote_id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => {
+    await assertWholesaleCartOwnership(context.supabase, context.userId, data.cart_id);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const sb = supabaseAdmin as unknown as Parameters<typeof Shipping.selectShippingQuote>[0];
+    return Shipping.selectShippingQuote(sb, null, data);
+  }));
+
+export const wholesalePlaceOrder = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    cart_id: string;
+    email: string;
+    name: string;
+    phone: string;
+    address: OrderAddress;
+  }) => d)
+  .handler(withBusiness(async ({ data, context }) => {
+    const cart = await assertWholesaleCartOwnership(context.supabase, context.userId, data.cart_id);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const sb = supabaseAdmin as unknown as SupabaseClient<Database>;
+    return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
+      email: data.email, name: data.name, phone: data.phone, address: data.address,
+    });
+  }));
 
 // ---------------------------------------------------------------------------
 // Detalhe público do pedido (página de confirmação)
