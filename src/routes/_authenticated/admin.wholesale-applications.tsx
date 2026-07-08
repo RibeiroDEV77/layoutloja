@@ -78,11 +78,18 @@ function statusBadge(s: AdminRow["status"]) {
   return <StatusBadge label={opt?.label ?? s} tone={opt?.tone ?? "muted"} dot />;
 }
 
-function fmtDoc(type: "pf" | "pj" | undefined, doc: string | null | undefined) {
-  if (!doc) return "—";
-  if (type === "pf" && doc.length === 11) return `${doc.slice(0,3)}.${doc.slice(3,6)}.${doc.slice(6,9)}-${doc.slice(9)}`;
-  if (type === "pj" && doc.length === 14) return `${doc.slice(0,2)}.${doc.slice(2,5)}.${doc.slice(5,8)}/${doc.slice(8,12)}-${doc.slice(12)}`;
-  return doc;
+function maskDocClient(digits: string, type: "pf" | "pj" | undefined) {
+  if (!digits) return "—";
+  if (type === "pj" || digits.length === 14) return `**.***.***/****-${digits.slice(-2)}`;
+  return `***.***.***-${digits.slice(-2)}`;
+}
+
+function fmtDocMasked(r: AdminRow): string {
+  if (r.customer?.doc_number_masked) return r.customer.doc_number_masked;
+  const rawMeta = metaStr(r.metadata, "cpf") || metaStr(r.metadata, "cnpj");
+  if (!rawMeta) return "—";
+  const digits = rawMeta.replace(/\D/g, "");
+  return maskDocClient(digits, r.customer?.type);
 }
 
 function fmtDateTime(iso: string | null) {
