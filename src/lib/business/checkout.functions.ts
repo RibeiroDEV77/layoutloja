@@ -237,7 +237,7 @@ type OrderAddress = {
 async function finalizeOrderForCart(
   sb: SupabaseClient<Database>,
   cart: { id: string; store_id: string },
-  input: { email: string; name: string; phone: string; address: OrderAddress },
+  input: { email: string; name: string; phone: string; address: OrderAddress; idempotency_key?: string | null },
 ): Promise<{ order_id: string }> {
   const { validateCartForCheckout } = await import('./services/checkout-guards.server');
   const revalidated = await validateCartForCheckout(
@@ -251,7 +251,8 @@ async function finalizeOrderForCart(
     _name: input.name,
     _phone: input.phone,
     _address: input.address as never,
-  });
+    _idempotency_key: (input.idempotency_key ?? null) as never,
+  } as never);
   if (error) throw Errors.internal(error.message || 'Falha ao finalizar pedido', { error: error.message });
   const newOrderId = orderId as unknown as string;
 
