@@ -28,6 +28,8 @@ const empty = {
 
 function AddressesPage() {
   const { data, refetch } = useStorefrontCustomer();
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const qc = useQueryClient();
   const [editing, setEditing] = useState<typeof empty | null>(null);
   const upsert = useServerFn(upsertMyAddress);
