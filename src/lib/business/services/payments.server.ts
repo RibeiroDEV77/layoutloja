@@ -405,9 +405,16 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
     }),
   );
 
+  // -------- Bloqueio total de efeitos se assinatura for inválida ----------
+  // `signature_valid === null` significa que o provider não usa assinatura;
+  // nesse caso o adapter é a autoridade e permitimos o fluxo normal.
+  // `false` explícito = tentativa maliciosa/corrompida; registrar e recusar.
+  const signatureRejected = parsed.signature_valid === false;
+
   const out: Array<{ webhook_id: string; action: string }> = [];
   for (const ev of parsed.events) {
     // 1) Inbox/idempotência via RPC SECURITY DEFINER (única escrita permitida).
+    //    Sempre registrado — inclusive tentativas inválidas — para auditoria.
     const { data: ingest } = await (supabase as any).rpc('payment_webhook_ingest', {
       _provider: input.provider_code,
       _external_event_id: ev.external_event_id,
@@ -427,7 +434,30 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
     if (!ingestObj.id) continue;
     out.push({ webhook_id: ingestObj.id, action: ingestObj.action ?? 'new' });
 
-    if (ingestObj.action === 'duplicate') continue;
+    // Duplicado: nunca aplicar efeito de novo, mesmo se assinatura válida.
+    if (ingestObj.action === 'duplicate') {
+      console.log('[payments.webhook] duplicate ignored', {
+        provider: input.provider_code, external_event_id: ev.external_event_id,
+      });
+      continue;
+    }
+
+    // Assinatura inválida: registrado, nenhum efeito aplicado.
+    if (signatureRejected) {
+      await (supabase as any).rpc('payment_webhook_mark_failed', {
+        _webhook_id: ingestObj.id,
+        _error: 'signature_invalid',
+        _duration_ms: null,
+      });
+      await recordMetric(supabase, {
+        scope: 'payments', name: 'payment.webhook.signature_invalid', value: 1,
+        storeId: gateway.store_id, tags: { provider: input.provider_code },
+      });
+      console.warn('[payments.webhook] signature invalid — no effects applied', {
+        provider: input.provider_code, external_event_id: ev.external_event_id,
+      });
+      continue;
+    }
 
     // 2) Aplica efeito do evento via RPCs do Payment Engine.
     try {
@@ -439,6 +469,9 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
         scope: 'payments', name: 'payment.webhook.processed', value: 1,
         storeId: gateway.store_id, tags: { provider: input.provider_code, kind: ev.kind },
       });
+      console.log('[payments.webhook] processed', {
+        provider: input.provider_code, external_event_id: ev.external_event_id, kind: ev.kind,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await (supabase as any).rpc('payment_webhook_mark_failed', {
@@ -448,7 +481,16 @@ export async function ingestProviderWebhook(supabase: SbClient, input: IngestWeb
         scope: 'payments', name: 'payment.webhook.error', value: 1,
         storeId: gateway.store_id, tags: { provider: input.provider_code, kind: ev.kind },
       });
+      // Rethrow para que a rota HTTP retorne 500 e o MP faça retry.
+      // Efeito não foi aplicado (RPC do Payment Engine é atômica); o próximo
+      // retry passa pelo inbox e será tratado como 'duplicate' se o efeito
+      // já tiver sido concluído em uma tentativa anterior.
+      throw err;
     }
+  }
+
+  if (signatureRejected) {
+    throw new WebhookSignatureError(input.provider_code);
   }
   return { signature_valid: parsed.signature_valid, processed: out };
 }
