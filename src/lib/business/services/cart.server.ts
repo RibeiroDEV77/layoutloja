@@ -99,6 +99,26 @@ export async function getOrCreateCart(supabase: SbClient, userId: string | null,
     throw Errors.validation('Necessário customer_id ou session_token');
   }
   const salesChannel: SalesChannel = input.sales_channel ?? 'retail';
+
+  // P5 (Atacado seguro): wholesale só é permitido para cliente autenticado
+  // com aplicação `wholesale_applications.status = 'approved'`. Cookie /
+  // localStorage NUNCA são prova de autorização — validamos server-side.
+  if (salesChannel === 'wholesale') {
+    if (!input.customer_id) {
+      throw Errors.forbidden('Canal atacado exige cliente autenticado');
+    }
+    const { data: approved } = await supabase
+      .from('wholesale_applications')
+      .select('id')
+      .eq('customer_id', input.customer_id)
+      .eq('status', 'approved')
+      .limit(1)
+      .maybeSingle();
+    if (!approved?.id) {
+      throw Errors.forbidden('Cliente sem aprovação para o canal atacado');
+    }
+  }
+
   // try active
   let q = supabase.from('carts').select('*').eq('store_id', input.store_id).eq('status', 'active').eq('sales_channel', salesChannel as never);
   if (input.customer_id) q = q.eq('customer_id', input.customer_id);
@@ -127,6 +147,7 @@ export async function getOrCreateCart(supabase: SbClient, userId: string | null,
   await recordMetric(supabase, { scope: 'cart', name: 'created', value: 1, storeId: input.store_id });
   return created as CartRow;
 }
+
 
 export async function getCart(supabase: SbClient, userId: string | null, cartId: string, sessionToken?: string) {
   const cart = await loadCart(supabase, cartId);
