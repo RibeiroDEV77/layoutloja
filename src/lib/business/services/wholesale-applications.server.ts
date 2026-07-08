@@ -290,7 +290,7 @@ export interface AdminListRow extends ApplicationRow {
     name: string;
     trade_name: string | null;
     legal_name: string | null;
-    doc_number: string | null;
+    doc_number_masked: string | null;
     email: string | null;
     phone: string | null;
   } | null;
