@@ -14,15 +14,20 @@ export const Route = createFileRoute('/api/public/hooks/shipping-tracking-sync')
     handlers: {
       POST: async ({ request }) => {
         const secret = process.env.SHIPPING_TRACKING_CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get('authorization') ?? '';
-          const token = auth.replace(/^Bearer\s+/i, '').trim();
-          if (token !== secret) {
-            return new Response(JSON.stringify({ error: 'unauthorized' }), {
-              status: 401,
-              headers: { 'content-type': 'application/json' },
-            });
-          }
+        if (!secret) {
+          console.error('[shipping-tracking-sync] SHIPPING_TRACKING_CRON_SECRET ausente');
+          return new Response(JSON.stringify({ error: 'cron not configured' }), {
+            status: 503,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        const auth = request.headers.get('authorization') ?? '';
+        const token = auth.replace(/^Bearer\s+/i, '').trim();
+        if (token !== secret) {
+          return new Response(JSON.stringify({ error: 'unauthorized' }), {
+            status: 401,
+            headers: { 'content-type': 'application/json' },
+          });
         }
         let body: { store_id?: string | null; limit?: number; stale_minutes?: number } = {};
         try {
@@ -48,7 +53,8 @@ export const Route = createFileRoute('/api/public/hooks/shipping-tracking-sync')
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          return new Response(JSON.stringify({ ok: false, error: msg }), {
+          console.error('[shipping-tracking-sync] erro ao sincronizar', msg);
+          return new Response(JSON.stringify({ ok: false, error: 'sync failed' }), {
             status: 500,
             headers: { 'content-type': 'application/json' },
           });

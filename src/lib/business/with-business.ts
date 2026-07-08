@@ -34,7 +34,7 @@ export function withBusiness<Ctx, Out>(
         ok: false,
         error: {
           code: 'INTERNAL',
-          message: err instanceof Error ? err.message : 'Erro interno',
+          message: 'Erro interno',
         },
       };
     }
