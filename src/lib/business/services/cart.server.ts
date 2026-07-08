@@ -313,6 +313,7 @@ export async function addItem(supabase: SbClient, userId: string | null, input: 
     const repriced = await computeVariantPrice(supabase, input.variant_id, newQty, {
       store_id: cart.store_id, customer_group_id: cart.customer_group_id,
       currency: cart.currency, price_list_id: cart.price_list_id,
+      sales_channel: cart.sales_channel as 'retail' | 'wholesale',
     });
     const { error } = await supabase.from('cart_items').update({
       qty: newQty, list_price: repriced.list_price, unit_price: repriced.unit_price,
