@@ -48,4 +48,25 @@ export function stripCustomerDocList(rows: Record<string, unknown>[] | null | un
   return (rows ?? []).map((r) => stripCustomerDoc(r) as SanitizedCustomer);
 }
 
+/**
+ * Remove chaves sensíveis (documento, cpf, cnpj, rg) de um objeto metadata
+ * antes de enviar ao cliente. Preserva nome/razão/telefone/etc.
+ */
+const SENSITIVE_META_KEYS = new Set([
+  'cpf', 'cnpj', 'doc', 'doc_number', 'documento', 'document', 'rg',
+  'cpf_cnpj', 'cpfcnpj', 'docnumber', 'tax_id', 'taxid',
+]);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function sanitizeMetadata<T extends Record<string, any> | null | undefined>(meta: T): T {
+  if (!meta || typeof meta !== 'object') return meta;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(meta as Record<string, unknown>)) {
+    if (SENSITIVE_META_KEYS.has(k.toLowerCase())) continue;
+    out[k] = v;
+  }
+  return out as T;
+}
+
+
 

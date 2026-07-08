@@ -55,7 +55,8 @@ export async function listCustomers(supabase: SbClient, userId: string, input: L
     const digits = raw.replace(/\D/g, '');
     // CPF (11) ou CNPJ (14): buscar por hash exato — nunca ILIKE em plaintext.
     if (digits.length === 11 || digits.length === 14) {
-      const { data: hashRow, error: hashErr } = await supabase.rpc('hash_doc_number', { _doc: digits });
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { data: hashRow, error: hashErr } = await supabaseAdmin.rpc('hash_doc_number', { _doc: digits });
       if (hashErr) throw Errors.internal('Falha ao computar hash de busca', { error: hashErr.message });
       const hash = (hashRow as string | null) ?? '';
       q = q.eq('doc_number_hash', hash);

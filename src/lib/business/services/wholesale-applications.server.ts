@@ -17,6 +17,12 @@ import type { SbClient } from '../events/dispatcher.server';
 import { Errors } from '../errors';
 import { isSuperAdmin, hasPermission } from './permissions.server';
 import { startWorkflow, transitionWorkflow } from '@/lib/foundations/workflow.functions';
+import { sanitizeMetadata, maskDoc } from './pii.server';
+
+function safeApp<T extends { metadata?: unknown }>(row: T): T {
+  return { ...row, metadata: sanitizeMetadata((row.metadata ?? {}) as Record<string, unknown>) as never };
+}
+
 
 // ---------------- Tipos ----------------
 export type WholesaleStatus =
@@ -227,7 +233,7 @@ export async function createApplication(
     action: 'wholesale.application.created', diff: { status },
   });
 
-  return row;
+  return safeApp(row);
 }
 
 /** Retorna a solicitação ativa (draft/submitted/in_review) do cliente, se houver. */
@@ -247,7 +253,7 @@ export async function getActiveApplication(
     .limit(1)
     .maybeSingle();
   if (error) throw Errors.internal('Falha ao carregar solicitação ativa', { error: error.message });
-  return (data as ApplicationRow | null) ?? null;
+  return data ? safeApp(data as ApplicationRow) : null;
 }
 
 /** Lista todas as solicitações de um cliente, mais recentes primeiro. */
@@ -264,7 +270,7 @@ export async function listApplicationsByCustomer(
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false });
   if (error) throw Errors.internal('Falha ao listar solicitações', { error: error.message });
-  return (data ?? []) as ApplicationRow[];
+  return ((data ?? []) as ApplicationRow[]).map(safeApp);
 }
 
 // ---------------- Admin: listagem global ----------------
@@ -366,18 +372,19 @@ export async function listApplications(
   }
 
   // Mask before returning — nenhum plaintext sai daqui.
-  const { maskDoc } = await import('./pii.server');
   const rows: AdminListRow[] = rawRows.map((r) => {
-    if (!r.customer) return { ...r, customer: null } as AdminListRow;
+    const safe = safeApp(r);
+    if (!r.customer) return { ...safe, customer: null } as AdminListRow;
     const { doc_number, ...rest } = r.customer;
     return {
-      ...r,
+      ...safe,
       customer: { ...rest, doc_number_masked: maskDoc(doc_number, rest.type) },
     } as AdminListRow;
   });
 
   return { rows, total: count ?? rows.length };
 }
+
 
 
 /** Busca uma solicitação pelo id (com autorização). */
@@ -387,7 +394,7 @@ export async function getApplication(supabase: SbClient, userId: string, id: str
   if (customer.auth_user_id !== userId && !(await canRead(supabase, userId, app.store_id))) {
     throw Errors.forbidden('Sem permissão para ler esta solicitação');
   }
-  return app;
+  return safeApp(app);
 }
 
 /**
@@ -467,7 +474,7 @@ export async function transitionApplication(
     diff: { from: app.status, to: input.to, reason: input.reason ?? null },
   });
 
-  return row;
+  return safeApp(row);
 }
 
 /** Cancelar — atalho para `transitionApplication({ to: 'cancelled' })`. */
