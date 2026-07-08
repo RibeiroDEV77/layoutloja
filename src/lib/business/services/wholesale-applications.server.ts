@@ -17,6 +17,12 @@ import type { SbClient } from '../events/dispatcher.server';
 import { Errors } from '../errors';
 import { isSuperAdmin, hasPermission } from './permissions.server';
 import { startWorkflow, transitionWorkflow } from '@/lib/foundations/workflow.functions';
+import { sanitizeMetadata, maskDoc } from './pii.server';
+
+function safeApp<T extends { metadata?: unknown }>(row: T): T {
+  return { ...row, metadata: sanitizeMetadata((row.metadata ?? {}) as Record<string, unknown>) as never };
+}
+
 
 // ---------------- Tipos ----------------
 export type WholesaleStatus =
