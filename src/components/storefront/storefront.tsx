@@ -277,7 +277,7 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         ...MEGA_PRODUCT_COLUMNS.map((column) => ({ title: column.title, items: productsFor(column.key), linkToCategory: false })),
       ] satisfies MegaColumn[],
     };
-  }, [hover, navItems, childrenOf, categories, brands, products]);
+  }, [hover, navItems, childrenOf, categories, brands, products, slugsWithProducts, categoryIdsWithProducts]);
 
 
   return (
