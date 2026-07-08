@@ -68,7 +68,7 @@ export const Route = createFileRoute("/categoria/$slug")({
       seo_title: null,
       seo_description: null,
     };
-    const subcategories = cats.rows.filter((c) => c.parent_id === category.id);
+    const allSubcategories = cats.rows.filter((c) => c.parent_id === category.id);
     const navCategories = navItem ? resolveStorefrontCategories(navItem, cats.rows) : [];
     const categoryIds = new Set<string>([
       category.id,
