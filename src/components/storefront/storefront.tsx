@@ -228,20 +228,36 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
           const assigned = product.category_ids?.length ? product.category_ids : product.category_id ? [product.category_id] : [];
           return assigned.some((categoryId) => categoryIds.has(categoryId));
         })
-      : products;
-    const productPool = categoryProducts.length ? categoryProducts : products;
-    const extraSubItems: MegaListItem[] = (item.extraLinks ?? []).map((link) => ({
-      id: `extra-${item.key}-${link.slug}`,
-      name: link.label,
-      slug: link.slug,
-    }));
+      : [];
+    // Não fazer fallback para o catálogo inteiro: se a categoria não tem produto,
+    // as colunas do mega menu ficam vazias em vez de mostrar itens de outras seções.
+    const productPool = categoryProducts;
+    // Sub-links curados só entram se o slug existe como categoria real com produto publicado.
+    const extraSubItems: MegaListItem[] = (item.extraLinks ?? [])
+      .filter((link) => slugsWithProducts.has(link.slug))
+      .map((link) => ({
+        id: `extra-${item.key}-${link.slug}`,
+        name: link.label,
+        slug: link.slug,
+      }));
 
     const childSubItems: MegaListItem[] = item.kind === "brands"
       ? brands.slice(0, 8).map((brand) => ({ id: brand.id, name: brand.name }))
       : (item.categoryId ? (childrenOf.get(item.categoryId) ?? []) : [])
+          // Só exibe subcategoria que efetivamente tem produto publicado (própria ou descendente).
+          .filter((category) => categoryIdsWithProducts.has(category.id))
           .slice(0, 8)
           .map((category) => ({ id: category.id, name: category.name, slug: category.slug }));
-    const subcategoryItems: MegaListItem[] = [...extraSubItems, ...childSubItems].slice(0, 10);
+    // Dedup por slug para não repetir uma subcategoria que aparece tanto nos extraLinks quanto nos filhos reais.
+    const seenSlugs = new Set<string>();
+    const subcategoryItems: MegaListItem[] = [...extraSubItems, ...childSubItems]
+      .filter((it) => {
+        if (!it.slug) return true;
+        if (seenSlugs.has(it.slug)) return false;
+        seenSlugs.add(it.slug);
+        return true;
+      })
+      .slice(0, 10);
     const productsFor = (kind: typeof MEGA_PRODUCT_COLUMNS[number]["key"]): MegaListItem[] => {
       const source = kind === "best"
         ? productPool.filter((product) => product.best_seller)
@@ -261,7 +277,7 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
         ...MEGA_PRODUCT_COLUMNS.map((column) => ({ title: column.title, items: productsFor(column.key), linkToCategory: false })),
       ] satisfies MegaColumn[],
     };
-  }, [hover, navItems, childrenOf, categories, brands, products]);
+  }, [hover, navItems, childrenOf, categories, brands, products, slugsWithProducts, categoryIdsWithProducts]);
 
 
   return (
