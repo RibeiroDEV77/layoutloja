@@ -6,6 +6,7 @@
  */
 import { createServerFn } from '@tanstack/react-start';
 import { storefrontClient } from './services/storefront-client.server';
+import { compareSizes } from '@/lib/size-order';
 
 // Encaminha o bearer token quando presente para habilitar RLS `authenticated`
 // (ex.: leitura da Tabela Atacado por cliente aprovado). Anônimos continuam
