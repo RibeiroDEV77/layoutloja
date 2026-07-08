@@ -13276,28 +13276,17 @@ export type Database = {
         Args: { _order_id: string; _reason: string }
         Returns: undefined
       }
-      order_create_from_cart:
-        | {
-            Args: {
-              _address: Json
-              _cart_id: string
-              _email: string
-              _name: string
-              _phone: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _address: Json
-              _cart_id: string
-              _email: string
-              _idempotency_key?: string
-              _name: string
-              _phone: string
-            }
-            Returns: string
-          }
+      order_create_from_cart: {
+        Args: {
+          _address: Json
+          _cart_id: string
+          _email: string
+          _idempotency_key?: string
+          _name: string
+          _phone: string
+        }
+        Returns: string
+      }
       order_persist_shipping_snapshot: {
         Args: { _cart_id: string; _order_id: string }
         Returns: string
