@@ -30,6 +30,7 @@ import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 import { Route as AtacadoHomeRouteImport } from './routes/atacado.home'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminWholesalePriceGapsRouteImport } from './routes/_authenticated/admin.wholesale-price-gaps'
 import { Route as AuthenticatedAdminWholesaleApplicationsRouteImport } from './routes/_authenticated/admin.wholesale-applications'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminSuppliersRouteImport } from './routes/_authenticated/admin.suppliers'
@@ -177,6 +178,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminWholesalePriceGapsRoute =
+  AuthenticatedAdminWholesalePriceGapsRouteImport.update({
+    id: '/wholesale-price-gaps',
+    path: '/wholesale-price-gaps',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminWholesaleApplicationsRoute =
   AuthenticatedAdminWholesaleApplicationsRouteImport.update({
     id: '/wholesale-applications',
@@ -474,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wholesale-applications': typeof AuthenticatedAdminWholesaleApplicationsRoute
+  '/admin/wholesale-price-gaps': typeof AuthenticatedAdminWholesalePriceGapsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -534,6 +542,7 @@ export interface FileRoutesByTo {
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wholesale-applications': typeof AuthenticatedAdminWholesaleApplicationsRoute
+  '/admin/wholesale-price-gaps': typeof AuthenticatedAdminWholesalePriceGapsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -600,6 +609,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/suppliers': typeof AuthenticatedAdminSuppliersRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/wholesale-applications': typeof AuthenticatedAdminWholesaleApplicationsRoute
+  '/_authenticated/admin/wholesale-price-gaps': typeof AuthenticatedAdminWholesalePriceGapsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/customers/$customerId': typeof AuthenticatedAdminCustomersCustomerIdRoute
   '/_authenticated/admin/inventory/$stockLevelId': typeof AuthenticatedAdminInventoryStockLevelIdRoute
@@ -666,6 +676,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin/users'
     | '/admin/wholesale-applications'
+    | '/admin/wholesale-price-gaps'
     | '/admin/'
     | '/admin/customers/$customerId'
     | '/admin/inventory/$stockLevelId'
@@ -726,6 +737,7 @@ export interface FileRouteTypes {
     | '/admin/suppliers'
     | '/admin/users'
     | '/admin/wholesale-applications'
+    | '/admin/wholesale-price-gaps'
     | '/admin'
     | '/admin/customers/$customerId'
     | '/admin/inventory/$stockLevelId'
@@ -791,6 +803,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/suppliers'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/wholesale-applications'
+    | '/_authenticated/admin/wholesale-price-gaps'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/customers/$customerId'
     | '/_authenticated/admin/inventory/$stockLevelId'
@@ -974,6 +987,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/wholesale-price-gaps': {
+      id: '/_authenticated/admin/wholesale-price-gaps'
+      path: '/wholesale-price-gaps'
+      fullPath: '/admin/wholesale-price-gaps'
+      preLoaderRoute: typeof AuthenticatedAdminWholesalePriceGapsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/wholesale-applications': {
@@ -1395,6 +1415,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSuppliersRoute: typeof AuthenticatedAdminSuppliersRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminWholesaleApplicationsRoute: typeof AuthenticatedAdminWholesaleApplicationsRoute
+  AuthenticatedAdminWholesalePriceGapsRoute: typeof AuthenticatedAdminWholesalePriceGapsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -1434,6 +1455,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminWholesaleApplicationsRoute:
     AuthenticatedAdminWholesaleApplicationsRoute,
+  AuthenticatedAdminWholesalePriceGapsRoute:
+    AuthenticatedAdminWholesalePriceGapsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
