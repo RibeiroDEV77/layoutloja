@@ -198,8 +198,9 @@ export function StorefrontNavbar({ categories = [], brands = [], products = [] }
     const extraSubItems: MegaListItem[] = (item.extraLinks ?? []).map((link) => ({
       id: `extra-${item.key}-${link.slug}`,
       name: link.label,
-      href: `/produtos?cat=${encodeURIComponent(link.slug)}&dep=${encodeURIComponent(item.slug)}`,
+      slug: link.slug,
     }));
+
     const childSubItems: MegaListItem[] = item.kind === "brands"
       ? brands.slice(0, 8).map((brand) => ({ id: brand.id, name: brand.name }))
       : (item.categoryId ? (childrenOf.get(item.categoryId) ?? []) : [])
