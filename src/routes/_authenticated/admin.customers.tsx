@@ -80,7 +80,7 @@ function CustomersPage() {
           ),
         },
         { key: "type", header: "Tipo", accessor: (r) => (r.type === "pf" ? "PF" : "PJ") },
-        { key: "doc_number", header: "Documento", accessor: (r) => <code className="text-xs">{formatDoc(r.type, r.doc_number)}</code> },
+        { key: "doc_number", header: "Documento", accessor: (r) => <code className="text-xs">{r.doc_number_masked ?? "—"}</code> },
         {
           key: "email", header: "Contato",
           accessor: (r) => (
