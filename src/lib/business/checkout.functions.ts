@@ -103,6 +103,86 @@ export const anonUpdateCartItemQty = createServerFn({ method: 'POST' })
     return Cart.updateItemQty(sb, null, data);
   });
 
+// ---------------------------------------------------------------------------
+// Carrinho AUTENTICADO wholesale (P5.1) — visitante nunca chega aqui.
+// Resolve `customer_id` a partir de `auth_user_id` e força
+// `sales_channel='wholesale'`. A checagem de aprovação (P5) acontece em
+// `Cart.getOrCreateCart`.
+// ---------------------------------------------------------------------------
+
+async function resolveOwnCustomerId(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<string> {
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('auth_user_id', userId)
+    .maybeSingle();
+  if (!customer?.id) {
+    throw Errors.forbidden('Cliente não encontrado para este usuário');
+  }
+  return customer.id;
+}
+
+export const wholesaleGetOrCreateCart = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { store_id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) => {
+    const customerId = await resolveOwnCustomerId(context.supabase, context.userId);
+    return Cart.getOrCreateCart(context.supabase, context.userId, {
+      store_id: data.store_id,
+      customer_id: customerId,
+      sales_channel: 'wholesale',
+    });
+  }));
+
+export const wholesaleGetCart = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Cart.getCart(context.supabase, context.userId, data.cart_id)));
+
+export const wholesaleAddCartItem = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; variant_id: string; qty: number }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Cart.addItem(context.supabase, context.userId, data)));
+
+export const wholesaleAddProductToCart = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; product_id: string; qty: number }) => d)
+  .handler(withBusiness(async ({ data, context }) => {
+    const { data: variant, error } = await context.supabase
+      .from('product_variants')
+      .select('id')
+      .eq('product_id', data.product_id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw Errors.internal('Falha ao buscar variante', { error: error.message });
+    if (!variant) throw Errors.rule('Produto sem variante disponível');
+    return Cart.addItem(context.supabase, context.userId, {
+      cart_id: data.cart_id,
+      variant_id: variant.id,
+      qty: data.qty,
+    });
+  }));
+
+export const wholesaleUpdateCartItemQty = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; item_id: string; qty: number }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Cart.updateItemQty(context.supabase, context.userId, data)));
+
+export const wholesaleRemoveCartItem = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cart_id: string; item_id: string }) => d)
+  .handler(withBusiness(async ({ data, context }) =>
+    Cart.removeItem(context.supabase, context.userId, data)));
+
+
 export const anonRemoveCartItem = createServerFn({ method: 'POST' })
   .inputValidator((d: { cart_id: string; item_id: string; session_token: string }) => d)
   .handler(async ({ data }) => {
