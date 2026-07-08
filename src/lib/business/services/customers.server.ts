@@ -128,6 +128,31 @@ function normalizeDoc(doc?: string | null): string | null {
   return v.length ? v : null;
 }
 
+/**
+ * Computa `doc_number_hash` + `doc_number_encrypted` sem gravar plaintext.
+ * Retorna campos prontos para spread em Insert/Update de customers.
+ * - hash usa RPC `hash_doc_number` (HMAC-SHA256 + pepper, service_role only).
+ * - encrypted usa RPC `encrypt_pii` com `CUSTOMER_PII_KEY`.
+ * Se `doc` for null, retorna { doc_number_hash: null, doc_number_encrypted: null }.
+ */
+async function computeDocFields(
+  doc: string | null,
+): Promise<{ doc_number_hash: string | null; doc_number_encrypted: Uint8Array | null }> {
+  if (!doc) return { doc_number_hash: null, doc_number_encrypted: null };
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { data: h, error: hErr } = await supabaseAdmin.rpc('hash_doc_number', { _doc: doc });
+  if (hErr) throw Errors.internal('Falha ao hashear documento', { error: hErr.message });
+  let enc: Uint8Array | null = null;
+  const key = process.env.CUSTOMER_PII_KEY ?? null;
+  if (key) {
+    const { data: e, error: eErr } = await supabaseAdmin.rpc('encrypt_pii', { p_value: doc, p_key: key });
+    if (eErr) throw Errors.internal('Falha ao encriptar documento', { error: eErr.message });
+    enc = (e as unknown as Uint8Array) ?? null;
+  }
+  return { doc_number_hash: (h as string | null) ?? null, doc_number_encrypted: enc };
+}
+
+
 export interface CreateCustomerInput {
   store_id: string;
   type: 'pf' | 'pj';
