@@ -1,9 +1,14 @@
 /**
- * Storefront cart hook (anônimo).
+ * Storefront cart hook.
  *
- * - Persiste `session_token` (UUID) e `cart_id` em localStorage.
- * - Resolve o `store_id` via getStorefrontStore.
- * - Expõe: add(productId), remove(itemId), update(itemId,qty), refresh().
+ * - Retail (visitante ou logado): endpoints `anon*`, identifica-se por
+ *   `session_token` (UUID em localStorage).
+ * - Wholesale (P5.1): endpoints `wholesale*` autenticados; visitante nunca
+ *   toca aqui. Autorização (customer + aplicação aprovada) acontece no
+ *   servidor (`Cart.getOrCreateCart`), e `error` é exposto para a UI.
+ *
+ * Carrinhos retail e wholesale são separados por chave localStorage e por
+ * `sales_channel` na tabela `carts`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
@@ -14,7 +19,14 @@ import {
   anonAddCartItem,
   anonUpdateCartItemQty,
   anonRemoveCartItem,
+  wholesaleGetOrCreateCart,
+  wholesaleGetCart,
+  wholesaleAddProductToCart,
+  wholesaleAddCartItem,
+  wholesaleUpdateCartItemQty,
+  wholesaleRemoveCartItem,
 } from '@/lib/business/checkout.functions';
+
 
 import { getStorefrontStore } from '@/lib/business/storefront.functions';
 
@@ -60,6 +72,8 @@ export type StorefrontCartState = {
   currency: string;
   selectedShippingQuoteId: string | null;
   shippingQuotes: ShippingQuote[];
+  /** Erro de autorização do canal (ex.: wholesale exigindo login/aprovação). */
+  error: string | null;
 };
 
 export type ShippingQuote = {
@@ -74,16 +88,36 @@ export type ShippingQuote = {
   selected: boolean;
 };
 
+function messageOf(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object') {
+    const anyErr = err as Record<string, unknown>;
+    const msg = (anyErr.message ?? (anyErr.error as Record<string, unknown> | undefined)?.message) as string | undefined;
+    if (typeof msg === 'string' && msg.trim()) return msg;
+  }
+  return fallback;
+}
+
 export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
   const CART_KEY = cartKeyFor(salesChannel);
-  const fnStore = useServerFn(getStorefrontStore);
-  const fnGetOrCreate = useServerFn(anonGetOrCreateCart);
-  const fnGet = useServerFn(anonGetCart);
-  const fnAdd = useServerFn(anonAddProductToCart);
-  const fnAddVariant = useServerFn(anonAddCartItem);
+  const isWholesale = salesChannel === 'wholesale';
 
-  const fnUpdate = useServerFn(anonUpdateCartItemQty);
-  const fnRemove = useServerFn(anonRemoveCartItem);
+  const fnStore = useServerFn(getStorefrontStore);
+
+  // Retail (anon)
+  const fnAnonGetOrCreate = useServerFn(anonGetOrCreateCart);
+  const fnAnonGet = useServerFn(anonGetCart);
+  const fnAnonAddProduct = useServerFn(anonAddProductToCart);
+  const fnAnonAddVariant = useServerFn(anonAddCartItem);
+  const fnAnonUpdate = useServerFn(anonUpdateCartItemQty);
+  const fnAnonRemove = useServerFn(anonRemoveCartItem);
+
+  // Wholesale (auth)
+  const fnWsGetOrCreate = useServerFn(wholesaleGetOrCreateCart);
+  const fnWsGet = useServerFn(wholesaleGetCart);
+  const fnWsAddProduct = useServerFn(wholesaleAddProductToCart);
+  const fnWsAddVariant = useServerFn(wholesaleAddCartItem);
+  const fnWsUpdate = useServerFn(wholesaleUpdateCartItemQty);
+  const fnWsRemove = useServerFn(wholesaleRemoveCartItem);
 
   const [state, setState] = useState<StorefrontCartState>(() => ({
     ready: false,
@@ -99,6 +133,7 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
     currency: 'BRL',
     selectedShippingQuoteId: null,
     shippingQuotes: [],
+    error: null,
   }));
 
   const applyCartPayload = useCallback((payload: { cart: Record<string, unknown>; items: unknown[]; shipping_quotes?: unknown[] }) => {
@@ -119,12 +154,17 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
     }));
   }, []);
 
+  // Adaptadores canal-agnósticos.
+  const getCartPayload = useCallback(async (cartId: string, sessionToken: string) => {
+    if (isWholesale) return (await fnWsGet({ data: { cart_id: cartId } })) as never;
+    return (await fnAnonGet({ data: { cart_id: cartId, session_token: sessionToken } })) as never;
+  }, [isWholesale, fnWsGet, fnAnonGet]);
+
   // bootstrap — re-executa quando o canal muda (cartId namespaced por canal).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const sessionToken = ensureSessionToken();
-      // Reset do estado ao trocar de canal, evitando exibir o carrinho anterior.
       setState((s) => ({
         ...s,
         sessionToken,
@@ -138,6 +178,7 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
         shippingTotal: 0,
         shippingQuotes: [],
         selectedShippingQuoteId: null,
+        error: null,
       }));
       try {
         const { store } = await fnStore();
@@ -150,19 +191,37 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
         let cartPayload: { cart: Record<string, unknown>; items: unknown[]; shipping_quotes?: unknown[] } | null = null;
         if (storedCartId) {
           try {
-            cartPayload = (await fnGet({ data: { cart_id: storedCartId, session_token: sessionToken } })) as never;
+            cartPayload = await getCartPayload(storedCartId, sessionToken);
           } catch {
             cartPayload = null;
           }
         }
         if (!cartPayload) {
-          const cart = await fnGetOrCreate({ data: { store_id: store.id, session_token: sessionToken, sales_channel: salesChannel } });
-          window.localStorage.setItem(CART_KEY, String((cart as { id: string }).id));
-          cartPayload = (await fnGet({ data: { cart_id: (cart as { id: string }).id, session_token: sessionToken } })) as never;
+          try {
+            const cart = isWholesale
+              ? await fnWsGetOrCreate({ data: { store_id: store.id } })
+              : await fnAnonGetOrCreate({ data: { store_id: store.id, session_token: sessionToken, sales_channel: 'retail' } });
+            const cartId = String((cart as { id: string }).id);
+            if (typeof window !== 'undefined') window.localStorage.setItem(CART_KEY, cartId);
+            cartPayload = await getCartPayload(cartId, sessionToken);
+          } catch (err) {
+            // Wholesale sem login/aprovação → mensagem clara, sem carrinho criado.
+            if (!cancelled) {
+              setState((s) => ({
+                ...s,
+                ready: true,
+                loading: false,
+                error: isWholesale
+                  ? messageOf(err, 'Canal atacado exige cliente autenticado e aprovado.')
+                  : messageOf(err, 'Não foi possível abrir o carrinho.'),
+              }));
+            }
+            return;
+          }
         }
         if (cancelled || !cartPayload) return;
         applyCartPayload(cartPayload);
-        setState((s) => ({ ...s, storeId: store.id, ready: true, loading: false }));
+        setState((s) => ({ ...s, storeId: store.id, ready: true, loading: false, error: null }));
       } catch {
         if (!cancelled) setState((s) => ({ ...s, ready: true, loading: false }));
       }
@@ -173,53 +232,51 @@ export function useStorefrontCart(salesChannel: SalesChannel = 'retail') {
 
   const refresh = useCallback(async () => {
     if (!state.cartId) return;
-    const payload = (await fnGet({ data: { cart_id: state.cartId, session_token: state.sessionToken } })) as never;
+    const payload = await getCartPayload(state.cartId, state.sessionToken);
     applyCartPayload(payload);
-  }, [state.cartId, state.sessionToken, fnGet, applyCartPayload]);
+  }, [state.cartId, state.sessionToken, getCartPayload, applyCartPayload]);
+
+  const wrap = useCallback(async (op: () => Promise<unknown>) => {
+    setState((s) => ({ ...s, loading: true, error: null }));
+    try {
+      await op();
+      await refresh();
+    } catch (err) {
+      setState((s) => ({ ...s, error: messageOf(err, 'Operação não permitida no canal atual.') }));
+    } finally {
+      setState((s) => ({ ...s, loading: false }));
+    }
+  }, [refresh]);
 
   const add = useCallback(async (productId: string, qty = 1) => {
     if (!state.cartId) return;
-    setState((s) => ({ ...s, loading: true }));
-    try {
-      await fnAdd({ data: { cart_id: state.cartId, product_id: productId, qty, session_token: state.sessionToken } });
-      await refresh();
-    } finally {
-      setState((s) => ({ ...s, loading: false }));
-    }
-  }, [state.cartId, state.sessionToken, fnAdd, refresh]);
+    await wrap(() => isWholesale
+      ? fnWsAddProduct({ data: { cart_id: state.cartId!, product_id: productId, qty } })
+      : fnAnonAddProduct({ data: { cart_id: state.cartId!, product_id: productId, qty, session_token: state.sessionToken } }));
+  }, [state.cartId, state.sessionToken, isWholesale, fnWsAddProduct, fnAnonAddProduct, wrap]);
 
   const update = useCallback(async (itemId: string, qty: number) => {
     if (!state.cartId) return;
-    setState((s) => ({ ...s, loading: true }));
-    try {
-      await fnUpdate({ data: { cart_id: state.cartId, item_id: itemId, qty, session_token: state.sessionToken } });
-      await refresh();
-    } finally {
-      setState((s) => ({ ...s, loading: false }));
-    }
-  }, [state.cartId, state.sessionToken, fnUpdate, refresh]);
+    await wrap(() => isWholesale
+      ? fnWsUpdate({ data: { cart_id: state.cartId!, item_id: itemId, qty } })
+      : fnAnonUpdate({ data: { cart_id: state.cartId!, item_id: itemId, qty, session_token: state.sessionToken } }));
+  }, [state.cartId, state.sessionToken, isWholesale, fnWsUpdate, fnAnonUpdate, wrap]);
 
   const remove = useCallback(async (itemId: string) => {
     if (!state.cartId) return;
-    setState((s) => ({ ...s, loading: true }));
-    try {
-      await fnRemove({ data: { cart_id: state.cartId, item_id: itemId, session_token: state.sessionToken } });
-      await refresh();
-    } finally {
-      setState((s) => ({ ...s, loading: false }));
-    }
-  }, [state.cartId, state.sessionToken, fnRemove, refresh]);
+    await wrap(() => isWholesale
+      ? fnWsRemove({ data: { cart_id: state.cartId!, item_id: itemId } })
+      : fnAnonRemove({ data: { cart_id: state.cartId!, item_id: itemId, session_token: state.sessionToken } }));
+  }, [state.cartId, state.sessionToken, isWholesale, fnWsRemove, fnAnonRemove, wrap]);
 
   const addVariant = useCallback(async (variantId: string, qty = 1) => {
     if (!state.cartId) return;
-    setState((s) => ({ ...s, loading: true }));
-    try {
-      await fnAddVariant({ data: { cart_id: state.cartId, variant_id: variantId, qty, session_token: state.sessionToken } });
-      await refresh();
-    } finally {
-      setState((s) => ({ ...s, loading: false }));
-    }
-  }, [state.cartId, state.sessionToken, fnAddVariant, refresh]);
+    await wrap(() => isWholesale
+      ? fnWsAddVariant({ data: { cart_id: state.cartId!, variant_id: variantId, qty } })
+      : fnAnonAddVariant({ data: { cart_id: state.cartId!, variant_id: variantId, qty, session_token: state.sessionToken } }));
+  }, [state.cartId, state.sessionToken, isWholesale, fnWsAddVariant, fnAnonAddVariant, wrap]);
+
+
 
   return useMemo(() => ({ ...state, add, addVariant, update, remove, refresh }), [state, add, addVariant, update, remove, refresh]);
 }
