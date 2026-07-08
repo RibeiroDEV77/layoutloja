@@ -32,6 +32,7 @@ export type CartRow = {
   tax_total: number;
   total: number;
   items_count: number;
+  sales_channel: SalesChannel;
 };
 
 async function loadCart(supabase: SbClient, cartId: string): Promise<CartRow> {
