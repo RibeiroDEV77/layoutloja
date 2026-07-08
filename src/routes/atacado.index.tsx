@@ -21,6 +21,7 @@ import {
 import { useWholesaleStatus, type WholesaleAppStatus } from "@/hooks/use-wholesale-status";
 import { useEnterWholesale } from "@/components/storefront/sales-channel-provider";
 import { createWholesaleApplication } from "@/lib/business/wholesale-applications.functions";
+import { updateMyProfile } from "@/lib/business/storefront-account.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/atacado/")({
