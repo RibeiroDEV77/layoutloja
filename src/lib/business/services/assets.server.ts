@@ -343,7 +343,7 @@ export async function completeUploadJob(
     .update({
       status: 'done',
       asset_id: asset.id,
-      bytes_uploaded: p.size_bytes ?? job.size_bytes ?? 0,
+      bytes_uploaded: verified.size_bytes,
     })
     .eq('id', p.job_id);
 
