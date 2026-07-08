@@ -211,7 +211,7 @@ function WholesaleApplicationsPage() {
                   <div className="min-w-0">
                     <div className="font-medium truncate">{r.customer?.name ?? metaStr(r.metadata, "name") ?? "—"}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {fmtDoc(r.customer?.type, r.customer?.doc_number ?? metaStr(r.metadata, "cpf") ?? metaStr(r.metadata, "cnpj"))}
+                      {fmtDocMasked(r)}
                     </div>
                   </div>
                 ),
