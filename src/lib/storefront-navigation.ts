@@ -17,8 +17,9 @@ export type StorefrontNavItem = {
   extraLinks?: StorefrontNavExtraLink[];
 };
 
-// Sub-links curados exibidos dentro do mega-menu de Masculino/Feminino.
-// Apontam para /produtos?cat=<slug>&dep=<dep> para pré-selecionar filtros.
+// Sub-links curados exibidos dentro do mega-menu de Masculino/Feminino/Calçados.
+// Apontam para /categoria/<slug> (rota canônica), sem departamento forçado.
+
 const CALCADO_EXTRA_LINKS: StorefrontNavExtraLink[] = [
   { label: "Botas", slug: "botas" },
   { label: "Sapatos", slug: "calc-sapatos" },
