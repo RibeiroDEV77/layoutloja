@@ -17,6 +17,8 @@ export const Route = createFileRoute("/minha-conta/dados")({
 
 function ProfilePage() {
   const { data } = useStorefrontCustomer();
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const qc = useQueryClient();
   const update = useServerFn(updateMyProfile);
 
