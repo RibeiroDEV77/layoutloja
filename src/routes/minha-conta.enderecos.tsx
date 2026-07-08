@@ -41,7 +41,7 @@ function AddressesPage() {
       toast.success("Endereço salvo");
       setEditing(null);
       refetch();
-      qc.invalidateQueries({ queryKey: ["storefront", "my-account"] });
+      qc.invalidateQueries({ queryKey: ["account", userId ?? "anon", "profile"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
   });
