@@ -8,11 +8,15 @@ import {
   getStorefrontStore, listStorefrontCategories, listStorefrontProducts,
   listStorefrontBrands,
 } from '@/lib/business/storefront.functions';
-import { useStorefrontCart, formatBRL, clearStoredCart } from '@/hooks/use-storefront-cart';
+import { formatBRL, clearStoredCart } from '@/hooks/use-storefront-cart';
+import { useCart } from '@/components/storefront/cart-provider';
 import {
   anonQuoteShipping,
   anonSelectShipping,
   placeOrder,
+  wholesaleQuoteShipping,
+  wholesaleSelectShipping,
+  wholesalePlaceOrder,
 } from '@/lib/business/checkout.functions';
 import { lookupPostalCode } from '@/lib/business/shipping.functions';
 import { Loader2, Truck, Check } from 'lucide-react';
