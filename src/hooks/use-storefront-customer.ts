@@ -3,14 +3,18 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { getMyAccount } from "@/lib/business/storefront-account.functions";
 
+/**
+ * P8: chave privada por usuário — evita reuso de cache entre usuários.
+ * A query só executa quando há user_id autenticado.
+ */
 export function useStorefrontCustomer() {
   const { ctx } = useAuth();
-  const authenticated = !!ctx?.authenticated;
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const fetchAccount = useServerFn(getMyAccount);
   return useQuery({
-    queryKey: ["storefront", "my-account"],
+    queryKey: ["account", userId ?? "anon", "profile"],
     queryFn: () => fetchAccount(),
-    enabled: authenticated,
+    enabled: !!userId,
     staleTime: 60_000,
   });
 }
