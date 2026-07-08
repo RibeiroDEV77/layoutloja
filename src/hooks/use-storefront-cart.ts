@@ -1,9 +1,14 @@
 /**
- * Storefront cart hook (anônimo).
+ * Storefront cart hook.
  *
- * - Persiste `session_token` (UUID) e `cart_id` em localStorage.
- * - Resolve o `store_id` via getStorefrontStore.
- * - Expõe: add(productId), remove(itemId), update(itemId,qty), refresh().
+ * - Retail (visitante ou logado): endpoints `anon*`, identifica-se por
+ *   `session_token` (UUID em localStorage).
+ * - Wholesale (P5.1): endpoints `wholesale*` autenticados; visitante nunca
+ *   toca aqui. Autorização (customer + aplicação aprovada) acontece no
+ *   servidor (`Cart.getOrCreateCart`), e `error` é exposto para a UI.
+ *
+ * Carrinhos retail e wholesale são separados por chave localStorage e por
+ * `sales_channel` na tabela `carts`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
@@ -14,7 +19,14 @@ import {
   anonAddCartItem,
   anonUpdateCartItemQty,
   anonRemoveCartItem,
+  wholesaleGetOrCreateCart,
+  wholesaleGetCart,
+  wholesaleAddProductToCart,
+  wholesaleAddCartItem,
+  wholesaleUpdateCartItemQty,
+  wholesaleRemoveCartItem,
 } from '@/lib/business/checkout.functions';
+
 
 import { getStorefrontStore } from '@/lib/business/storefront.functions';
 
