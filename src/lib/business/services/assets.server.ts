@@ -295,15 +295,25 @@ export async function completeUploadJob(
 
   await requirePermission(supabase, userId, 'dam.upload', job.store_id);
 
-  const mime = p.mime ?? job.mime ?? 'application/octet-stream';
-  const kind: AssetKind =
-    mime.startsWith('image/svg') ? 'svg'
-    : mime.startsWith('image/') ? 'image'
-    : mime.startsWith('video/') ? 'video'
-    : mime === 'application/pdf' ? 'pdf'
-    : 'other';
+  const declaredMime = (p.mime ?? job.mime ?? '').toLowerCase() || 'application/octet-stream';
 
+  // P7: revalidação estrita (metadados) + verificação de magic bytes do
+  // binário já gravado. Falhas removem o objeto do storage.
+  const { assertUploadPolicyByMetadata, assertUploadedContentSafe } =
+    await import('./dam-upload-policy.server');
+  const declared = assertUploadPolicyByMetadata({
+    filename: job.filename,
+    mime: declaredMime,
+    size_bytes: p.size_bytes ?? job.size_bytes ?? null,
+  });
   const path = buildStoragePath(job.store_id, job.id, job.filename);
+  const verified = await assertUploadedContentSafe(supabase.storage, DAM_BUCKET, path, declared);
+
+  const kind: AssetKind =
+    verified.verified_mime.startsWith('image/') ? 'image'
+    : verified.verified_mime.startsWith('video/') ? 'video'
+    : verified.verified_mime === 'application/pdf' ? 'pdf'
+    : 'other';
 
   const { data: asset, error: insErr } = await supabase
     .from('assets')
