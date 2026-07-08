@@ -185,6 +185,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
   const doc = normalizeDoc(input.doc_number);
   if (input.type === 'pf' && doc && doc.length !== 11) throw Errors.validation('CPF deve ter 11 dígitos');
   if (input.type === 'pj' && doc && doc.length !== 14) throw Errors.validation('CNPJ deve ter 14 dígitos');
+  const docFields = await computeDocFields(doc);
 
   const row = await Repo.insert(supabase, {
     store_id: input.store_id,
@@ -195,7 +196,10 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
     trade_name: input.trade_name?.trim() || null,
     email: input.email?.trim().toLowerCase() || null,
     phone: input.phone?.trim() || null,
-    doc_number: doc,
+    // Fase A: não gravar plaintext. Uniqueness via doc_number_hash.
+    doc_number: null,
+    doc_number_hash: docFields.doc_number_hash,
+    doc_number_encrypted: docFields.doc_number_encrypted as never,
     state_registration: input.state_registration?.trim() || null,
     municipal_registration: input.municipal_registration?.trim() || null,
     birth_date: input.birth_date || null,
@@ -208,7 +212,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
     marketing_opt_in: !!input.marketing_opt_in,
     notes: input.notes ?? null,
     created_by: userId,
-  });
+  } as never);
 
   if (input.group_ids?.length) {
     await Repo.setGroups(supabase, row.id, input.group_ids);
@@ -223,7 +227,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
   });
   await recordMetric(supabase, { scope: 'customers', name: 'created', value: 1, storeId: row.store_id });
 
-  return row;
+  return stripCustomerDoc(row as never);
 }
 
 export type UpdateCustomerInput = Partial<Omit<CreateCustomerInput, 'store_id' | 'type'>> & {
