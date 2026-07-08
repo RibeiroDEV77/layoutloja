@@ -85,7 +85,7 @@ export function assertUploadPolicyByMetadata(input: {
   if (!mime || !(mime in RULES)) {
     throw Errors.validation('Tipo de arquivo não permitido', {
       mime: mime || 'unknown',
-      allowed: ALLOWED_MIMES,
+      allowed: ALLOWED_MIMES.join(','),
     });
   }
   const rule = RULES[mime as AllowedMime];
