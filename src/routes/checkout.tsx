@@ -136,7 +136,8 @@ function CheckoutPage() {
         }
       }
       try {
-        const res = (await fnQuote({ data: { cart_id: cart.cartId!, postal_code: cep } })) as { quotes: unknown[] };
+        const rawQ = await fnQuote({ data: { cart_id: cart.cartId!, postal_code: cep } });
+        const res = unwrapBusinessResponse<{ quotes: unknown[] }>(rawQ);
         if (cancelled) return;
         await cart.refresh();
         if (!res.quotes || res.quotes.length === 0) {
