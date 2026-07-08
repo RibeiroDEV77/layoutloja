@@ -119,23 +119,6 @@ export async function revealCustomerDocument(
   };
 }
 
-export async function getCustomer(supabase: SbClient, userId: string, id: string) {
-  const c = await Repo.findById(supabase, id);
-  if (!c) throw Errors.notFound('Cliente', id);
-  if (!(await isSuperAdmin(supabase, userId)) && c.auth_user_id !== userId) {
-    if (!(await hasPermission(supabase, userId, 'customers.read', c.store_id))) {
-      throw Errors.forbidden('Permissão necessária: customers.read');
-    }
-  }
-  const [addresses, contacts, tax, groups, balance] = await Promise.all([
-    Repo.listAddresses(supabase, id),
-    Repo.listContacts(supabase, id),
-    Repo.getTaxProfile(supabase, id),
-    Repo.listGroups(supabase, id),
-    Repo.getCreditBalance(supabase, id),
-  ]);
-  return { customer: c, addresses, contacts, tax_profile: tax, group_ids: groups, credit_balance: balance };
-}
 
 // ---------------- create / update / delete ----------------
 function normalizeDoc(doc?: string | null): string | null {
