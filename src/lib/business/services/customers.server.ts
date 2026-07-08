@@ -68,7 +68,55 @@ export async function listCustomers(supabase: SbClient, userId: string, input: L
 
   const { data, error, count } = await q;
   if (error) throw Errors.internal('Falha ao listar clientes', { error: error.message });
-  return { rows: data ?? [], total: count ?? 0, page, pageSize: size };
+  return { rows: stripCustomerDocList(data as never), total: count ?? 0, page, pageSize: size };
+}
+
+export async function getCustomer(supabase: SbClient, userId: string, id: string) {
+  const c = await Repo.findById(supabase, id);
+  if (!c) throw Errors.notFound('Cliente', id);
+  if (!(await isSuperAdmin(supabase, userId)) && c.auth_user_id !== userId) {
+    if (!(await hasPermission(supabase, userId, 'customers.read', c.store_id))) {
+      throw Errors.forbidden('Permissão necessária: customers.read');
+    }
+  }
+  const [addresses, contacts, tax, groups, balance] = await Promise.all([
+    Repo.listAddresses(supabase, id),
+    Repo.listContacts(supabase, id),
+    Repo.getTaxProfile(supabase, id),
+    Repo.listGroups(supabase, id),
+    Repo.getCreditBalance(supabase, id),
+  ]);
+  return {
+    customer: stripCustomerDoc(c as never),
+    addresses, contacts, tax_profile: tax, group_ids: groups, credit_balance: balance,
+  };
+}
+
+/**
+ * Reveal controlado de documento — retorna o CPF/CNPJ completo.
+ * Exige customers.read.pii na store do cliente. Registra em audit_log.
+ * Não é chamada por listagens/detalhes normais.
+ */
+export async function revealCustomerDocument(
+  supabase: SbClient, userId: string, customerId: string, reason?: string,
+): Promise<{ doc_number: string | null; doc_number_masked: string | null }> {
+  const c = await Repo.findById(supabase, customerId);
+  if (!c) throw Errors.notFound('Cliente', customerId);
+  await requirePermission(supabase, userId, 'customers.read.pii', c.store_id);
+
+  await supabase.from('audit_log').insert({
+    store_id: c.store_id,
+    actor_user_id: userId,
+    entity_type: 'customer',
+    entity_id: customerId,
+    action: 'customer.document.reveal',
+    diff: { reason: reason ?? null },
+  });
+
+  return {
+    doc_number: c.doc_number ?? null,
+    doc_number_masked: maskDoc(c.doc_number ?? null, c.type),
+  };
 }
 
 export async function getCustomer(supabase: SbClient, userId: string, id: string) {
