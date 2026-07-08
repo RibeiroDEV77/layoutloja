@@ -1,6 +1,29 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+
+/**
+ * P8: prefixos de queryKey que carregam dados privados por usuário.
+ * Ao trocar de usuário ou fazer logout, o cache correspondente é removido
+ * para impedir vazamento cross-user via TanStack Query cache.
+ */
+const PRIVATE_QUERY_PREFIXES: readonly (readonly unknown[])[] = [
+  ["account"],
+  ["orders"],
+  ["addresses"],
+  ["wholesale"],
+  // legado (mantido para transição, caso alguma tela antiga ainda invalide):
+  ["storefront", "my-account"],
+  ["my-orders"],
+  ["my-wishlist"],
+];
+
+function clearPrivateQueries(qc: ReturnType<typeof useQueryClient>) {
+  for (const prefix of PRIVATE_QUERY_PREFIXES) {
+    qc.removeQueries({ queryKey: prefix as unknown[], exact: false });
+  }
+}
 
 export type UserRole = { code: string; name: string; store_id: string | null };
 export type UserContext = {
