@@ -25,26 +25,28 @@ export function maskDoc(doc: string | null | undefined, type?: string | null): s
   return '***';
 }
 
+type SanitizedCustomer = Record<string, unknown> & { doc_number_masked: string | null };
+
 /**
  * Remove campos sensíveis de documento e adiciona doc_number_masked.
  * Mantém demais campos do row.
  */
-export function stripCustomerDoc<T extends Record<string, unknown>>(
-  row: T | null | undefined,
-): (Omit<T, 'doc_number' | 'doc_number_hash' | 'doc_number_encrypted'> & { doc_number_masked: string | null }) | null {
+export function stripCustomerDoc(row: Record<string, unknown> | null | undefined): SanitizedCustomer | null {
   if (!row) return null;
-  // Destructure defensively — properties may not exist depending on select().
-  const {
-    doc_number, doc_number_hash, doc_number_encrypted, ...rest
-  } = row as T & { doc_number?: string | null; doc_number_hash?: string | null; doc_number_encrypted?: unknown };
+  const { doc_number, doc_number_hash, doc_number_encrypted, ...rest } = row as {
+    doc_number?: string | null;
+    doc_number_hash?: unknown;
+    doc_number_encrypted?: unknown;
+  } & Record<string, unknown>;
   void doc_number_hash; void doc_number_encrypted;
-  const type = (rest as { type?: string | null }).type ?? null;
+  const type = (rest.type as string | null | undefined) ?? null;
   return {
-    ...(rest as Omit<T, 'doc_number' | 'doc_number_hash' | 'doc_number_encrypted'>),
+    ...rest,
     doc_number_masked: maskDoc(doc_number ?? null, type),
   };
 }
 
-export function stripCustomerDocList<T extends Record<string, unknown>>(rows: T[] | null | undefined) {
-  return (rows ?? []).map((r) => stripCustomerDoc(r)!);
+export function stripCustomerDocList(rows: Record<string, unknown>[] | null | undefined): SanitizedCustomer[] {
+  return (rows ?? []).map((r) => stripCustomerDoc(r) as SanitizedCustomer);
 }
+
