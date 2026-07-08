@@ -383,7 +383,7 @@ function DetailsView({ row, onChanged }: { row: AdminRow; onChanged: () => void 
           <h3 className="text-sm font-semibold mb-2">Cliente</h3>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Nome" value={row.customer?.name ?? metaStr(meta, "name")} />
-            <Field label="Documento" value={fmtDoc(row.customer?.type, row.customer?.doc_number ?? metaStr(meta, "cpf") ?? metaStr(meta, "cnpj"))} />
+            <Field label="Documento" value={fmtDocMasked(row)} />
             <Field label="E-mail" value={row.customer?.email} />
             <Field label="Telefone" value={row.customer?.phone ?? metaStr(meta, "whatsapp")} />
             {isPj && <Field label="Razão Social" value={row.customer?.legal_name ?? metaStr(meta, "legal_name")} />}
