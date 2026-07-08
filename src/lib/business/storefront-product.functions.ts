@@ -71,10 +71,12 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<{ product: StorefrontProductDetail | null }> => {
     const sb = publicClient();
     // Resolve o contexto comercial cedo (store_id ainda desconhecido).
+    // P5: passamos `sb` para que wholesale seja verificado com bearer real.
     const { resolveCommercialContext } = await import('./services/commercial-context.server');
     const baseCtx = await resolveCommercialContext({
       explicit_channel: data.sales_channel ?? null,
       store_id: null,
+      supabase: sb,
     });
     const { data: product } = await sb
       .from('products')
@@ -89,7 +91,9 @@ export const getStorefrontProduct = createServerFn({ method: 'POST' })
     const ctx = await resolveCommercialContext({
       explicit_channel: data.sales_channel ?? null,
       store_id: product.store_id,
+      supabase: sb,
     });
+
 
     const [brandRes, colorsRes, variantsRes, pavRes] = await Promise.all([
       product.brand_id
