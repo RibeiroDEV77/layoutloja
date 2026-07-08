@@ -68,6 +68,7 @@ import { listCategoryAttributes, createCategoryAttribute } from "@/lib/business/
 import { listPriceLists } from "@/lib/business/price-lists.functions";
 import { listAdminStock, bulkAdjustStock } from "@/lib/business/inventory.functions";
 import { useActiveStore } from "@/hooks/use-active-store";
+import { sortSizes } from "@/lib/size-order";
 import { useTelemetry } from "@/hooks/use-telemetry";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -980,7 +981,10 @@ function VariantsTab({
     return m;
   }, [pricesQ.data, defaultPriceListId]);
 
-  const sizeValues = sizeAttrQ.data?.values ?? [];
+  const sizeValues = useMemo(
+    () => sortSizes(sizeAttrQ.data?.values ?? [], (v) => v.label),
+    [sizeAttrQ.data?.values],
+  );
   const variants = variantsQ.data ?? [];
   const sizesByColor = useMemo(() => {
     const m = new Map<string, string[]>();
