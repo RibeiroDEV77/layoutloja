@@ -299,6 +299,7 @@ export async function addItem(supabase: SbClient, userId: string | null, input: 
     customer_group_id: cart.customer_group_id,
     currency: cart.currency,
     price_list_id: cart.price_list_id,
+    sales_channel: cart.sales_channel as 'retail' | 'wholesale',
   });
 
   // upsert por (cart_id, variant_id)
