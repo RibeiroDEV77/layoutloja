@@ -200,6 +200,13 @@ export async function createUploadJob(
   p: CreateUploadJobParams,
 ): Promise<{ job_id: string; target: UploadTarget }> {
   await requirePermission(supabase, userId, 'dam.upload', p.store_id);
+  // P7: valida metadados anunciados antes de gerar signed URL.
+  const { assertUploadPolicyByMetadata } = await import('./dam-upload-policy.server');
+  assertUploadPolicyByMetadata({
+    filename: p.filename,
+    mime: p.mime ?? null,
+    size_bytes: p.size_bytes ?? null,
+  });
   const driver = getStorageDriver();
   const target = await driver.prepareUpload({
     storeId: p.store_id,
