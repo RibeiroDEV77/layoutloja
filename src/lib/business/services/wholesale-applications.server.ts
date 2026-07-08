@@ -253,7 +253,7 @@ export async function getActiveApplication(
     .limit(1)
     .maybeSingle();
   if (error) throw Errors.internal('Falha ao carregar solicitação ativa', { error: error.message });
-  return (data as ApplicationRow | null) ?? null;
+  return data ? safeApp(data as ApplicationRow) : null;
 }
 
 /** Lista todas as solicitações de um cliente, mais recentes primeiro. */
