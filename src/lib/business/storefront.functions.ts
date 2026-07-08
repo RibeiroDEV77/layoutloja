@@ -79,14 +79,16 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     category_ids?: string[];
   }) => input ?? {})
   .handler(async ({ data }): Promise<{ rows: StorefrontProduct[] }> => {
+    const sb = publicClient();
     // Resolve o contexto comercial (cookie SSR-safe + mapeamento canônico).
+    // P5: wholesale exige verificação de aprovação server-side.
     const { resolveCommercialContext } = await import('./services/commercial-context.server');
     const ctx = await resolveCommercialContext({
       explicit_channel: data.sales_channel ?? null,
       store_id: data.store_id ?? null,
+      supabase: sb,
     });
 
-    const sb = publicClient();
     const hasCategoryFilter = Array.isArray(data.category_ids) && data.category_ids.length > 0;
     const catIds = hasCategoryFilter ? (data.category_ids as string[]) : [];
 
