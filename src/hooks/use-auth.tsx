@@ -85,6 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(sess);
       setUser(sess?.user ?? null);
+
+      // P8: limpa cache privado ao trocar de usuário ou deslogar.
+      const nextUserId = sess?.user?.id ?? null;
+      const prevUserId = lastUserIdRef.current;
+      if (event === "SIGNED_OUT" || (prevUserId && prevUserId !== nextUserId)) {
+        clearPrivateQueries(queryClient);
+      }
+      lastUserIdRef.current = nextUserId;
+
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
         // Defer to avoid deadlock
         setTimeout(() => loadContext(sess), 0);
