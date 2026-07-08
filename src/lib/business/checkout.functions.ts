@@ -392,6 +392,7 @@ export const wholesalePlaceOrder = createServerFn({ method: 'POST' })
     name: string;
     phone: string;
     address: OrderAddress;
+    idempotency_key?: string | null;
   }) => d)
   .handler(withBusiness(async ({ data, context }) => {
     const cart = await assertWholesaleCartOwnership(context.supabase, context.userId, data.cart_id);
@@ -399,6 +400,7 @@ export const wholesalePlaceOrder = createServerFn({ method: 'POST' })
     const sb = supabaseAdmin as unknown as SupabaseClient<Database>;
     return finalizeOrderForCart(sb, { id: cart.id, store_id: cart.store_id }, {
       email: data.email, name: data.name, phone: data.phone, address: data.address,
+      idempotency_key: data.idempotency_key ?? null,
     });
   }));
 
