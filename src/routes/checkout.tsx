@@ -191,15 +191,16 @@ function CheckoutPage() {
 
     setPlacing(true);
     try {
-      const res = await fnPlace({
-        data: {
-          cart_id: cart.cartId,
-          session_token: cart.sessionToken,
-          email: email.trim(), name: name.trim(), phone: digits(phone),
-          address: { ...address, country: 'BR', postal_code: digits(address.postal_code) },
-        },
-      });
-      clearStoredCart();
+      const addressPayload = { ...address, country: 'BR', postal_code: digits(address.postal_code) };
+      const commonData = {
+        cart_id: cart.cartId,
+        email: email.trim(), name: name.trim(), phone: digits(phone),
+        address: addressPayload,
+      };
+      const res = isWholesale
+        ? await fnPlaceWs({ data: commonData })
+        : await fnPlaceRetail({ data: { ...commonData, session_token: cart.sessionToken } });
+      clearStoredCart(isWholesale ? 'wholesale' : 'retail');
       navigate({ to: '/pedido/$id', params: { id: res.order_id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao finalizar pedido');
