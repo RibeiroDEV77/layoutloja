@@ -473,7 +473,7 @@ export async function transitionApplication(
     diff: { from: app.status, to: input.to, reason: input.reason ?? null },
   });
 
-  return row;
+  return safeApp(row);
 }
 
 /** Cancelar — atalho para `transitionApplication({ to: 'cancelled' })`. */
