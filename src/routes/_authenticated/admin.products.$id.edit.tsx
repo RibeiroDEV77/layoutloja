@@ -996,6 +996,8 @@ function VariantsTab({
       if (!arr.includes(label)) arr.push(label);
       m.set(v.product_color_id, arr);
     });
+    // Ordena tamanhos por cor: letras (PP…G4) primeiro, depois numéricos crescentes.
+    for (const [k, arr] of m) m.set(k, sortSizes(arr, (s) => s));
     return m;
   }, [variants, sizeById]);
 
