@@ -115,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = async () => loadContext(session);
   const signOut = async () => {
+    // P8: garante remoção do cache privado imediatamente (o listener também
+    // dispara em SIGNED_OUT, mas cobrimos aqui para o caso de callers que
+    // navegam antes do próximo tick).
+    clearPrivateQueries(queryClient);
     await supabase.auth.signOut();
     setCtx({ authenticated: false });
   };
