@@ -106,6 +106,8 @@ export const listStorefrontProducts = createServerFn({ method: 'POST' })
     let q = sb
       .from('products')
       .select('id,name,slug,short_description,category_id,brand_id,on_sale,new_product,featured,best_seller')
+      .eq('status', 'published')
+      .in('visibility', ['published', 'catalog_only'])
       .in('sale_channel', ctx.product_sale_channels)
       .order('updated_at', { ascending: false })
       .limit(effectiveLimit);
