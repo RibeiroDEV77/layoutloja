@@ -200,6 +200,13 @@ export async function createUploadJob(
   p: CreateUploadJobParams,
 ): Promise<{ job_id: string; target: UploadTarget }> {
   await requirePermission(supabase, userId, 'dam.upload', p.store_id);
+  // P7: valida metadados anunciados antes de gerar signed URL.
+  const { assertUploadPolicyByMetadata } = await import('./dam-upload-policy.server');
+  assertUploadPolicyByMetadata({
+    filename: p.filename,
+    mime: p.mime ?? null,
+    size_bytes: p.size_bytes ?? null,
+  });
   const driver = getStorageDriver();
   const target = await driver.prepareUpload({
     storeId: p.store_id,
@@ -288,15 +295,27 @@ export async function completeUploadJob(
 
   await requirePermission(supabase, userId, 'dam.upload', job.store_id);
 
-  const mime = p.mime ?? job.mime ?? 'application/octet-stream';
-  const kind: AssetKind =
-    mime.startsWith('image/svg') ? 'svg'
-    : mime.startsWith('image/') ? 'image'
-    : mime.startsWith('video/') ? 'video'
-    : mime === 'application/pdf' ? 'pdf'
-    : 'other';
+  const declaredMime = (p.mime ?? job.mime ?? '').toLowerCase() || 'application/octet-stream';
 
+  // P7: revalidação estrita (metadados) + verificação de magic bytes do
+  // binário já gravado. Falhas removem o objeto do storage.
+  const { assertUploadPolicyByMetadata, assertUploadedContentSafe } =
+    await import('./dam-upload-policy.server');
+  const declared = assertUploadPolicyByMetadata({
+    filename: job.filename,
+    mime: declaredMime,
+    size_bytes: p.size_bytes ?? job.size_bytes ?? null,
+  });
   const path = buildStoragePath(job.store_id, job.id, job.filename);
+  // Verificação via admin: garante leitura mesmo se dam.read do usuário for restrito.
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const verified = await assertUploadedContentSafe(supabaseAdmin.storage, DAM_BUCKET, path, declared);
+
+  const kind: AssetKind =
+    verified.verified_mime.startsWith('image/') ? 'image'
+    : verified.verified_mime.startsWith('video/') ? 'video'
+    : verified.verified_mime === 'application/pdf' ? 'pdf'
+    : 'other';
 
   const { data: asset, error: insErr } = await supabase
     .from('assets')
@@ -307,8 +326,8 @@ export async function completeUploadJob(
       storage_driver: 'supabase' as AssetDriver,
       bucket: DAM_BUCKET,
       storage_path: path,
-      mime,
-      size_bytes: p.size_bytes ?? job.size_bytes ?? null,
+      mime: verified.verified_mime,
+      size_bytes: verified.size_bytes,
       width: p.width ?? null,
       height: p.height ?? null,
       original_filename: job.filename,
@@ -326,7 +345,7 @@ export async function completeUploadJob(
     .update({
       status: 'done',
       asset_id: asset.id,
-      bytes_uploaded: p.size_bytes ?? job.size_bytes ?? 0,
+      bytes_uploaded: verified.size_bytes,
     })
     .eq('id', p.job_id);
 
