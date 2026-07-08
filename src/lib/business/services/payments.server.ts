@@ -35,6 +35,17 @@ import type {
 } from './payments/adapter';
 
 // ----------------------------- Idempotency --------------------------------
+/**
+ * Reserva uma chave de idempotência de forma race-safe.
+ *
+ * Estratégia: INSERT primeiro; em violação de UNIQUE (duplicate key) OU
+ * quando um SELECT posterior retorna uma linha, considera que outro caller
+ * já reivindicou a chave e devolve `first:false` com o response_body
+ * previamente registrado (pode ser null se ainda pendente).
+ *
+ * NUNCA retorna `first:true` em caso de duplicate-key — regressão que
+ * causaria dupla aplicação de efeitos.
+ */
 async function claimIdempotency(
   supabase: SbClient,
   scope: string,
@@ -42,17 +53,22 @@ async function claimIdempotency(
   storeId: string,
 ): Promise<{ first: boolean; previous?: unknown }> {
   const fullKey = `${scope}:${key}`;
-  const { data: existing } = await supabase
-    .from('idempotency_keys')
-    .select('id, response_body')
-    .eq('key', fullKey)
-    .maybeSingle();
-  if (existing) return { first: false, previous: existing.response_body };
-  const { error } = await supabase.from('idempotency_keys').insert({
+  const { error: insertErr } = await supabase.from('idempotency_keys').insert({
     key: fullKey, scope, store_id: storeId, status: 'pending',
   } as never);
-  if (error && !/duplicate key/i.test(error.message)) throw error;
-  return { first: true };
+  if (!insertErr) {
+    return { first: true };
+  }
+  // Duplicate key → alguém já reivindicou; busca o registro existente.
+  if (/duplicate key|unique/i.test(insertErr.message)) {
+    const { data: existing } = await supabase
+      .from('idempotency_keys')
+      .select('id, response_body')
+      .eq('key', fullKey)
+      .maybeSingle();
+    return { first: false, previous: existing?.response_body ?? null };
+  }
+  throw insertErr;
 }
 
 async function completeIdempotency(
