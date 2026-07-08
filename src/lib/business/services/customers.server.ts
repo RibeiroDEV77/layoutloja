@@ -15,6 +15,7 @@ import * as Repo from '../repositories/customers.server';
 import { enqueueOutbox } from '@/lib/foundations/outbox.functions';
 import { recordMetric } from '@/lib/foundations/observability.functions';
 import { CommerceEventTypes, AggregateTypes } from '@/lib/foundations/events';
+import { stripCustomerDoc, stripCustomerDocList, maskDoc } from './pii.server';
 
 // ---------------- list ----------------
 export interface ListCustomersInput {
