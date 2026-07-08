@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Heart, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import { listMyWishlist, removeFromWishlist } from "@/lib/business/storefront-account.functions";
 
 export const Route = createFileRoute("/minha-conta/favoritos")({
@@ -12,20 +13,25 @@ export const Route = createFileRoute("/minha-conta/favoritos")({
 });
 
 function WishlistPage() {
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const fetchList = useServerFn(listMyWishlist);
   const remove = useServerFn(removeFromWishlist);
   const qc = useQueryClient();
 
+  const wishlistKey = ["account", userId ?? "anon", "wishlist"] as const;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["my-wishlist"],
+    queryKey: wishlistKey,
     queryFn: () => fetchList(),
+    enabled: !!userId,
   });
 
   const removeMut = useMutation({
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => {
       toast.success("Removido");
-      qc.invalidateQueries({ queryKey: ["my-wishlist"] });
+      qc.invalidateQueries({ queryKey: wishlistKey });
     },
   });
 
