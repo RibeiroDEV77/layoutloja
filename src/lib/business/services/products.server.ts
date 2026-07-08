@@ -700,15 +700,21 @@ async function computeReadiness(supabase: SbClient, productId: string): Promise<
   info.complete = info.issues.length === 0;
   steps.push(info);
 
-  // 2. Atributos — apenas obrigatórios via category_attributes
+  // 2. Atributos — apenas obrigatórios via category_attributes.
+  //    Considera preenchido se: (a) product_attribute_values tem valor OU
+  //    (b) as variantes já carregam esse atributo (variant_attribute_values).
   const attrs: ReadinessStep = { key: 'attributes', label: 'Atributos', complete: true, issues: [] };
   if (p?.category_id) {
     const { data: req } = await supabase
       .from('category_attributes')
-      .select('attribute_id, is_required')
+      .select('attribute_id, is_required, attributes:attribute_id(name, is_size)')
       .eq('category_id', p.category_id)
       .eq('is_required', true);
-    const requiredIds = (req ?? []).map((r) => r.attribute_id);
+    const required = (req ?? []) as Array<{
+      attribute_id: string;
+      attributes: { name: string | null; is_size: boolean | null } | null;
+    }>;
+    const requiredIds = required.map((r) => r.attribute_id);
     if (requiredIds.length) {
       const { data: filled } = await supabase
         .from('product_attribute_values')
@@ -716,10 +722,33 @@ async function computeReadiness(supabase: SbClient, productId: string): Promise<
         .eq('product_id', productId)
         .in('attribute_id', requiredIds);
       const filledSet = new Set((filled ?? []).map((f) => f.attribute_id));
-      const missing = requiredIds.filter((id) => !filledSet.has(id));
+
+      // Sincroniza com variantes: se alguma variante já carrega o atributo,
+      // consideramos preenchido para não duplicar a exigência em Organização.
+      if (variantIds.length) {
+        const { data: vAttrs } = await supabase
+          .from('variant_attribute_values')
+          .select('attribute_id')
+          .in('variant_id', variantIds)
+          .in('attribute_id', requiredIds);
+        for (const v of vAttrs ?? []) filledSet.add(v.attribute_id);
+      }
+
+      const missing = required.filter((r) => !filledSet.has(r.attribute_id));
       if (missing.length) {
         attrs.complete = false;
-        attrs.issues.push(`${missing.length} atributo(s) obrigatório(s) não preenchido(s)`);
+        for (const m of missing) {
+          const name = m.attributes?.name ?? 'Atributo';
+          if (m.attributes?.is_size) {
+            attrs.issues.push(
+              `Falta preencher: Organização > Atributos da categoria > ${name}. Selecione pelo menos um tamanho ou gere variantes com tamanho.`,
+            );
+          } else {
+            attrs.issues.push(
+              `Falta preencher: Organização > Atributos da categoria > ${name}. Selecione um valor.`,
+            );
+          }
+        }
       }
     }
   }

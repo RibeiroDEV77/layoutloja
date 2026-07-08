@@ -548,39 +548,53 @@ function OrganizationTab({ product, onSaved }: { product: ProductRow; onSaved: (
           {valsQ.data?.length === 0 && (
             <p className="text-sm text-muted-foreground">Nenhum atributo vinculado a esta categoria.</p>
           )}
-          {valsQ.data?.map((a) => (
-            <div key={a.attribute_id} className="rounded-md border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="font-medium">{a.name}{a.required && <span className="text-destructive ml-1">*</span>}</Label>
-                <Badge variant="outline" className="text-xs">{a.type}</Badge>
+          {valsQ.data?.map((a) => {
+            const typeLabel =
+              a.type === "select" ? "Seleção"
+              : a.type === "text" ? "Texto"
+              : a.type === "number" ? "Número"
+              : a.type === "boolean" ? "Sim/Não"
+              : a.type;
+            const isSizeLike = /tamanho|size/i.test(a.name);
+            return (
+              <div key={a.attribute_id} className="rounded-md border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium">{a.name}{a.required && <span className="text-destructive ml-1">*</span>}</Label>
+                  <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
+                </div>
+                {a.values.length > 0 ? (
+                  <SelectField
+                    label=""
+                    value={a.current?.attribute_value_id ?? "__none__"}
+                    onChange={(v) => setAttr({
+                      product_id: product.id,
+                      attribute_id: a.attribute_id,
+                      attribute_value_id: v === "__none__" ? null : v,
+                    })}
+                    options={[
+                      { value: "__none__", label: "— Não definido —" },
+                      ...a.values.map((v) => ({ value: v.id, label: v.label })),
+                    ]}
+                  />
+                ) : (
+                  <Input
+                    defaultValue={a.current?.value_text ?? ""}
+                    placeholder="Digite o valor"
+                    onBlur={(e) => setAttr({
+                      product_id: product.id,
+                      attribute_id: a.attribute_id,
+                      value_text: e.target.value || null,
+                    })}
+                  />
+                )}
+                {a.required && isSizeLike && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Se o produto já tiver variantes com tamanho, este atributo é considerado preenchido automaticamente pelas variantes — não precisa selecionar aqui.
+                  </p>
+                )}
               </div>
-              {a.values.length > 0 ? (
-                <SelectField
-                  label=""
-                  value={a.current?.attribute_value_id ?? "__none__"}
-                  onChange={(v) => setAttr({
-                    product_id: product.id,
-                    attribute_id: a.attribute_id,
-                    attribute_value_id: v === "__none__" ? null : v,
-                  })}
-                  options={[
-                    { value: "__none__", label: "— Não definido —" },
-                    ...a.values.map((v) => ({ value: v.id, label: v.label })),
-                  ]}
-                />
-              ) : (
-                <Input
-                  defaultValue={a.current?.value_text ?? ""}
-                  placeholder="Digite o valor"
-                  onBlur={(e) => setAttr({
-                    product_id: product.id,
-                    attribute_id: a.attribute_id,
-                    value_text: e.target.value || null,
-                  })}
-                />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </TabShell>
