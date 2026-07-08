@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useAuth } from "@/hooks/use-auth";
 import { listMyOrders } from "@/lib/business/storefront-account.functions";
 
 export const Route = createFileRoute("/minha-conta/pedidos")({
@@ -8,10 +9,13 @@ export const Route = createFileRoute("/minha-conta/pedidos")({
 });
 
 function OrdersPage() {
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const fetchOrders = useServerFn(listMyOrders);
   const { data, isLoading } = useQuery({
-    queryKey: ["my-orders"],
+    queryKey: ["orders", userId ?? "anon", "list"],
     queryFn: () => fetchOrders(),
+    enabled: !!userId,
   });
 
   return (

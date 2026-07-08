@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
 import { useStorefrontCustomer } from "@/hooks/use-storefront-customer";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -27,6 +28,8 @@ const empty = {
 
 function AddressesPage() {
   const { data, refetch } = useStorefrontCustomer();
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const qc = useQueryClient();
   const [editing, setEditing] = useState<typeof empty | null>(null);
   const upsert = useServerFn(upsertMyAddress);
@@ -38,7 +41,7 @@ function AddressesPage() {
       toast.success("Endereço salvo");
       setEditing(null);
       refetch();
-      qc.invalidateQueries({ queryKey: ["storefront", "my-account"] });
+      qc.invalidateQueries({ queryKey: ["account", userId ?? "anon", "profile"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
   });

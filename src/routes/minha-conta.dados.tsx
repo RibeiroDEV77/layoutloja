@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { useStorefrontCustomer } from "@/hooks/use-storefront-customer";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/minha-conta/dados")({
 
 function ProfilePage() {
   const { data } = useStorefrontCustomer();
+  const { ctx } = useAuth();
+  const userId = ctx?.authenticated ? ctx.user_id : undefined;
   const qc = useQueryClient();
   const update = useServerFn(updateMyProfile);
 
@@ -39,7 +42,7 @@ function ProfilePage() {
     mutationFn: () => update({ data: form }),
     onSuccess: () => {
       toast.success("Dados atualizados");
-      qc.invalidateQueries({ queryKey: ["storefront", "my-account"] });
+      qc.invalidateQueries({ queryKey: ["account", userId ?? "anon", "profile"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });

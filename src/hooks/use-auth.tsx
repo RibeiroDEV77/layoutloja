@@ -1,6 +1,29 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+
+/**
+ * P8: prefixos de queryKey que carregam dados privados por usuário.
+ * Ao trocar de usuário ou fazer logout, o cache correspondente é removido
+ * para impedir vazamento cross-user via TanStack Query cache.
+ */
+const PRIVATE_QUERY_PREFIXES: readonly (readonly unknown[])[] = [
+  ["account"],
+  ["orders"],
+  ["addresses"],
+  ["wholesale"],
+  // legado (mantido para transição, caso alguma tela antiga ainda invalide):
+  ["storefront", "my-account"],
+  ["my-orders"],
+  ["my-wishlist"],
+];
+
+function clearPrivateQueries(qc: ReturnType<typeof useQueryClient>) {
+  for (const prefix of PRIVATE_QUERY_PREFIXES) {
+    qc.removeQueries({ queryKey: prefix as unknown[], exact: false });
+  }
+}
 
 export type UserRole = { code: string; name: string; store_id: string | null };
 export type UserContext = {
@@ -32,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const lastUserIdRef = useRef<string | null>(null);
 
   const loadContext = async (sess: Session | null) => {
     if (!sess) {
@@ -60,6 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(sess);
       setUser(sess?.user ?? null);
+
+      // P8: limpa cache privado ao trocar de usuário ou deslogar.
+      const nextUserId = sess?.user?.id ?? null;
+      const prevUserId = lastUserIdRef.current;
+      if (event === "SIGNED_OUT" || (prevUserId && prevUserId !== nextUserId)) {
+        clearPrivateQueries(queryClient);
+      }
+      lastUserIdRef.current = nextUserId;
+
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
         // Defer to avoid deadlock
         setTimeout(() => loadContext(sess), 0);
@@ -81,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = async () => loadContext(session);
   const signOut = async () => {
+    // P8: garante remoção do cache privado imediatamente (o listener também
+    // dispara em SIGNED_OUT, mas cobrimos aqui para o caso de callers que
+    // navegam antes do próximo tick).
+    clearPrivateQueries(queryClient);
     await supabase.auth.signOut();
     setCtx({ authenticated: false });
   };
