@@ -1,62 +1,84 @@
+## Hardening Residual — Plano
 
-## Causa raiz identificada (auditoria do banco + código)
+Antes de aplicar, quero validar o escopo — em especial o item 2, porque a `.lovable/security-memory.md` já registra que `EXECUTE` de SECURITY DEFINER foi revogado de `PUBLIC`/`anon` deixando apenas `current_user_context` e `super_admin_exists`. Um `SELECT` direto no `pg_proc` mostra o contrário: **>90 funções `secdef` ainda estão executáveis por `anon`** (inclusive `payment_authorize`, `payment_capture`, `fulfillment_create`, `order_cancel`, `notification_enqueue`, `fiscal_set_credentials`, `decrypt_pii`, `encrypt_pii`, `handle_new_auth_user`, triggers `tg_*`, etc.).
 
-**Dados reais no banco (loja Layout, `store_id=4ea8…fe4a`)**:
+Isso significa que a "correção" anterior não chegou a rodar em produção **ou** foi desfeita por migrations posteriores. É o achado mais grave do rescan e precisa de ação antes do E2E.
 
-| Nível | Nome | Slug | parent_id | Produtos publicados |
-|---|---|---|---|---|
-| 1 | Masculino | `masculino` | — | 12 |
-| 1 | Feminino | `feminino` | — | 5 |
-| 1 | **Botas** | `botas` | — | **8** |
-| 1 | **Calçados** | `calcados` | — | 7 (direto) |
-| 1 | Acessórios | `acessorios` | — | 0 |
-| 1 | Promoções | `promocoes` | — | 0 |
-| 1 | Novidades | `novidades` | — | 0 |
-| 2 | Botas (duplicada) | **`b`** | Calçados | 4 |
-| 2 | Tênis / Sapatos / Sandálias | `calc-*` | Calçados | 0 |
-| 2 | Camisas Fem. | `fem-camisas` | Feminino | 1 |
-| 2 | Calças Masc. | `masc-cal…` | Masculino | 2 |
+### 1. Guest cart — invalidar `session_token` ao converter/abandonar
 
-**Problemas encontrados**:
+Migration com trigger `BEFORE UPDATE OF status ON public.carts`:
+- Se `NEW.status IN ('converted','abandoned')` e `OLD.status = 'active'` → `NEW.session_token := NULL`.
+- Não toca `cart_items`, `cart_timeline`, `cart_snapshots`, `orders`.
+- Escopo: apenas carts com `customer_id IS NULL` (retail anônimo). Carrinho autenticado/wholesale não usa token, mas o `NULL` no token é inofensivo pra eles.
+- RPC `cart_accessible` (que consulta por token) passa a rejeitar automaticamente carts convertidos/abandonados sem alterar sua lógica.
 
-1. **Navbar hardcoded** (`src/lib/storefront-navigation.ts`) tem itens que não existem no banco (`Country`, `Sport Fino`, `Social`) e **não tem `Calçados`**. Não é dirigido pelo banco. Não bate com a auditoria.
-2. **`listStorefrontProducts` limita a 24 produtos globais** (`src/lib/business/storefront.functions.ts:93`), sem filtro por categoria — a página `/categoria/$slug` filtra tudo client-side. Se um produto de Botas não estiver entre os 24 mais recentes, some da listagem — este é o motivo direto de "Calçados/Botas sem produtos" e "filtro Botas não funciona".
-3. **Categoria duplicada "Botas"** (top-level `botas` e subcategoria `b` de Calçados) causa contagem/nav ambígua. `resolveStorefrontCategories` usa `name.includes(alias)` — combina as duas Botas.
-4. **Filtros lateral (cor/tamanho)** só filtram o subset já carregado — herdam o mesmo bug do limit 24.
+### 2. Revogar EXECUTE de `anon` em SECURITY DEFINER
 
-## Plano de correção (somente storefront público — sem tocar produtos, preços, estoque, variantes, admin)
+Classificação com base no uso real (grepping em `services/*.server.ts` + RLS policies):
 
-### Passo 1 — Consulta de categoria correta no servidor
-Adicionar parâmetro `category_ids?: string[]` em `listStorefrontProducts` e aplicar `.in('category_id', ids)` UNION com match via `product_categories`. Elevar limite quando `category_ids` está presente (ex.: 200). Loader de `/categoria/$slug` passa a expansão de subcategorias já calculada.
+**Manter para anon (fluxo guest/bootstrap, chamados via RLS ou RPC pública):**
+- `current_user_context`, `super_admin_exists` — bootstrap.
+- `cart_accessible`, `cart_set_session_v1` — carrinho guest.
+- `coupon_lookup_by_code_v1` — cupom no checkout guest.
+- `public_tracking_resolve` — rastreio público via token.
+- `is_approved_wholesale_customer`, `current_customer_id`, `_is_customer_owner`, `payment_store_id` — helpers referenciados dentro de RLS policies (não são chamados via PostgREST, mas `authenticated` executa quando a policy dispara; anon precisa executar quando a mesma policy avalia em requests anônimos legítimos — verificar caso a caso, revogar quando policy não roda para anon).
+- Triggers `handle_new_auth_user`, `handle_new_storefront_user`, `customers_self_update_guard`, `wholesale_apps_self_update_guard`, `_apply_support_sla_dates`, todos `tg_*_outbox`, `_support_event_to_outbox`, `_order_admin_log`, `_seed_payment_transition`, `_recompute_notification_status`, `orders_snapshot_sales_channel` — **funções de trigger nunca são invocadas por PostgREST**, então `REVOKE ... FROM anon` é seguro; o trigger roda no dono. Vou revogar de `anon` e de `authenticated` (defesa em profundidade).
 
-### Passo 2 — Navbar dirigido pelo banco
-Substituir `STOREFRONT_NAV_ITEMS` hardcoded por derivação a partir de `categories` (`is_active=true`, `level=1`, com produtos publicados). Preservar `Marcas`, `Promoções`, `Novidades` como itens curados. Manter aliases para retro-compat de URLs antigas (`country`, `sport-fino`, `social`) redirecionando para `/produtos`. Desktop e mobile consomem a mesma lista.
+**Revogar de anon (nenhum fluxo público chama):**
+- Toda a família `payment_*` (authorize, capture, cancel, fail, refund_*, chargeback_*, reconciliation_*, record_*, set_credentials, set_webhook_secret, webhook_ingest, webhook_mark_*).
+- Toda a família `fulfillment_*`, `pick_list_*`, `package_*`, `shipment_*`, `delivery_attempt_register`, `tracking_event_ingest`, `shipping_*`.
+- Toda a família `order_*` (add_note, add_tag, assign_user, cancel, persist_shipping_snapshot, remove_tag).
+- `fiscal_*` (record_*, set_credentials, set_webhook_secret, update_status, webhook_ingest, webhook_mark_processed).
+- `notification_*` (enqueue, dispatch_worker, consume_outbox_event, mark_*).
+- `support_*` (ticket_*, sla_*, recompute_sla_states).
+- `encrypt_pii`, `decrypt_pii`, `_assert_fulfillment_permission`, `_pick_warehouse_for_variant`, `consume_stock_reservations_for_order`, `release_stock_reservation`, `reserve_stock_for_cart_item`, `seed_payment_workflow`, `customer_dashboard_refresh`, `customer_timeline_refresh`, `portal_cache_invalidate`, `portal_refresh_metrics`, `payments_apply_refund_total`, `_resolve_support_sla_policy`.
 
-### Passo 3 — Deduplicar "Botas"
-Migração leve: mover subcategoria "Botas (slug=`b`)" para ficar sob a top-level `botas` OU tornar a top-level a única exibida (unir contagem). Optar por **tornar a top-level canônica** e desativar/mesclar a duplicada, mantendo os 4 produtos vinculados também à top-level via `product_categories` (sem alterar produto/preço/estoque). Requer migração — apresentar antes de rodar.
+Manter EXECUTE para `authenticated` — todas essas são chamadas via RPC/service pelo painel admin com sessão autenticada. A migration é apenas `REVOKE ... FROM anon` (e `FROM PUBLIC` onde ainda houver).
 
-### Passo 4 — Filtros server-driven
-`getCategoryFilters` já existe. Garantir que os produtos passados ao filtro venham da nova consulta com `category_ids`, e que ao clicar em atributo (cor/numeração) a URL atualize (já faz) — o resultado deixará de ser vazio pois a lista base agora vem completa da categoria.
+Também `REVOKE EXECUTE ON FUNCTION emit_domain_event(...) FROM anon, PUBLIC` — chamada apenas pelo próprio backend.
 
-### Passo 5 — Cache / query keys
-Loader do TanStack já usa route + params + search para o cache; após incluir `category_ids` na chamada server, o resultado passa a ser específico da categoria e o SSR/hydration ficam consistentes.
+Atualizar `.lovable/security-memory.md` para refletir a lista real de funções expostas a `anon` (allowlist explícita).
 
-### Passo 6 — Validação
-Playwright headless: `/categoria/calcados`, `/categoria/botas`, `/produtos`, filtro Botas, filtro cor, mobile viewport, sales channel varejo. Screenshots + contagens.
+### 3. Auditoria `/api/public/*`
 
-## Arquivos a alterar
+Rotas existentes:
+- `melhor-envio-callback.ts` — OAuth callback
+- `melhor-envio-webhook.ts` — webhook Melhor Envio
+- `mercadopago.ts` — webhook MercadoPago
+- `nuvemfiscal.ts` — webhook Nuvem Fiscal
+- `shipping-tracking-sync.ts` — cron
 
-- `src/lib/business/storefront.functions.ts` — aceitar `category_ids` + subir limite.
-- `src/routes/categoria.$slug.tsx` — enviar `category_ids` já expandido.
-- `src/lib/storefront-navigation.ts` — derivar itens do banco (ou remover); manter aliases.
-- `src/components/storefront/storefront.tsx` — usar lista dinâmica.
-- Migração Supabase (Passo 3) — apenas se você aprovar a mescla das duas "Botas".
+Vou ler cada handler e produzir a tabela pedida (método, assinatura verificada?, valida payload?, usa supabaseAdmin?, retorna PII?, status HTTP, risco). Correções só se encontrar problema real — sem reescrever handlers que já verificam HMAC + Zod.
 
-## O que NÃO será alterado
+### 4. Validar wholesale cookie
 
-Produtos, preços, estoque, variantes, imagens, atacado, carrinho, checkout, RLS, RBAC.
+Sem migration — apenas leitura de `sales-channel.ts`, `sales-channel-provider.tsx`, `storefront.functions.ts` e RLS de `price_lists`/`cart_items` para confirmar que:
+1. Preço wholesale só é resolvido server-side após `has_permission('wholesale.buy', store_id)` **ou** `is_approved_wholesale_customer(auth.uid())`.
+2. Criação de cart com `sales_channel='wholesale'` passa pela mesma checagem.
+3. Cookie/localStorage só afeta UI, nunca o preço final ou o snapshot do order.
 
-## Perguntas antes de executar
+Se algum ponto usar apenas o valor do cookie sem revalidação server-side, corrijo. Se estiver ok, entrego a evidência (arquivos + linhas).
 
-1. **Mesclar as duas "Botas"?** Top-level `botas` (8 produtos) vs subcategoria `b` sob Calçados (4 produtos). Recomendo tornar a top-level canônica e vincular também os 4 produtos via `product_categories`. OK?
-2. **Navbar 100% dinâmico** (só categorias do banco + Marcas/Promoções/Novidades) OU **híbrido** (mantém alguns itens curados como Country/Sport Fino apontando para `/produtos?cat=`)?
+### Entrega
+
+Um único relatório em Markdown na resposta com:
+1. Trigger aplicada (SQL);
+2. Funções revogadas + lista mantida com justificativa;
+3. Tabela de `/api/public/*`;
+4. Resultado wholesale (ok ou correção);
+5. Riscos residuais;
+6. Confirmação de que nenhuma tabela de produto/preço/estoque/pedido/imagem foi alterada.
+
+Depois disso executo o E2E via Playwright (retail guest → converter, wholesale aprovado, wholesale negado, duplo clique checkout, refresh checkout, pedido público, cart convertido re-uso de token, navbar/filtros).
+
+### Arquivos afetados
+- 1 migration (trigger + REVOKEs em ~80 funções). Sem `CREATE TABLE`, sem alteração de dados, sem alteração de RLS existente.
+- `.lovable/security-memory.md` (atualizar allowlist real).
+- Possivelmente 1 arquivo em `src/lib/business/` **se** a auditoria wholesale/públicos encontrar bug — caso contrário só relatório.
+
+### Fora de escopo
+- Não altero produtos, preços, imagens, RLS de negócio, painel admin, rotas de UI.
+- Não movo extensions em `public`.
+- Não mexo em RPCs listados como architecture-driven na `security-memory.md` (has_role, has_permission, cart_recalculate, idempotency_*, outbox_*, etc.).
+
+Aprova para eu abrir a migration?
