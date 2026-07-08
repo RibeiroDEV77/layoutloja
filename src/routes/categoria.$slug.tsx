@@ -128,6 +128,31 @@ export const Route = createFileRoute("/categoria/$slug")({
       },
     });
 
+    // Only show subcategory chips that actually have published products.
+    // Build the set of category ids referenced by the fetched products
+    // (via multi-category map or the legacy single category_id).
+    const categoryIdsWithProducts = new Set<string>();
+    for (const p of categoryProducts) {
+      const extras = extraCategoryMap[p.id] ?? [];
+      if (extras.length > 0) {
+        for (const cid of extras) categoryIdsWithProducts.add(cid);
+      } else if (p.category_id) {
+        categoryIdsWithProducts.add(p.category_id);
+      }
+    }
+    // Propagate to ancestors so that a subcategory chip lights up when any
+    // descendant has products.
+    const catById = new Map(cats.rows.map((c) => [c.id, c] as const));
+    for (const seed of Array.from(categoryIdsWithProducts)) {
+      let cur = catById.get(seed);
+      while (cur?.parent_id) {
+        if (categoryIdsWithProducts.has(cur.parent_id)) break;
+        categoryIdsWithProducts.add(cur.parent_id);
+        cur = catById.get(cur.parent_id);
+      }
+    }
+    const subcategories = allSubcategories.filter((s) => categoryIdsWithProducts.has(s.id));
+
     return {
       store, category, subcategories, parents,
       products: categoryProducts, allProducts: prods.rows,
