@@ -89,7 +89,7 @@ export function assertUploadPolicyByMetadata(input: {
     });
   }
   const rule = RULES[mime as AllowedMime];
-  if (!rule.exts.includes(ext)) {
+  if (!(rule.exts as readonly string[]).includes(ext)) {
     throw Errors.validation('Extensão não confere com o tipo declarado', { ext, mime });
   }
   if (input.size_bytes != null && input.size_bytes > rule.maxBytes) {
