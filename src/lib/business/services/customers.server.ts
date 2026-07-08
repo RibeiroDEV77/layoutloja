@@ -128,6 +128,31 @@ function normalizeDoc(doc?: string | null): string | null {
   return v.length ? v : null;
 }
 
+/**
+ * Computa `doc_number_hash` + `doc_number_encrypted` sem gravar plaintext.
+ * Retorna campos prontos para spread em Insert/Update de customers.
+ * - hash usa RPC `hash_doc_number` (HMAC-SHA256 + pepper, service_role only).
+ * - encrypted usa RPC `encrypt_pii` com `CUSTOMER_PII_KEY`.
+ * Se `doc` for null, retorna { doc_number_hash: null, doc_number_encrypted: null }.
+ */
+async function computeDocFields(
+  doc: string | null,
+): Promise<{ doc_number_hash: string | null; doc_number_encrypted: Uint8Array | null }> {
+  if (!doc) return { doc_number_hash: null, doc_number_encrypted: null };
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { data: h, error: hErr } = await supabaseAdmin.rpc('hash_doc_number', { _doc: doc });
+  if (hErr) throw Errors.internal('Falha ao hashear documento', { error: hErr.message });
+  let enc: Uint8Array | null = null;
+  const key = process.env.CUSTOMER_PII_KEY ?? null;
+  if (key) {
+    const { data: e, error: eErr } = await supabaseAdmin.rpc('encrypt_pii', { p_value: doc, p_key: key });
+    if (eErr) throw Errors.internal('Falha ao encriptar documento', { error: eErr.message });
+    enc = (e as unknown as Uint8Array) ?? null;
+  }
+  return { doc_number_hash: (h as string | null) ?? null, doc_number_encrypted: enc };
+}
+
+
 export interface CreateCustomerInput {
   store_id: string;
   type: 'pf' | 'pj';
@@ -160,6 +185,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
   const doc = normalizeDoc(input.doc_number);
   if (input.type === 'pf' && doc && doc.length !== 11) throw Errors.validation('CPF deve ter 11 dígitos');
   if (input.type === 'pj' && doc && doc.length !== 14) throw Errors.validation('CNPJ deve ter 14 dígitos');
+  const docFields = await computeDocFields(doc);
 
   const row = await Repo.insert(supabase, {
     store_id: input.store_id,
@@ -170,7 +196,10 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
     trade_name: input.trade_name?.trim() || null,
     email: input.email?.trim().toLowerCase() || null,
     phone: input.phone?.trim() || null,
-    doc_number: doc,
+    // Fase A: não gravar plaintext. Uniqueness via doc_number_hash.
+    doc_number: null,
+    doc_number_hash: docFields.doc_number_hash,
+    doc_number_encrypted: docFields.doc_number_encrypted as never,
     state_registration: input.state_registration?.trim() || null,
     municipal_registration: input.municipal_registration?.trim() || null,
     birth_date: input.birth_date || null,
@@ -183,7 +212,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
     marketing_opt_in: !!input.marketing_opt_in,
     notes: input.notes ?? null,
     created_by: userId,
-  });
+  } as never);
 
   if (input.group_ids?.length) {
     await Repo.setGroups(supabase, row.id, input.group_ids);
@@ -198,7 +227,7 @@ export async function createCustomer(supabase: SbClient, userId: string, input: 
   });
   await recordMetric(supabase, { scope: 'customers', name: 'created', value: 1, storeId: row.store_id });
 
-  return row;
+  return stripCustomerDoc(row as never);
 }
 
 export type UpdateCustomerInput = Partial<Omit<CreateCustomerInput, 'store_id' | 'type'>> & {
@@ -214,7 +243,13 @@ export async function updateCustomer(supabase: SbClient, userId: string, id: str
     const doc = normalizeDoc(patch.doc_number);
     if (current.type === 'pf' && doc && doc.length !== 11) throw Errors.validation('CPF deve ter 11 dígitos');
     if (current.type === 'pj' && doc && doc.length !== 14) throw Errors.validation('CNPJ deve ter 14 dígitos');
-    patch.doc_number = doc as never;
+    const docFields = await computeDocFields(doc);
+    // Remove doc_number do patch e injeta hash/encrypted (sem plaintext).
+    delete (patch as Record<string, unknown>).doc_number;
+    (patch as Record<string, unknown>).doc_number_hash = docFields.doc_number_hash;
+    (patch as Record<string, unknown>).doc_number_encrypted = docFields.doc_number_encrypted;
+    // Também zera plaintext legado se existir.
+    (patch as Record<string, unknown>).doc_number = null;
   }
   if (patch.email !== undefined) patch.email = patch.email?.trim().toLowerCase() || undefined;
 
@@ -231,7 +266,7 @@ export async function updateCustomer(supabase: SbClient, userId: string, id: str
     payload: { changed: Object.keys(colPatch) },
   });
   await recordMetric(supabase, { scope: 'customers', name: 'updated', value: 1, storeId: row.store_id });
-  return row;
+  return stripCustomerDoc(row as never);
 }
 
 export async function deleteCustomer(supabase: SbClient, userId: string, id: string) {

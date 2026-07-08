@@ -52,8 +52,9 @@ export const getMyAccount = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const customer = await ensureCustomer(context);
 
-    // Descriptografa CPF, se houver
-    let doc_number: string | null = customer.doc_number ?? null;
+    // Descriptografa CPF/CNPJ (apenas para o próprio dono).
+    // Não retornar hash/encrypted no payload. Fallback a plaintext removido.
+    let doc_number: string | null = null;
     const key = pii();
     if (customer.doc_number_encrypted && key) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -107,17 +108,21 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     };
 
     if (data.doc_number !== undefined) {
-      update.doc_number = data.doc_number || null;
-      const key2 = pii();
-      if (data.doc_number && key2) {
+      // Fase A: nunca gravar plaintext. Grava encrypted + hash.
+      const raw = (data.doc_number ?? "").replace(/\D/g, "") || null;
+      update.doc_number = null;
+      if (raw) {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: enc } = await supabaseAdmin.rpc("encrypt_pii", {
-          p_value: data.doc_number,
-          p_key: key2,
-        });
-        update.doc_number_encrypted = enc ?? null;
-      } else if (!data.doc_number) {
+        const key2 = pii();
+        if (key2) {
+          const { data: enc } = await supabaseAdmin.rpc("encrypt_pii", { p_value: raw, p_key: key2 });
+          update.doc_number_encrypted = enc ?? null;
+        }
+        const { data: h } = await supabaseAdmin.rpc("hash_doc_number", { _doc: raw });
+        update.doc_number_hash = (h as string | null) ?? null;
+      } else {
         update.doc_number_encrypted = null;
+        update.doc_number_hash = null;
       }
     }
 

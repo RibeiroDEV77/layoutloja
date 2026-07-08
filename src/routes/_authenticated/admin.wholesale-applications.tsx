@@ -78,18 +78,11 @@ function statusBadge(s: AdminRow["status"]) {
   return <StatusBadge label={opt?.label ?? s} tone={opt?.tone ?? "muted"} dot />;
 }
 
-function maskDocClient(digits: string, type: "pf" | "pj" | undefined) {
-  if (!digits) return "—";
-  if (type === "pj" || digits.length === 14) return `**.***.***/****-${digits.slice(-2)}`;
-  return `***.***.***-${digits.slice(-2)}`;
-}
-
 function fmtDocMasked(r: AdminRow): string {
-  if (r.customer?.doc_number_masked) return r.customer.doc_number_masked;
-  const rawMeta = metaStr(r.metadata, "cpf") || metaStr(r.metadata, "cnpj");
-  if (!rawMeta) return "—";
-  const digits = rawMeta.replace(/\D/g, "");
-  return maskDocClient(digits, r.customer?.type);
+  // Documento é sempre exibido mascarado a partir do customer. Fallback a
+  // metadata.cpf/cnpj foi removido: metadata é sanitizado no server e não
+  // deve carregar documento em texto simples.
+  return r.customer?.doc_number_masked ?? "Não informado";
 }
 
 function fmtDateTime(iso: string | null) {
