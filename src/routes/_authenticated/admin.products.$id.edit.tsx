@@ -980,7 +980,10 @@ function VariantsTab({
     return m;
   }, [pricesQ.data, defaultPriceListId]);
 
-  const sizeValues = sizeAttrQ.data?.values ?? [];
+  const sizeValues = useMemo(
+    () => sortSizes(sizeAttrQ.data?.values ?? [], (v) => v.label),
+    [sizeAttrQ.data?.values],
+  );
   const variants = variantsQ.data ?? [];
   const sizesByColor = useMemo(() => {
     const m = new Map<string, string[]>();
