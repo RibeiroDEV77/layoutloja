@@ -5959,6 +5959,7 @@ export type Database = {
           shipping_total: number
           source_cart_id: string | null
           status: Database["public"]["Enums"]["order_status"]
+          stock_released_at: string | null
           store_id: string
           subtotal: number
           tags: string[]
@@ -5993,6 +5994,7 @@ export type Database = {
           shipping_total?: number
           source_cart_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stock_released_at?: string | null
           store_id: string
           subtotal?: number
           tags?: string[]
@@ -6027,6 +6029,7 @@ export type Database = {
           shipping_total?: number
           source_cart_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          stock_released_at?: string | null
           store_id?: string
           subtotal?: number
           tags?: string[]
