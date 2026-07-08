@@ -393,7 +393,7 @@ export async function getApplication(supabase: SbClient, userId: string, id: str
   if (customer.auth_user_id !== userId && !(await canRead(supabase, userId, app.store_id))) {
     throw Errors.forbidden('Sem permissão para ler esta solicitação');
   }
-  return app;
+  return safeApp(app);
 }
 
 /**
